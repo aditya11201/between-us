@@ -200,6 +200,7 @@ export const ControlCenter = memo(function ControlCenter({
         <VerticalSlider
           value={brightness}
           icon={FiSun}
+          label="Display brightness"
           onChange={setBrightness}
         />
       </div>
@@ -213,6 +214,7 @@ export const ControlCenter = memo(function ControlCenter({
           <VerticalSlider
             value={volume}
             icon={FiHeadphones}
+            label="Sound volume"
             onChange={setVolume}
           />
           <button className="cc-output-btn" title="Output device">

@@ -76,6 +76,21 @@ body.light-theme {
   will-change: auto;
 }
 
+.desktop__brightness-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: #000;
+  pointer-events: none;
+  transition: opacity 0.08s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop__brightness-overlay {
+    transition: none;
+  }
+}
+
 .window {
   contain: layout style paint;
   content-visibility: auto;
