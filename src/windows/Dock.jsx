@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect, memo, forwardRef, useMemo } from "react";
 import { APPS } from "@/core/constants/apps";
 import { AssetIcon } from "@/ui";
+import { PhotosIcon } from "@/features/photos/PhotosIcon";
 
 const GITHUB_APP = {
   id: "github",
@@ -119,6 +120,7 @@ const DockItem = memo(forwardRef(function DockItem({
   isLightTheme
 }, ref) {
   const isGitHub = app.id === "github";
+  const isPhotos = app.id === "photos";
 
   const handleClick = useCallback(() => {
     if (app.isLink) {
@@ -164,6 +166,8 @@ const DockItem = memo(forwardRef(function DockItem({
               style={{ width: `${BASE_ICON_SIZE}px`, height: `${BASE_ICON_SIZE}px` }}
             />
           </div>
+        ) : isPhotos ? (
+          <PhotosIcon size={BASE_ICON_SIZE} />
         ) : (
           <AssetIcon
             path={app.iconPath}

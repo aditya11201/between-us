@@ -7,6 +7,7 @@ import {
 } from "./photoSelectionModel.js";
 import { PhotoSection } from "./PhotoSection";
 import { PhotosStatusBar } from "./PhotosStatusBar";
+import { PhotosIcon } from "./PhotosIcon";
 
 export function PhotosContent({ onClose, onMinimize, onMaximize }) {
   const [query, setQuery] = useState("");
@@ -60,7 +61,10 @@ export function PhotosContent({ onClose, onMinimize, onMaximize }) {
             title="Maximize"
           />
         </div>
-        <span className="photos-window-header__title">Photos</span>
+        <span className="photos-window-header__title">
+          <PhotosIcon size={20} />
+          Photos
+        </span>
       </header>
 
       <div className="photos-toolbar">
