@@ -85,4 +85,10 @@ export const APPS = [
     icon: "🖼",
     color: "#0a84ff",
   },
+  {
+    id: "mail",
+    name: "Mail",
+    icon: "mail",
+    color: "#2783de",
+  },
 ];

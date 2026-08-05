@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
             terminal: ['./src/features/terminal/Terminal'],
             music: ['./src/features/music/MusicContent'],
             settings: ['./src/features/settings/SettingsContent'],
+            mail: ['./src/features/mail/MailContent'],
           },
           chunkFileNames: 'assets/[name]-[hash].js',
           entryFileNames: 'assets/[name]-[hash].js',

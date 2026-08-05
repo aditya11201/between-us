@@ -14,6 +14,11 @@ const PhotosContent = lazy(() =>
     default: module.PhotosContent,
   })),
 );
+const MailContent = lazy(() =>
+  import("@/features/mail/MailContent").then((module) => ({
+    default: module.MailContent,
+  })),
+);
 
 export const renderAppContent = (appId, { closeWindow, minimizeWindow, maximizeWindow, setWallpaper }) => {
   const commonProps = {
@@ -46,6 +51,8 @@ export const renderAppContent = (appId, { closeWindow, minimizeWindow, maximizeW
           <PhotosContent {...commonProps} />
         </Suspense>
       );
+    case "mail":
+      return <Suspense fallback={<WindowLoading />}><MailContent {...commonProps} /></Suspense>;
     default:
       return <div style={{ padding: 20, color: '#707070' }}>App {appId} not found.</div>;
   }
