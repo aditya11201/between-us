@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
   FiArchive,
   FiBell,
@@ -30,7 +30,9 @@ import {
   getMailboxCount,
   getMessageById,
   getVisibleMessages,
+  moveMessage,
   setMessageUnread,
+  toggleMessageFlag,
 } from "./mailModel";
 
 const MAILBOX_ICONS = {
@@ -49,6 +51,20 @@ const CATEGORY_ICONS = {
   cart: FiShoppingCart,
   news: FiBell,
   megaphone: FiTag,
+};
+
+const MOVE_TARGETS = [
+  { id: "inbox", label: "Inbox" },
+  { id: "archive", label: "Archive" },
+  { id: "trash", label: "Trash" },
+  { id: "junk", label: "Junk" },
+];
+
+const COMPOSE_LABELS = {
+  new: "New Message",
+  reply: "Reply",
+  "reply-all": "Reply All",
+  forward: "Forward",
 };
 
 function getInitials(sender) {
@@ -74,6 +90,10 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const [selectedId, setSelectedId] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [promoVisible, setPromoVisible] = useState(true);
+  const [view, setView] = useState("message");
+  const [draft, setDraft] = useState(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
 
   const activeMailbox = MAILBOX_GROUPS
     .flatMap((group) => group.items)
@@ -88,24 +108,96 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const selectedMessage = getMessageById(messages, selectedId);
   const unreadCount = visibleMessages.filter((message) => message.unread).length;
 
+  useEffect(() => {
+    if (!moreOpen && !moveOpen) return undefined;
+
+    const closeMenusOnOutsideClick = (event) => {
+      if (!event.target.closest?.(".mail__menu-wrap")) {
+        setMoreOpen(false);
+        setMoveOpen(false);
+      }
+    };
+    const closeMenusOnEscape = (event) => {
+      if (event.key === "Escape") {
+        setMoreOpen(false);
+        setMoveOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeMenusOnOutsideClick);
+    document.addEventListener("keydown", closeMenusOnEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", closeMenusOnOutsideClick);
+      document.removeEventListener("keydown", closeMenusOnEscape);
+    };
+  }, [moreOpen, moveOpen]);
+
   const selectMailbox = (nextMailboxId) => {
     setMailboxId(nextMailboxId);
     setSelectedId(null);
+    setMoveOpen(false);
   };
 
   const selectCategory = (nextCategoryId) => {
     setCategoryId(nextCategoryId);
     setSelectedId(null);
+    setMoveOpen(false);
   };
 
   const toggleUnreadOnly = () => {
     setUnreadOnly((current) => !current);
     setSelectedId(null);
+    setMoveOpen(false);
   };
 
   const selectMessage = (id) => {
     setSelectedId(id);
     setMessages((current) => setMessageUnread(current, id, false));
+  };
+
+  const updateSelected = (transition) => {
+    if (!selectedId) return;
+    setMessages((current) => transition(current, selectedId));
+  };
+
+  const toggleSelectedFlag = () => {
+    updateSelected(toggleMessageFlag);
+  };
+
+  const moveSelected = (mailbox) => {
+    if (!selectedId) return;
+    setMessages((current) => moveMessage(current, selectedId, mailbox));
+    setSelectedId(null);
+    setMoveOpen(false);
+    setMoreOpen(false);
+  };
+
+  const setSelectedRead = (unread) => {
+    updateSelected((current, id) => setMessageUnread(current, id, unread));
+    setMoreOpen(false);
+  };
+
+  const openCompose = (mode = "new") => {
+    const message = selectedMessage;
+    const prefix = mode === "reply" || mode === "reply-all" ? "Re: " : "Fwd: ";
+    const senderAddress = message?.senderEmail
+      || (message?.sender ? getSenderAddress(message.sender) : "sender@example.com");
+
+    setDraft({
+      mode,
+      to: mode === "new" ? "" : senderAddress,
+      subject: mode === "new" ? "" : `${prefix}${message?.subject || ""}`,
+      body: mode === "forward" ? `\n\n--- Forwarded message ---\n${message?.body || ""}` : "",
+    });
+    setView("compose");
+    setMoreOpen(false);
+    setMoveOpen(false);
+  };
+
+  const closeCompose = () => {
+    setDraft(null);
+    setView("message");
   };
 
   const handleMessageKeyDown = (event) => {
@@ -260,14 +352,44 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
             >
               <FiFilter aria-hidden="true" />
             </button>
-            <button
-              type="button"
-              className="mail__icon-button"
-              aria-label="More list options"
-              title="More list options"
-            >
-              <FiMoreHorizontal aria-hidden="true" />
-            </button>
+            <div className="mail__menu-wrap">
+              <button
+                type="button"
+                className="mail__icon-button"
+                onClick={() => {
+                  setMoreOpen((current) => !current);
+                  setMoveOpen(false);
+                }}
+                aria-label="More list options"
+                aria-expanded={moreOpen}
+                aria-haspopup="menu"
+                title="More list options"
+              >
+                <FiMoreHorizontal aria-hidden="true" />
+              </button>
+              {moreOpen && (
+                <div className="mail__menu" role="menu" aria-label="More message actions">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!selectedMessage}
+                    onClick={() => setSelectedRead(!selectedMessage?.unread)}
+                  >
+                    {selectedMessage?.unread ? "Mark as Read" : "Mark as Unread"}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setPromoVisible((current) => !current);
+                      setMoreOpen(false);
+                    }}
+                  >
+                    {promoVisible ? "Hide Categories" : "Show Categories"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -366,6 +488,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
             <button
               type="button"
               className="mail__compose-button mail__icon-button"
+              onClick={() => openCompose()}
               aria-label="Compose new message"
               title="Compose new message"
             >
@@ -375,35 +498,113 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
 
           <div className="mail__tool-groups">
             <div className="mail__tool-group">
-              <button type="button" className="mail__icon-button" disabled={!selectedMessage} aria-label="Reply" title="Reply">
+              <button
+                type="button"
+                className="mail__icon-button"
+                disabled={!selectedMessage}
+                onClick={() => openCompose("reply")}
+                aria-label="Reply"
+                title="Reply"
+              >
                 <FiCornerUpLeft aria-hidden="true" />
               </button>
-              <button type="button" className="mail__icon-button" disabled={!selectedMessage} aria-label="Reply all" title="Reply all">
+              <button
+                type="button"
+                className="mail__icon-button"
+                disabled={!selectedMessage}
+                onClick={() => openCompose("reply-all")}
+                aria-label="Reply all"
+                title="Reply all"
+              >
                 <FiUsers aria-hidden="true" />
               </button>
-              <button type="button" className="mail__icon-button" disabled={!selectedMessage} aria-label="Forward" title="Forward">
+              <button
+                type="button"
+                className="mail__icon-button"
+                disabled={!selectedMessage}
+                onClick={() => openCompose("forward")}
+                aria-label="Forward"
+                title="Forward"
+              >
                 <FiCornerUpRight aria-hidden="true" />
               </button>
             </div>
             <div className="mail__tool-group">
-              <button type="button" className="mail__icon-button" disabled={!selectedMessage} aria-label="Archive" title="Archive">
+              <button
+                type="button"
+                className="mail__icon-button"
+                disabled={!selectedMessage}
+                onClick={() => moveSelected("archive")}
+                aria-label="Archive"
+                title="Archive"
+              >
                 <FiArchive aria-hidden="true" />
               </button>
-              <button type="button" className="mail__icon-button" disabled={!selectedMessage} aria-label="Delete" title="Delete">
+              <button
+                type="button"
+                className="mail__icon-button"
+                disabled={!selectedMessage}
+                onClick={() => moveSelected("trash")}
+                aria-label="Delete"
+                title="Delete"
+              >
                 <FiTrash aria-hidden="true" />
               </button>
-              <button type="button" className="mail__icon-button" disabled={!selectedMessage} aria-label="Move to junk" title="Move to junk">
+              <button
+                type="button"
+                className="mail__icon-button"
+                disabled={!selectedMessage}
+                onClick={() => moveSelected("junk")}
+                aria-label="Move to junk"
+                title="Move to junk"
+              >
                 <FiTrash2 aria-hidden="true" />
               </button>
             </div>
             <div className="mail__tool-group">
-              <button type="button" className="mail__icon-button" disabled={!selectedMessage} aria-label="Move message" title="Move message">
-                <FiMove aria-hidden="true" />
-                <FiChevronDown className="mail__tool-caret" aria-hidden="true" />
-              </button>
+              <div className="mail__menu-wrap">
+                <button
+                  type="button"
+                  className="mail__icon-button"
+                  disabled={!selectedMessage}
+                  onClick={() => {
+                    setMoveOpen((current) => !current);
+                    setMoreOpen(false);
+                  }}
+                  aria-label="Move message"
+                  aria-expanded={moveOpen}
+                  aria-haspopup="menu"
+                  title="Move message"
+                >
+                  <FiMove aria-hidden="true" />
+                  <FiChevronDown className="mail__tool-caret" aria-hidden="true" />
+                </button>
+                {moveOpen && (
+                  <div className="mail__menu" role="menu" aria-label="Move message">
+                    {MOVE_TARGETS.map((target) => (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        key={target.id}
+                        onClick={() => moveSelected(target.id)}
+                      >
+                        {target.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="mail__tool-group">
-              <button type="button" className="mail__icon-button" disabled={!selectedMessage} aria-label="Flag message" title="Flag message">
+              <button
+                type="button"
+                className="mail__icon-button"
+                disabled={!selectedMessage}
+                onClick={toggleSelectedFlag}
+                aria-label={selectedMessage?.flagged ? "Unflag message" : "Flag message"}
+                aria-pressed={selectedMessage?.flagged || false}
+                title={selectedMessage?.flagged ? "Unflag message" : "Flag message"}
+              >
                 <FiFlag aria-hidden="true" />
                 <FiChevronDown className="mail__tool-caret" aria-hidden="true" />
               </button>
@@ -427,7 +628,47 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
         </header>
 
         <div className="mail__detail-body">
-          {selectedMessage ? (
+          {view === "compose" && draft ? (
+            <form
+              className="mail__compose"
+              onSubmit={(event) => {
+                event.preventDefault();
+                closeCompose();
+              }}
+            >
+              <div className="mail__compose-heading">
+                <h2>{COMPOSE_LABELS[draft.mode]}</h2>
+                <p>Local draft</p>
+              </div>
+              <label>
+                To
+                <input
+                  type="text"
+                  value={draft.to}
+                  onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))}
+                />
+              </label>
+              <label>
+                Subject
+                <input
+                  type="text"
+                  value={draft.subject}
+                  onChange={(event) => setDraft((current) => ({ ...current, subject: event.target.value }))}
+                />
+              </label>
+              <label className="mail__compose-message">
+                Message
+                <textarea
+                  value={draft.body}
+                  onChange={(event) => setDraft((current) => ({ ...current, body: event.target.value }))}
+                />
+              </label>
+              <div className="mail__compose-actions">
+                <button type="submit" className="mail__button mail__button--primary">Send</button>
+                <button type="button" className="mail__button" onClick={closeCompose}>Discard</button>
+              </div>
+            </form>
+          ) : selectedMessage ? (
             <article className="mail__reader">
               <header className="mail__reader-head">
                 <div className="mail__avatar" aria-hidden="true">{getInitials(selectedMessage.sender)}</div>

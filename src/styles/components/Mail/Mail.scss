@@ -603,6 +603,52 @@
   margin-left: -3px;
 }
 
+.mail__menu-wrap {
+  position: relative;
+}
+
+.mail__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  min-width: 150px;
+  padding: 4px;
+  border: 1px solid var(--mail-border-strong);
+  border-radius: 8px;
+  background: var(--mail-toolbar-bg);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+.mail__menu button {
+  display: block;
+  width: 100%;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--mail-text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.mail__menu button:hover {
+  background: var(--mail-hover);
+  color: var(--mail-text);
+}
+
+.mail__menu button:disabled {
+  color: var(--mail-text-muted);
+  cursor: default;
+}
+
+.mail__menu button:disabled:hover {
+  background: transparent;
+  color: var(--mail-text-muted);
+}
+
 .mail__search {
   display: flex;
   width: 210px;
@@ -640,6 +686,78 @@
 
 .mail__detail-body {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.mail__compose {
+  display: flex;
+  max-width: 760px;
+  height: 100%;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 28px 28px;
+}
+
+.mail__compose-heading h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.mail__compose-heading p {
+  margin: 3px 0 0;
+  color: var(--mail-text-tertiary);
+  font-size: 11.5px;
+}
+
+.mail__compose label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--mail-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mail__compose input,
+.mail__compose textarea {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--mail-border);
+  border-radius: 6px;
+  outline: 0;
+  background: var(--mail-field);
+  color: var(--mail-text);
+  font: inherit;
+  font-weight: 400;
+}
+
+.mail__compose input::placeholder,
+.mail__compose textarea::placeholder {
+  color: var(--mail-text-tertiary);
+}
+
+.mail__compose-message {
+  min-height: 0;
+  flex: 1;
+}
+
+.mail__compose textarea {
+  min-height: 160px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.mail__compose-message textarea {
+  min-height: 0;
+  flex: 1;
+}
+
+.mail__compose-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
 }
 
 .mail__no-selection {
@@ -754,7 +872,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mail__nav-caret,
-  .mail__download-bar span {
+  .mail__download-bar span,
+  .mail__menu,
+  .mail__traffic-light,
+  .mail__message,
+  .mail-icon {
     transition: none;
   }
 }
