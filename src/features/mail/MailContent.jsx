@@ -24,6 +24,7 @@ import {
   FiUser,
   FiUsers,
 } from "react-icons/fi";
+import { useWindowManager } from "@/core/providers";
 import { WindowContext } from "@/windows";
 import { CATEGORIES, MAILBOX_GROUPS, createInitialMessages } from "./mailData";
 import {
@@ -82,6 +83,7 @@ function getSenderAddress(sender) {
 
 export function MailContent({ onClose, onMinimize, onMaximize }) {
   const { onTitleMouseDown } = useContext(WindowContext);
+  const { windows, activeWin } = useWindowManager();
   const [messages, setMessages] = useState(createInitialMessages);
   const [mailboxId, setMailboxId] = useState("inbox");
   const [categoryId, setCategoryId] = useState("primary");
@@ -94,6 +96,9 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const [draft, setDraft] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const mailWindow = windows.find((window) => window.id === "mail");
+  const isMailActive = activeWin === "mail";
+  const isMaximized = mailWindow?.x === 0 && mailWindow?.y === 28;
 
   const activeMailbox = MAILBOX_GROUPS
     .flatMap((group) => group.items)
@@ -109,7 +114,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const unreadCount = visibleMessages.filter((message) => message.unread).length;
 
   useEffect(() => {
-    if (!moreOpen && !moveOpen) return undefined;
+    if (!moreOpen && !moveOpen && (!isMailActive || !isMaximized)) return undefined;
 
     const closeMenusOnOutsideClick = (event) => {
       if (!event.target.closest?.(".mail__menu-wrap")) {
@@ -117,21 +122,25 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
         setMoveOpen(false);
       }
     };
-    const closeMenusOnEscape = (event) => {
-      if (event.key === "Escape") {
+    const onKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+      if (moreOpen || moveOpen) {
         setMoreOpen(false);
         setMoveOpen(false);
+        return;
       }
+      if (!isMailActive || !isMaximized) return;
+      onMaximize();
     };
 
     document.addEventListener("mousedown", closeMenusOnOutsideClick);
-    document.addEventListener("keydown", closeMenusOnEscape);
+    document.addEventListener("keydown", onKeyDown);
 
     return () => {
       document.removeEventListener("mousedown", closeMenusOnOutsideClick);
-      document.removeEventListener("keydown", closeMenusOnEscape);
+      document.removeEventListener("keydown", onKeyDown);
     };
-  }, [moreOpen, moveOpen]);
+  }, [isMailActive, isMaximized, moreOpen, moveOpen, onMaximize]);
 
   const selectMailbox = (nextMailboxId) => {
     setMailboxId(nextMailboxId);
@@ -235,8 +244,14 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   };
 
   return (
-    <div className={`mail${sidebarCollapsed ? " mail--sidebar-collapsed" : ""}`}>
-      <aside className="mail__sidebar">
+    <div
+      className={[
+        "mail",
+        sidebarCollapsed ? "mail--sidebar-collapsed" : "",
+        isMaximized ? "mail--maximized" : "",
+      ].filter(Boolean).join(" ")}
+    >
+      <aside className="mail__sidebar" aria-label="Mailboxes">
         <header
           className="mail__titlebar"
           onMouseDown={(event) => {
@@ -274,13 +289,14 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
             onClick={() => setSidebarCollapsed((current) => !current)}
             aria-label={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
             aria-expanded={!sidebarCollapsed}
+            aria-controls="mail-sidebar-content"
             title={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
           >
             <FiSidebar aria-hidden="true" />
           </button>
         </header>
 
-        <div className="mail__sidebar-scroll">
+        <div id="mail-sidebar-content" className="mail__sidebar-scroll">
           {MAILBOX_GROUPS.map((group) => (
             <section className="mail__group" key={group.label}>
               <h2 className="mail__group-label">{group.label}</h2>
@@ -331,17 +347,17 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
             </div>
           </div>
           <div className="mail__list-actions">
-            {sidebarCollapsed && (
-              <button
-                type="button"
-                className="mail__icon-button"
-                onClick={() => setSidebarCollapsed(false)}
-                aria-label="Show sidebar"
-                title="Show sidebar"
-              >
-                <FiSidebar aria-hidden="true" />
-              </button>
-            )}
+            <button
+              type="button"
+              className="mail__sidebar-restore mail__icon-button"
+              onClick={() => setSidebarCollapsed(false)}
+              aria-label="Show sidebar"
+              aria-expanded={false}
+              aria-controls="mail-sidebar-content"
+              title="Show sidebar"
+            >
+              <FiSidebar aria-hidden="true" />
+            </button>
             <button
               type="button"
               className={`mail__icon-button${unreadOnly ? " is-on" : ""}`}
@@ -393,7 +409,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
           </div>
         </header>
 
-        <div className="mail__pills" aria-label="Mail categories">
+        <div className="mail__pills" role="group" aria-label="Mail categories">
           {CATEGORIES.map((category) => {
             const Icon = CATEGORY_ICONS[category.icon] || FiTag;
             const isSelected = category.id === categoryId;
@@ -616,13 +632,15 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
             <FiSearch aria-hidden="true" />
             <input
               type="search"
+              name="search"
+              autoComplete="off"
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
                 setSelectedId(null);
                 setMoveOpen(false);
               }}
-              placeholder="Search"
+              placeholder="Search…"
               aria-label="Search Mail"
             />
           </label>
@@ -641,25 +659,35 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                 <h2>{COMPOSE_LABELS[draft.mode]}</h2>
                 <p>Local draft</p>
               </div>
-              <label>
+              <label htmlFor="mail-compose-to">
                 To
                 <input
-                  type="text"
+                  id="mail-compose-to"
+                  name="to"
+                  type="email"
+                  autoComplete="email"
+                  spellCheck={false}
                   value={draft.to}
                   onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))}
                 />
               </label>
-              <label>
+              <label htmlFor="mail-compose-subject">
                 Subject
                 <input
+                  id="mail-compose-subject"
+                  name="subject"
                   type="text"
+                  autoComplete="off"
                   value={draft.subject}
                   onChange={(event) => setDraft((current) => ({ ...current, subject: event.target.value }))}
                 />
               </label>
-              <label className="mail__compose-message">
+              <label className="mail__compose-message" htmlFor="mail-compose-message">
                 Message
                 <textarea
+                  id="mail-compose-message"
+                  name="body"
+                  autoComplete="off"
                   value={draft.body}
                   onChange={(event) => setDraft((current) => ({ ...current, body: event.target.value }))}
                 />
