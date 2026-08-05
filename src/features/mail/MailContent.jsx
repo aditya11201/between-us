@@ -125,15 +125,21 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
 
     event.preventDefault();
-    const selectedIndex = visibleMessages.findIndex((message) => message.id === selectedId);
-    const currentIndex = selectedIndex === -1
+    const focusedRow = event.target.closest('[role="option"]');
+    const activeId = focusedRow?.dataset.messageId ?? selectedId;
+    const activeIndex = visibleMessages.findIndex((message) => message.id === activeId);
+    const currentIndex = activeIndex === -1
       ? event.key === "ArrowDown" ? -1 : 0
-      : selectedIndex;
+      : activeIndex;
     const nextIndex = event.key === "ArrowDown"
       ? Math.min(visibleMessages.length - 1, currentIndex + 1)
       : Math.max(0, currentIndex - 1);
+    const nextMessage = visibleMessages[nextIndex];
 
-    selectMessage(visibleMessages[nextIndex].id);
+    selectMessage(nextMessage.id);
+    event.currentTarget
+      .querySelector(`[data-message-id="${nextMessage.id}"]`)
+      ?.focus();
   };
 
   return (
