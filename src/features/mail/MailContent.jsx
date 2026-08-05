@@ -114,7 +114,12 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
     unreadOnly,
   });
   const selectedMessage = getMessageById(messages, selectedId);
+  const selectedIsVisible = visibleMessages.some((message) => message.id === selectedId);
   const unreadCount = visibleMessages.filter((message) => message.unread).length;
+
+  useEffect(() => {
+    if (selectedId && !selectedIsVisible) setSelectedId(null);
+  }, [selectedId, selectedIsVisible]);
 
   useEffect(() => {
     const element = mailRef.current;
