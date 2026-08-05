@@ -60,7 +60,7 @@ function getSenderAddress(sender) {
 }
 
 export function MailContent({ onClose, onMinimize, onMaximize }) {
-  const { onTitleMouseDown, onZoom } = useContext(WindowContext);
+  const { onTitleMouseDown } = useContext(WindowContext);
   const messages = createInitialMessages();
   const mailboxId = "inbox";
   const categoryId = "primary";
@@ -107,7 +107,6 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
               className="mail__traffic-light mail__traffic-light--maximize"
               onClick={() => {
                 onMaximize();
-                onZoom();
               }}
               aria-label="Maximize Mail window"
               title="Maximize Mail window"
