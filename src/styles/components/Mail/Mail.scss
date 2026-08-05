@@ -50,12 +50,25 @@
   box-shadow: none;
 }
 
-.mail__sidebar-restore {
+.mail .mail__sidebar-restore {
   display: none;
 }
 
 .mail.mail--sidebar-collapsed .mail__sidebar-restore {
   display: inline-flex;
+}
+
+.mail.mail--narrow.mail--sidebar-collapsed {
+  grid-template-columns: 0 260px minmax(240px, 1fr);
+}
+
+.mail.mail--narrow:not(.mail--sidebar-collapsed) {
+  grid-template-columns: 190px 260px minmax(240px, 1fr);
+}
+
+.mail.mail--narrow .mail__search {
+  width: 130px;
+  flex-basis: 130px;
 }
 
 .light-theme .mail {
@@ -877,23 +890,6 @@
 }
 
 @media (max-width: 980px) {
-  .mail {
-    grid-template-columns: 0 260px minmax(240px, 1fr);
-  }
-
-  .mail.mail--sidebar-collapsed {
-    grid-template-columns: 0 260px minmax(240px, 1fr);
-  }
-
-  .mail__sidebar {
-    visibility: hidden;
-    pointer-events: none;
-  }
-
-  .mail__sidebar-restore {
-    display: inline-flex;
-  }
-
   .mail__search {
     width: 130px;
     flex-basis: 130px;

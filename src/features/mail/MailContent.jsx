@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import {
   FiArchive,
   FiBell,
@@ -84,6 +84,8 @@ function getSenderAddress(sender) {
 export function MailContent({ onClose, onMinimize, onMaximize }) {
   const { onTitleMouseDown } = useContext(WindowContext);
   const { windows, activeWin } = useWindowManager();
+  const mailRef = useRef(null);
+  const wasNarrow = useRef(false);
   const [messages, setMessages] = useState(createInitialMessages);
   const [mailboxId, setMailboxId] = useState("inbox");
   const [categoryId, setCategoryId] = useState("primary");
@@ -96,6 +98,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const [draft, setDraft] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(false);
   const mailWindow = windows.find((window) => window.id === "mail");
   const isMailActive = activeWin === "mail";
   const isMaximized = mailWindow?.x === 0 && mailWindow?.y === 28;
@@ -112,6 +115,32 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   });
   const selectedMessage = getMessageById(messages, selectedId);
   const unreadCount = visibleMessages.filter((message) => message.unread).length;
+
+  useEffect(() => {
+    const element = mailRef.current;
+    if (!element) return undefined;
+
+    const mediaQuery = window.matchMedia("(max-width: 980px)");
+    const updateNarrow = (width = element.getBoundingClientRect().width) => {
+      const nextNarrow = width <= 980 || mediaQuery.matches;
+      setIsNarrow(nextNarrow);
+      if (nextNarrow && !wasNarrow.current) setSidebarCollapsed(true);
+      wasNarrow.current = nextNarrow;
+    };
+
+    updateNarrow();
+    const observer = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(([entry]) => updateNarrow(entry.contentRect.width));
+    const onMediaChange = () => updateNarrow();
+    observer?.observe(element);
+    mediaQuery.addEventListener?.("change", onMediaChange);
+
+    return () => {
+      observer?.disconnect();
+      mediaQuery.removeEventListener?.("change", onMediaChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!moreOpen && !moveOpen && (!isMailActive || !isMaximized)) return undefined;
@@ -245,8 +274,10 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
 
   return (
     <div
+      ref={mailRef}
       className={[
         "mail",
+        isNarrow ? "mail--narrow" : "",
         sidebarCollapsed ? "mail--sidebar-collapsed" : "",
         isMaximized ? "mail--maximized" : "",
       ].filter(Boolean).join(" ")}
@@ -352,7 +383,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
               className="mail__sidebar-restore mail__icon-button"
               onClick={() => setSidebarCollapsed(false)}
               aria-label="Show sidebar"
-              aria-expanded={false}
+              aria-expanded={!sidebarCollapsed}
               aria-controls="mail-sidebar-content"
               title="Show sidebar"
             >
