@@ -620,6 +620,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
               onChange={(event) => {
                 setQuery(event.target.value);
                 setSelectedId(null);
+                setMoveOpen(false);
               }}
               placeholder="Search"
               aria-label="Search Mail"
