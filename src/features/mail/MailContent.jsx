@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import {
   FiArchive,
   FiBell,
@@ -26,7 +26,12 @@ import {
 } from "react-icons/fi";
 import { WindowContext } from "@/windows";
 import { CATEGORIES, MAILBOX_GROUPS, createInitialMessages } from "./mailData";
-import { getMailboxCount, getMessageById, getVisibleMessages } from "./mailModel";
+import {
+  getMailboxCount,
+  getMessageById,
+  getVisibleMessages,
+  setMessageUnread,
+} from "./mailModel";
 
 const MAILBOX_ICONS = {
   inbox: FiInbox,
@@ -61,10 +66,15 @@ function getSenderAddress(sender) {
 
 export function MailContent({ onClose, onMinimize, onMaximize }) {
   const { onTitleMouseDown } = useContext(WindowContext);
-  const messages = createInitialMessages();
-  const mailboxId = "inbox";
-  const categoryId = "primary";
-  const selectedId = null;
+  const [messages, setMessages] = useState(createInitialMessages);
+  const [mailboxId, setMailboxId] = useState("inbox");
+  const [categoryId, setCategoryId] = useState("primary");
+  const [query, setQuery] = useState("");
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [promoVisible, setPromoVisible] = useState(true);
+
   const activeMailbox = MAILBOX_GROUPS
     .flatMap((group) => group.items)
     .find((item) => item.id === mailboxId);
@@ -72,14 +82,62 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const visibleMessages = getVisibleMessages(messages, {
     mailboxId,
     categoryId,
-    query: "",
-    unreadOnly: false,
+    query,
+    unreadOnly,
   });
   const selectedMessage = getMessageById(messages, selectedId);
   const unreadCount = visibleMessages.filter((message) => message.unread).length;
 
+  const selectMailbox = (nextMailboxId) => {
+    setMailboxId(nextMailboxId);
+    setSelectedId(null);
+  };
+
+  const selectCategory = (nextCategoryId) => {
+    setCategoryId(nextCategoryId);
+    setSelectedId(null);
+  };
+
+  const toggleUnreadOnly = () => {
+    setUnreadOnly((current) => !current);
+    setSelectedId(null);
+  };
+
+  const selectMessage = (id) => {
+    setSelectedId(id);
+    setMessages((current) => setMessageUnread(current, id, false));
+  };
+
+  const handleMessageKeyDown = (event) => {
+    if (!visibleMessages.length) return;
+
+    if (event.key === "Enter") {
+      const focusedRow = event.target.closest('[role="option"]');
+      const focusedId = focusedRow?.dataset.messageId ?? selectedId;
+      const focusedMessage = visibleMessages.find((message) => message.id === focusedId);
+      if (focusedMessage) {
+        event.preventDefault();
+        selectMessage(focusedMessage.id);
+      }
+      return;
+    }
+
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+
+    event.preventDefault();
+    const selectedIndex = visibleMessages.findIndex((message) => message.id === selectedId);
+    const currentIndex = selectedIndex === -1
+      ? event.key === "ArrowDown" ? -1 : 0
+      : selectedIndex;
+    const nextIndex = event.key === "ArrowDown"
+      ? Math.min(visibleMessages.length - 1, currentIndex + 1)
+      : Math.max(0, currentIndex - 1);
+
+    selectMessage(visibleMessages[nextIndex].id);
+  };
+
   return (
-    <div className="mail">
+    <div className={`mail${sidebarCollapsed ? " mail--sidebar-collapsed" : ""}`}>
       <aside className="mail__sidebar">
         <header
           className="mail__titlebar"
@@ -115,8 +173,10 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
           <button
             type="button"
             className="mail__sidebar-toggle mail__icon-button"
-            aria-label="Hide sidebar"
-            title="Hide sidebar"
+            onClick={() => setSidebarCollapsed((current) => !current)}
+            aria-label={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+            aria-expanded={!sidebarCollapsed}
+            title={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
           >
             <FiSidebar aria-hidden="true" />
           </button>
@@ -136,6 +196,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                     type="button"
                     className={`mail__nav-item${isSelected ? " is-selected" : ""}`}
                     key={item.id}
+                    onClick={() => selectMailbox(item.id)}
                     aria-current={isSelected ? "page" : undefined}
                     title={item.label}
                   >
@@ -172,11 +233,23 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
             </div>
           </div>
           <div className="mail__list-actions">
+            {sidebarCollapsed && (
+              <button
+                type="button"
+                className="mail__icon-button"
+                onClick={() => setSidebarCollapsed(false)}
+                aria-label="Show sidebar"
+                title="Show sidebar"
+              >
+                <FiSidebar aria-hidden="true" />
+              </button>
+            )}
             <button
               type="button"
-              className="mail__icon-button"
+              className={`mail__icon-button${unreadOnly ? " is-on" : ""}`}
+              onClick={toggleUnreadOnly}
               aria-label="Show unread messages only"
-              aria-pressed="false"
+              aria-pressed={unreadOnly}
               title="Show unread messages only"
             >
               <FiFilter aria-hidden="true" />
@@ -202,6 +275,8 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                 type="button"
                 className="mail__pill"
                 key={category.id}
+                onClick={() => selectCategory(category.id)}
+                aria-label={category.label}
                 aria-pressed={isSelected}
                 title={category.label}
               >
@@ -212,40 +287,70 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
           })}
         </div>
 
-        <aside className="mail__promo">
-          <h2>Mail Categories</h2>
-          <p>Find the messages that matter most in Primary and organize everything else.</p>
-          <p className="mail__promo-muted">Turn this off anytime from the options menu.</p>
-          <div className="mail__promo-actions">
-            <button type="button" className="mail__button mail__button--primary">Try Categories</button>
-            <button type="button" className="mail__button">Turn Off</button>
-          </div>
-        </aside>
+        {promoVisible && (
+          <aside className="mail__promo">
+            <h2>Mail Categories</h2>
+            <p>Find the messages that matter most in Primary and organize everything else.</p>
+            <p className="mail__promo-muted">Turn this off anytime from the options menu.</p>
+            <div className="mail__promo-actions">
+              <button
+                type="button"
+                className="mail__button mail__button--primary"
+                onClick={() => setPromoVisible(false)}
+              >
+                Try Categories
+              </button>
+              <button
+                type="button"
+                className="mail__button"
+                onClick={() => setPromoVisible(false)}
+              >
+                Turn Off
+              </button>
+            </div>
+          </aside>
+        )}
 
-        <div className="mail__messages" role="listbox" tabIndex={0} aria-label="Mail messages">
-          {visibleMessages.map((message) => (
-            <button
-              type="button"
-              className={`mail__message${message.unread ? " is-unread" : " is-read"}${message.id === selectedId ? " is-selected" : ""}`}
-              key={message.id}
-              role="option"
-              aria-selected={message.id === selectedId}
-              aria-label={`${message.sender}: ${message.subject}`}
-            >
-              <span className="mail__message-dot" aria-hidden="true" />
-              <span className="mail__message-content">
-                <span className="mail__message-top">
-                  <span className="mail__message-sender">{message.sender}</span>
-                  {message.flagged && (
-                    <FiFlag className="mail__message-flag" aria-label="Flagged" />
-                  )}
-                  <span className="mail__message-time">{message.time}</span>
+        <div
+          className="mail__messages"
+          role="listbox"
+          tabIndex={0}
+          aria-label="Mail messages"
+          onKeyDown={handleMessageKeyDown}
+        >
+          {visibleMessages.length ? visibleMessages.map((message) => {
+            const isSelected = message.id === selectedId;
+
+            return (
+              <button
+                type="button"
+                className={`mail__message${message.unread ? " is-unread" : " is-read"}${isSelected ? " is-selected" : ""}`}
+                key={message.id}
+                role="option"
+                aria-selected={isSelected}
+                aria-label={`${message.sender}: ${message.subject}`}
+                data-message-id={message.id}
+                onClick={() => selectMessage(message.id)}
+              >
+                <span className="mail__message-dot" aria-hidden="true" />
+                <span className="mail__message-content">
+                  <span className="mail__message-top">
+                    <span className="mail__message-sender">{message.sender}</span>
+                    {message.flagged && (
+                      <FiFlag className="mail__message-flag" aria-hidden="true" />
+                    )}
+                    <span className="mail__message-time">{message.time}</span>
+                  </span>
+                  <span className="mail__message-subject">{message.subject}</span>
+                  <span className="mail__message-preview">{message.preview}</span>
                 </span>
-                <span className="mail__message-subject">{message.subject}</span>
-                <span className="mail__message-preview">{message.preview}</span>
-              </span>
-            </button>
-          ))}
+              </button>
+            );
+          }) : (
+            <div className="mail__empty-list" role="status">
+              {query.trim() ? "No messages match your search" : "No messages in this mailbox"}
+            </div>
+          )}
         </div>
       </section>
 
@@ -300,9 +405,18 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
           </div>
 
           <label className="mail__search">
-            <FiSearch aria-hidden="true" />
             <span className="mail__visually-hidden">Search Mail</span>
-            <input type="search" placeholder="Search" aria-label="Search Mail" />
+            <FiSearch aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setSelectedId(null);
+              }}
+              placeholder="Search"
+              aria-label="Search Mail"
+            />
           </label>
         </header>
 
