@@ -22,6 +22,7 @@ const DOCK_APPS = [
   APPS.find(a => a.id === "safari"),
   APPS.find(a => a.id === "calendar"),
   APPS.find(a => a.id === "music"),
+  APPS.find((app) => app.id === "photos"),
   { type: "divider" },
   APPS.find(a => a.id === "notes"),
   APPS.find(a => a.id === "calculator"),

@@ -5,4 +5,5 @@ export const INITIAL_POSITIONS = {
   settings: { x: 260, y: 100, w: 520, h: 400 },
   music: { x: 180, y: 80, w: 500, h: 420 },
   safari: { x: 100, y: 60, w: 780, h: 520 },
+  photos: { x: 120, y: 64, w: 980, h: 650 },
 };
