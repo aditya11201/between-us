@@ -21,9 +21,8 @@
   --mail-selected-message: rgba(39, 131, 222, 0.16);
   --mail-field: rgba(255, 255, 255, 0.07);
   --mail-accent: #2783de;
-  display: grid;
-  position: relative;
-  grid-template-columns: 190px 300px minmax(280px, 1fr);
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -38,7 +37,16 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.mail.mail--sidebar-collapsed {
+.mail__layout {
+  display: grid;
+  grid-template-columns: 190px 300px minmax(280px, 1fr);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mail.mail--sidebar-collapsed .mail__layout {
   grid-template-columns: 0 300px minmax(280px, 1fr);
 }
 
@@ -60,16 +68,12 @@
   display: inline-flex;
 }
 
-.mail.mail--narrow.mail--sidebar-collapsed {
+.mail.mail--narrow.mail--sidebar-collapsed .mail__layout {
   grid-template-columns: 0 260px minmax(240px, 1fr);
 }
 
-.mail.mail--narrow:not(.mail--sidebar-collapsed) {
+.mail.mail--narrow:not(.mail--sidebar-collapsed) .mail__layout {
   grid-template-columns: 190px 260px minmax(240px, 1fr);
-}
-
-.mail.mail--sidebar-collapsed .mail__list-header {
-  padding-left: 84px;
 }
 
 .mail.mail--narrow .mail__search {
@@ -144,6 +148,26 @@
   flex: 0 0 44px;
 }
 
+.mail__window-header {
+  position: relative;
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--mail-border);
+  background: var(--mail-toolbar-bg);
+  cursor: move;
+  user-select: none;
+}
+
+.mail__window-header__title {
+  color: var(--mail-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .mail__titlebar {
   display: flex;
   align-items: center;
@@ -157,25 +181,9 @@
   cursor: grabbing;
 }
 
-.mail__window-controls {
-  position: absolute;
-  z-index: 20;
-  top: 0;
-  left: 0;
-  display: flex;
-  width: 78px;
-  height: 44px;
-  align-items: center;
-  padding-left: 12px;
-  cursor: grab;
-  user-select: none;
-}
-
-.mail__window-controls:active {
-  cursor: grabbing;
-}
-
 .mail__traffic-lights {
+  position: absolute;
+  left: 16px;
   display: flex;
   gap: 8px;
 }
@@ -195,15 +203,15 @@
   opacity: 1;
 }
 
-.mail__traffic-light--close {
+.mail .mail__traffic-light--close {
   background: #ff5f57;
 }
 
-.mail__traffic-light--minimize {
+.mail .mail__traffic-light--minimize {
   background: #febc2e;
 }
 
-.mail__traffic-light--maximize {
+.mail .mail__traffic-light--maximize {
   background: #28c840;
 }
 

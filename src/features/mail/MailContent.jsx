@@ -290,10 +290,10 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
         isMaximized ? "mail--maximized" : "",
       ].filter(Boolean).join(" ")}
     >
-      <div
-        className="mail__window-controls"
+      <header
+        className="mail__window-header"
         onMouseDown={(event) => {
-          if (!event.target.closest("button")) onTitleMouseDown(event);
+          if (!event.target.closest(".mail__traffic-light")) onTitleMouseDown(event);
         }}
       >
         <div className="mail__traffic-lights">
@@ -321,9 +321,11 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
             title={maximizeLabel}
           />
         </div>
-      </div>
+        <span className="mail__window-header__title">Mail</span>
+      </header>
 
-      <aside className="mail__sidebar" aria-label="Mailboxes">
+      <div className="mail__layout">
+        <aside className="mail__sidebar" aria-label="Mailboxes">
         <header
           className="mail__titlebar"
           onMouseDown={(event) => {
@@ -383,9 +385,9 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
           <div className="mail__download-title">Downloading Messages</div>
           <div className="mail__download-sub">9,529 of 47,534</div>
         </footer>
-      </aside>
+        </aside>
 
-      <section className="mail__list-col" aria-label="Mail message list">
+        <section className="mail__list-col" aria-label="Mail message list">
         <header className="mail__list-header">
           <div className="mail__list-heading">
             <div className="mail__list-title">{activeMailbox?.label}</div>
@@ -543,9 +545,9 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
             </div>
           )}
         </div>
-      </section>
+        </section>
 
-      <section className="mail__detail" aria-label="Mail message detail">
+        <section className="mail__detail" aria-label="Mail message detail">
         <header className="mail__detail-toolbar">
           <div className="mail__tool-group">
             <button
@@ -766,7 +768,8 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
             <div className="mail__no-selection" role="status">No Message Selected</div>
           )}
         </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
