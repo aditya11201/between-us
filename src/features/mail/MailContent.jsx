@@ -290,6 +290,39 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
         isMaximized ? "mail--maximized" : "",
       ].filter(Boolean).join(" ")}
     >
+      <div
+        className="mail__window-controls"
+        onMouseDown={(event) => {
+          if (!event.target.closest("button")) onTitleMouseDown(event);
+        }}
+      >
+        <div className="mail__traffic-lights">
+          <button
+            type="button"
+            className="mail__traffic-light mail__traffic-light--close"
+            onClick={onClose}
+            aria-label="Close Mail window"
+            title="Close Mail window"
+          />
+          <button
+            type="button"
+            className="mail__traffic-light mail__traffic-light--minimize"
+            onClick={onMinimize}
+            aria-label="Minimize Mail window"
+            title="Minimize Mail window"
+          />
+          <button
+            type="button"
+            className="mail__traffic-light mail__traffic-light--maximize"
+            onClick={() => {
+              onMaximize();
+            }}
+            aria-label={maximizeLabel}
+            title={maximizeLabel}
+          />
+        </div>
+      </div>
+
       <aside className="mail__sidebar" aria-label="Mailboxes">
         <header
           className="mail__titlebar"
@@ -297,31 +330,6 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
             if (!event.target.closest("button")) onTitleMouseDown(event);
           }}
         >
-          <div className="mail__traffic-lights">
-            <button
-              type="button"
-              className="mail__traffic-light mail__traffic-light--close"
-              onClick={onClose}
-              aria-label="Close Mail window"
-              title="Close Mail window"
-            />
-            <button
-              type="button"
-              className="mail__traffic-light mail__traffic-light--minimize"
-              onClick={onMinimize}
-              aria-label="Minimize Mail window"
-              title="Minimize Mail window"
-            />
-            <button
-              type="button"
-              className="mail__traffic-light mail__traffic-light--maximize"
-              onClick={() => {
-                onMaximize();
-              }}
-              aria-label={maximizeLabel}
-              title={maximizeLabel}
-            />
-          </div>
           <button
             type="button"
             className="mail__sidebar-toggle mail__icon-button"
