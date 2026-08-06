@@ -11,6 +11,7 @@
   --mail-toolbar-bg: #1f1f1f;
   --mail-border: rgba(255, 255, 255, 0.12);
   --mail-border-strong: rgba(255, 255, 255, 0.18);
+  --mail-row-divider: rgba(255, 255, 255, 0.06);
   --mail-text: #fff;
   --mail-text-secondary: rgba(255, 255, 255, 0.72);
   --mail-text-tertiary: rgba(255, 255, 255, 0.44);
@@ -79,6 +80,7 @@
   --mail-toolbar-bg: #f0f0f2;
   --mail-border: rgba(0, 0, 0, 0.12);
   --mail-border-strong: rgba(0, 0, 0, 0.18);
+  --mail-row-divider: rgba(0, 0, 0, 0.06);
   --mail-text: #1d1d1f;
   --mail-text-secondary: rgba(29, 29, 31, 0.72);
   --mail-text-tertiary: rgba(29, 29, 31, 0.62);
@@ -512,7 +514,7 @@
   gap: 0 4px;
   padding: 8px 12px 9px 6px;
   border: 0;
-  border-bottom: 1px solid var(--mail-border);
+  border-bottom: 1px solid var(--mail-row-divider);
   color: var(--mail-text);
   cursor: pointer;
   text-align: left;

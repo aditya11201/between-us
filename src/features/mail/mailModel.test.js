@@ -24,12 +24,36 @@ test("filters an inbox category by a case-insensitive query", () => {
 test("unread-only filtering excludes read messages", () => {
   const result = getVisibleMessages(createInitialMessages(), {
     mailboxId: "inbox",
-    categoryId: "primary",
+    categoryId: null,
     query: "",
     unreadOnly: true,
   });
 
-  assert.ok(result.every((message) => message.unread));
+  assert.deepEqual(result.map((message) => message.id), ["learning", "social", "payment"]);
+});
+
+test("read-to-unread transition adds the message to unread-only results", () => {
+  const initial = createInitialMessages();
+  const unread = setMessageUnread(initial, "security", true);
+
+  assert.deepEqual(
+    getVisibleMessages(initial, {
+      mailboxId: "inbox",
+      categoryId: "primary",
+      query: "",
+      unreadOnly: true,
+    }).map((message) => message.id),
+    ["learning"],
+  );
+  assert.deepEqual(
+    getVisibleMessages(unread, {
+      mailboxId: "inbox",
+      categoryId: "primary",
+      query: "",
+      unreadOnly: true,
+    }).map((message) => message.id),
+    ["learning", "security"],
+  );
 });
 
 test("read and flag transitions do not mutate the original array", () => {
@@ -49,6 +73,63 @@ test("moving a message changes only its mailbox", () => {
 
   assert.equal(message.mailbox, "archive");
   assert.equal(initial.find((item) => item.id === "learning").mailbox, "inbox");
+});
+
+test("trash and junk moves appear in their exact target selectors", () => {
+  const initial = createInitialMessages();
+  const movedToTrash = moveMessage(initial, "learning", "trash");
+  const movedToJunk = moveMessage(initial, "security", "junk");
+
+  assert.deepEqual(
+    getVisibleMessages(movedToTrash, {
+      mailboxId: "trash",
+      categoryId: "primary",
+      query: "",
+      unreadOnly: false,
+    }).map((message) => message.id),
+    ["learning"],
+  );
+  assert.deepEqual(
+    getVisibleMessages(movedToJunk, {
+      mailboxId: "junk",
+      categoryId: "primary",
+      query: "",
+      unreadOnly: false,
+    }).map((message) => message.id),
+    ["security"],
+  );
+});
+
+test("mailbox counts reflect post-transition moves", () => {
+  const initial = createInitialMessages();
+  const moved = moveMessage(moveMessage(initial, "learning", "trash"), "security", "junk");
+
+  assert.equal(getMailboxCount(moved, "inbox"), 3);
+  assert.equal(getMailboxCount(moved, "trash"), 2);
+  assert.equal(getMailboxCount(moved, "junk"), 2);
+});
+
+test("empty and no-result selectors return no messages", () => {
+  const messages = createInitialMessages();
+
+  assert.deepEqual(
+    getVisibleMessages(messages, {
+      mailboxId: "account-inbox",
+      categoryId: "primary",
+      query: "",
+      unreadOnly: false,
+    }),
+    [],
+  );
+  assert.deepEqual(
+    getVisibleMessages(messages, {
+      mailboxId: "inbox",
+      categoryId: null,
+      query: "not a real message",
+      unreadOnly: false,
+    }),
+    [],
+  );
 });
 
 test("flagged count and unknown ids are deterministic", () => {

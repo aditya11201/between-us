@@ -102,6 +102,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const mailWindow = windows.find((window) => window.id === "mail");
   const isMailActive = activeWin === "mail";
   const isMaximized = mailWindow?.x === 0 && mailWindow?.y === 28;
+  const maximizeLabel = isMaximized ? "Restore Mail window" : "Maximize Mail window";
 
   const activeMailbox = MAILBOX_GROUPS
     .flatMap((group) => group.items)
@@ -113,12 +114,18 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
     query,
     unreadOnly,
   });
-  const selectedMessage = getMessageById(messages, selectedId);
-  const selectedIsVisible = visibleMessages.some((message) => message.id === selectedId);
+  const selectedMessage = getMessageById(visibleMessages, selectedId);
+  const selectedIsVisible = Boolean(selectedMessage);
   const unreadCount = visibleMessages.filter((message) => message.unread).length;
 
+  const clearSelection = () => {
+    setSelectedId(null);
+    setMoreOpen(false);
+    setMoveOpen(false);
+  };
+
   useEffect(() => {
-    if (selectedId && !selectedIsVisible) setSelectedId(null);
+    if (selectedId && !selectedIsVisible) clearSelection();
   }, [selectedId, selectedIsVisible]);
 
   useEffect(() => {
@@ -178,23 +185,21 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
 
   const selectMailbox = (nextMailboxId) => {
     setMailboxId(nextMailboxId);
-    setSelectedId(null);
-    setMoveOpen(false);
+    clearSelection();
   };
 
   const selectCategory = (nextCategoryId) => {
     setCategoryId(nextCategoryId);
-    setSelectedId(null);
-    setMoveOpen(false);
+    clearSelection();
   };
 
   const toggleUnreadOnly = () => {
     setUnreadOnly((current) => !current);
-    setSelectedId(null);
-    setMoveOpen(false);
+    clearSelection();
   };
 
   const selectMessage = (id) => {
+    setView("message");
     setSelectedId(id);
     setMessages((current) => setMessageUnread(current, id, false));
   };
@@ -211,9 +216,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const moveSelected = (mailbox) => {
     if (!selectedId) return;
     setMessages((current) => moveMessage(current, selectedId, mailbox));
-    setSelectedId(null);
-    setMoveOpen(false);
-    setMoreOpen(false);
+    clearSelection();
   };
 
   const setSelectedRead = (unread) => {
@@ -315,8 +318,8 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
               onClick={() => {
                 onMaximize();
               }}
-              aria-label="Maximize Mail window"
-              title="Maximize Mail window"
+              aria-label={maximizeLabel}
+              title={maximizeLabel}
             />
           </div>
           <button
@@ -673,8 +676,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
-                setSelectedId(null);
-                setMoveOpen(false);
+                clearSelection();
               }}
               placeholder="Search…"
               aria-label="Search Mail"
@@ -744,7 +746,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                   </div>
                   <div className="mail__reader-to">To: User &lt;{selectedMessage.to}&gt;</div>
                 </div>
-                <time className="mail__reader-date">Today {selectedMessage.time}</time>
+                <time className="mail__reader-date">{selectedMessage.time}</time>
               </header>
               <div className="mail__reader-body">
                 {selectedMessage.body.split(/\n\n+/).map((paragraph) => (
