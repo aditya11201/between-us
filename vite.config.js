@@ -5,7 +5,7 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === "production";
 
   return {
-    base: isProd ? "/macweb.dev/" : "/",
+    base: isProd ? "/karenjourney/" : "/",
 
     plugins: [
       react({

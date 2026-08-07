@@ -431,6 +431,128 @@
   height: 100%;
   min-width: 0;
   overflow-y: auto;
+
+  &:has(> .sf__external-frame:not(.sf__external-frame--inactive)) {
+    overflow: hidden;
+  }
+}
+
+.sf__external-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.sf__external-frame--inactive {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.sf__body-content:has(> .sf__external-unsupported) > .sf__external-frame:not(.sf__external-frame--inactive) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.sf__external-iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  overflow: auto;
+  background: #fff;
+}
+
+.sf__external-loading,
+.sf__external-unsupported {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.sf__external-loading {
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.88);
+  color: rgba(0, 0, 0, 0.78);
+  font-size: 13px;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+.sf__external-unsupported {
+  z-index: 2;
+  overflow-y: auto;
+  background: rgba(22, 22, 26, 0.96);
+  color: rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+
+  h2 {
+    margin: 0 0 10px;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  p {
+    max-width: 460px;
+    margin: 0 0 24px;
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+}
+
+.sf__external-unsupported-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+
+  button,
+  a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 8px 14px;
+    border: 1px solid rgba(10, 132, 255, 0.35);
+    border-radius: 8px;
+    background: rgba(10, 132, 255, 0.18);
+    color: #5ac8fa;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+    &:hover {
+      background: rgba(10, 132, 255, 0.30);
+      border-color: rgba(90, 200, 250, 0.55);
+      color: #7bd7ff;
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgba(90, 200, 250, 0.85);
+      outline-offset: 1px;
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -781,6 +903,43 @@
 
   .sf__body {
     background: rgba(255, 255, 255, 0.5);
+  }
+
+  .sf__external-loading {
+    background: rgba(255, 255, 255, 0.92);
+    color: rgba(0, 0, 0, 0.78);
+  }
+
+  .sf__external-unsupported {
+    background: rgba(245, 245, 247, 0.96);
+    color: rgba(0, 0, 0, 0.88);
+
+    h2 {
+      color: rgba(0, 0, 0, 0.90);
+    }
+
+    p {
+      color: rgba(0, 0, 0, 0.62);
+    }
+  }
+
+  .sf__external-unsupported-actions {
+    button,
+    a {
+      background: rgba(10, 132, 255, 0.12);
+      border-color: rgba(10, 132, 255, 0.3);
+      color: #0a66c2;
+
+      &:hover {
+        background: rgba(10, 132, 255, 0.20);
+        border-color: rgba(10, 132, 255, 0.45);
+        color: #005bb5;
+      }
+
+      &:focus-visible {
+        outline-color: #007aff;
+      }
+    }
   }
 
   .sf__sidebar {

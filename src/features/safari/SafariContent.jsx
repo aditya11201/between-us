@@ -12,11 +12,12 @@ import { BsSliders2 } from "react-icons/bs";
 import safariBg from "@/assets/images/Safari_Wallpapers/Safari_Background.webp";
 import { AboutPage, HackintoshPage, CatsPage, SurprisePage } from "./Local_Pages/LocalPages";
 import { MemoryGame } from "./Local_Pages/MemoryGame";
+import { ExternalSiteFrame } from "./ExternalSiteFrame.jsx";
+import { resolveSafariNavigation, TARGET_URL } from "./safariNavigation.js";
 import {
   clearSafariHistory,
   createSafariTab,
   moveSafariTabHistory,
-  normalizeSafariTarget,
   reopenLastClosedSafariTab,
   visitSafariTab,
 } from "./safariModel.js";
@@ -201,7 +202,7 @@ const HistoryMenu = memo(({
           <button
             key={`${entry.url}-${index}`}
             type="button"
-            onClick={() => onNavigate(entry.url)}
+            onClick={() => onNavigate(entry)}
             className="sf__history-item"
           >
             {entry.title}
@@ -461,6 +462,140 @@ const BlockedPage = memo(({ url, onGoHome }) => (
   </div>
 ));
 
+const BLOCKED_FALLBACK_TITLE = "Blocked Navigation";
+const SAFARI_HISTORY_KINDS = new Set(["local", "iframe", "blocked"]);
+
+function createSafariPage(navigation) {
+  if (navigation.kind === "local") {
+    return {
+      kind: "local",
+      url: navigation.command,
+      title: navigation.title,
+      isStart: false,
+    };
+  }
+
+  if (navigation.kind === "iframe") {
+    return {
+      kind: "iframe",
+      url: navigation.url,
+      title: navigation.title,
+      isStart: false,
+    };
+  }
+
+  const safeUrl = typeof navigation.url === "string" && navigation.url
+    ? navigation.url
+    : TARGET_URL;
+  const safeTitle = typeof navigation.title === "string" && navigation.title
+    ? navigation.title
+    : BLOCKED_FALLBACK_TITLE;
+
+  return {
+    kind: "blocked",
+    url: safeUrl,
+    title: safeTitle,
+    isStart: false,
+    ...(navigation.reason ? { reason: navigation.reason } : {}),
+  };
+}
+
+function createSafariHistoryEntry(page) {
+  return {
+    url: page.url,
+    title: page.title,
+    kind: page.kind,
+    ...(page.reason ? { reason: page.reason } : {}),
+  };
+}
+
+function createStoredSafariPage(entry) {
+  if (!entry || !SAFARI_HISTORY_KINDS.has(entry.kind)) return null;
+
+  const url = typeof entry.url === "string" && entry.url ? entry.url : "";
+  if (!url) return createSafariPage({ kind: "blocked" });
+
+  const navigation = resolveSafariNavigation(url);
+  if (entry.kind === "blocked") {
+    if (navigation.kind === "blocked") return createSafariPage(navigation);
+    if (navigation.kind === "iframe") {
+      return createSafariPage({
+        kind: "blocked",
+        url: navigation.url,
+        title: entry.title,
+        reason: entry.reason,
+      });
+    }
+    return createSafariPage({ kind: "blocked", reason: entry.reason });
+  }
+
+  if (navigation.kind !== entry.kind) return createSafariPage({ kind: "blocked" });
+
+  return {
+    kind: navigation.kind,
+    url: navigation.kind === "local" ? navigation.command : navigation.url,
+    title: typeof entry.title === "string" && entry.title
+      ? entry.title
+      : navigation.title,
+    isStart: false,
+  };
+}
+
+function createLegacySafariPage(entry) {
+  const navigation = resolveSafariNavigation(entry?.url);
+  return navigation.kind === "iframe"
+    ? createSafariPage({ kind: "blocked" })
+    : createSafariPage(navigation);
+}
+
+function createFramePage(snapshot) {
+  const navigation = resolveSafariNavigation(snapshot?.url);
+  if (!snapshot || snapshot.status !== "ready" || navigation.kind !== "iframe") return null;
+
+  return {
+    kind: "iframe",
+    url: navigation.url,
+    title: typeof snapshot.title === "string" && snapshot.title.trim()
+      ? snapshot.title.trim()
+      : navigation.title,
+    isStart: false,
+  };
+}
+
+function updateCurrentSafariPage(tab, page) {
+  return {
+    ...tab,
+    ...page,
+    history: tab.history.map((entry, index) => (
+      index === tab.historyIndex ? { ...entry, ...page } : entry
+    )),
+  };
+}
+
+function visitSafariTabAfterPendingNavigation(tab, pendingNavigation, page) {
+  const baseTab = pendingNavigation
+    && tab.url === pendingNavigation.fromUrl
+    && tab.url !== pendingNavigation.url
+    ? visitSafariTab(tab, pendingNavigation.page)
+    : tab;
+
+  return visitSafariTab(baseTab, page);
+}
+
+const UnsupportedFrame = memo(({ url, onRetry, onGoHome }) => (
+  <div className="sf__external-unsupported" role="alert">
+    <h2>Safari Can't Open the Embedded Page</h2>
+    <p>The embedded page could not be verified in this Safari window.</p>
+    <div className="sf__external-unsupported-actions">
+      <button type="button" autoFocus onClick={onRetry}>Retry</button>
+      <a href={url} target="_blank" rel="noopener noreferrer">
+        Open in Browser
+      </a>
+      <button type="button" onClick={onGoHome}>Go to Start Page</button>
+    </div>
+  </div>
+));
+
 function PageRenderer({ command, onNavigate }) {
   switch (command) {
     case "about":      return <AboutPage />;
@@ -487,9 +622,19 @@ export function SafariContent({ onClose, onMinimize, onZoom }) {
   const [activeSidebarItem, setActiveSidebarItem] = useState(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [frameStatus, setFrameStatus] = useState("idle");
+  const [reloadToken, setReloadToken] = useState(0);
   const nextTabId = useRef(2);
   const historyMenuRef = useRef(null);
   const historyButtonRef = useRef(null);
+  const frameStatusByTabRef = useRef(new Map());
+  const reloadTokensByTabRef = useRef(new Map());
+  const frameNavigationRef = useRef(new Map());
+  const tabsRef = useRef(tabs);
+  const activeTabIdRef = useRef(activeTabId);
+
+  tabsRef.current = tabs;
+  activeTabIdRef.current = activeTabId;
   
   const [bookmarks] = useState(() => {
     try {
@@ -513,6 +658,22 @@ export function SafariContent({ onClose, onMinimize, onZoom }) {
     () => tabs.find(t => t.id === activeTabId) || tabs[0],
     [tabs, activeTabId]
   );
+
+  const getTabFrameStatus = useCallback((tab) => (
+    tab && !tab.isStart && tab.kind === "iframe"
+      ? frameStatusByTabRef.current.get(tab.id) || "loading"
+      : "idle"
+  ), []);
+
+  const setTabFrameStatus = useCallback((tabId, status) => {
+    frameStatusByTabRef.current.set(tabId, status);
+    if (activeTabIdRef.current === tabId) setFrameStatus(status);
+  }, []);
+
+  useEffect(() => {
+    setDraftValue(activeTab.url || "");
+    setFrameStatus(getTabFrameStatus(activeTab));
+  }, [activeTab.id, activeTab.isStart, activeTab.kind, activeTab.url, getTabFrameStatus]);
 
   const toggleSidebar = useCallback(() => {
     setIsSidebarOpen((open) => !open);
@@ -549,6 +710,7 @@ export function SafariContent({ onClose, onMinimize, onZoom }) {
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(newTab.id);
     setDraftValue(url);
+    setFrameStatus("idle");
   }, []);
 
   const closeTab = useCallback((id, e) => {
@@ -560,49 +722,162 @@ export function SafariContent({ onClose, onMinimize, onZoom }) {
     const newTabs = tabs.filter(tab => tab.id !== id);
     setTabs(newTabs);
     setRecentlyClosedTabs(prev => [closedTab, ...prev]);
+    frameStatusByTabRef.current.delete(id);
+    reloadTokensByTabRef.current.delete(id);
+    frameNavigationRef.current.delete(id);
     if (activeTabId === id) {
-      setActiveTabId(newTabs[0].id);
-      setDraftValue(newTabs[0].url || "");
+      const nextActiveTab = newTabs[0];
+      setActiveTabId(nextActiveTab.id);
+      setDraftValue(nextActiveTab.url || "");
+      setFrameStatus(getTabFrameStatus(nextActiveTab));
     }
-  }, [tabs, activeTabId]);
+  }, [tabs, activeTabId, getTabFrameStatus]);
 
   const navigate = useCallback((target) => {
-    const result = normalizeSafariTarget(target);
+    const result = resolveSafariNavigation(target);
     if (result.kind === "empty") return;
 
-    const page = result.kind === "local"
-      ? { url: result.command, title: result.title, isStart: false }
-      : { url: result.url, title: result.title, isStart: false };
+    const page = createSafariPage(result);
+    const tabId = activeTabIdRef.current;
 
+    frameNavigationRef.current.delete(tabId);
     setTabs(prev => prev.map(tab => (
-      tab.id === activeTab.id ? visitSafariTab(tab, page) : tab
+      tab.id === tabId ? visitSafariTab(tab, page) : tab
     )));
-    setHistoryEntries(prev => [...prev, { url: page.url, title: page.title }]);
+    setTabFrameStatus(tabId, page.kind === "iframe" ? "loading" : "idle");
+    setHistoryEntries(prev => [...prev, createSafariHistoryEntry(page)]);
     setDraftValue(page.url);
-  }, [activeTab.id]);
+  }, [setTabFrameStatus]);
 
   const goHome = useCallback(() => {
-    const page = { url: "", title: "Start Page", isStart: true };
+    const page = { kind: undefined, url: "", title: "Start Page", isStart: true };
+    const tabId = activeTabIdRef.current;
+    frameNavigationRef.current.delete(tabId);
     setTabs(prev => prev.map(tab => (
-      tab.id === activeTab.id ? visitSafariTab(tab, page) : tab
+      tab.id === tabId ? visitSafariTab(tab, page) : tab
     )));
+    setTabFrameStatus(tabId, "idle");
     setDraftValue("");
-  }, [activeTab.id]);
+  }, [setTabFrameStatus]);
 
   const handleKey = useCallback((e) => {
     if (e.key === "Enter") navigate(draftValue);
   }, [draftValue, navigate]);
 
+  const processFrameNavigation = useCallback((tabId, page) => {
+    const currentTab = tabsRef.current.find(tab => tab.id === tabId);
+    if (!currentTab || currentTab.isStart || currentTab.kind !== "iframe") return;
+
+    const pendingNavigation = frameNavigationRef.current.get(tabId);
+    const isPendingDuplicate = pendingNavigation
+      && pendingNavigation.url === page.url
+      && pendingNavigation.fromUrl === currentTab.url;
+    const isCurrentUrl = page.url === currentTab.url;
+    const isPendingReturn = isCurrentUrl
+      && pendingNavigation
+      && pendingNavigation.url !== page.url
+      && pendingNavigation.fromUrl === currentTab.url;
+
+    if (isPendingDuplicate || (isCurrentUrl && !isPendingReturn)) {
+      setTabs(prev => prev.map(tab => (
+        tab.id === tabId && !tab.isStart && tab.kind === "iframe"
+          ? updateCurrentSafariPage(tab, { title: page.title })
+          : tab
+      )));
+      setTabFrameStatus(tabId, "ready");
+      if (activeTabIdRef.current === tabId) setDraftValue(page.url);
+      return;
+    }
+
+    const nextToken = (pendingNavigation?.token || 0) + 1;
+    frameNavigationRef.current.set(tabId, {
+      url: page.url,
+      fromUrl: currentTab.url,
+      page,
+      token: nextToken,
+    });
+
+    setTabs(prev => prev.map(tab => (
+      tab.id === tabId && !tab.isStart && tab.kind === "iframe"
+        ? visitSafariTabAfterPendingNavigation(tab, pendingNavigation, page)
+        : tab
+    )));
+    setHistoryEntries(prev => [...prev, createSafariHistoryEntry(page)]);
+    setTabFrameStatus(tabId, "loading");
+    if (activeTabIdRef.current === tabId) setDraftValue(page.url);
+  }, [setTabFrameStatus]);
+
+  const handleFrameNavigate = useCallback((tabId, snapshot) => {
+    const page = createFramePage(snapshot);
+    if (!page) {
+      setTabFrameStatus(tabId, "unsupported");
+      return;
+    }
+
+    processFrameNavigation(tabId, page);
+  }, [processFrameNavigation, setTabFrameStatus]);
+
+  const handleFrameReady = useCallback((tabId, snapshot) => {
+    const page = createFramePage(snapshot);
+    if (!page) {
+      setTabFrameStatus(tabId, "unsupported");
+      return;
+    }
+
+    const currentTab = tabsRef.current.find(tab => tab.id === tabId);
+    if (!currentTab || currentTab.isStart || currentTab.kind !== "iframe") return;
+    if (page.url !== currentTab.url) {
+      processFrameNavigation(tabId, page);
+      return;
+    }
+
+    setTabs(prev => prev.map(tab => (
+      tab.id === tabId && !tab.isStart && tab.kind === "iframe"
+        ? updateCurrentSafariPage(tab, page)
+        : tab
+    )));
+    setTabFrameStatus(tabId, "ready");
+    if (activeTabIdRef.current === tabId) setDraftValue(page.url);
+  }, [processFrameNavigation, setTabFrameStatus]);
+
+  const handleFrameUnsupported = useCallback((tabId) => {
+    setTabFrameStatus(tabId, "unsupported");
+  }, [setTabFrameStatus]);
+
   const moveHistory = useCallback((direction) => {
-    const nextTab = moveSafariTabHistory(activeTab, direction);
-    setTabs(prev => prev.map(tab => tab.id === activeTab.id ? nextTab : tab));
+    const currentTab = tabsRef.current.find(tab => tab.id === activeTabIdRef.current);
+    if (!currentTab) return;
+
+    const nextTab = moveSafariTabHistory(currentTab, direction);
+    if (nextTab === currentTab) return;
+
+    frameNavigationRef.current.delete(currentTab.id);
+    const nextStatus = !nextTab.isStart && nextTab.kind === "iframe"
+      ? currentTab.kind === "iframe" && nextTab.url === currentTab.url
+        ? getTabFrameStatus(currentTab)
+        : "loading"
+      : "idle";
+
+    setTabFrameStatus(currentTab.id, nextStatus);
+    setTabs(prev => prev.map(tab => tab.id === currentTab.id ? nextTab : tab));
     setDraftValue(nextTab.url || "");
-  }, [activeTab]);
+  }, [getTabFrameStatus, setTabFrameStatus]);
 
   const handleRefresh = useCallback(() => {
+    const currentTab = tabsRef.current.find(tab => tab.id === activeTabIdRef.current);
+    if (!currentTab) return;
+
+    if (!currentTab.isStart && currentTab.kind === "iframe") {
+      setTabFrameStatus(currentTab.id, "loading");
+      const nextToken = (reloadTokensByTabRef.current.get(currentTab.id) || 0) + 1;
+      reloadTokensByTabRef.current.set(currentTab.id, nextToken);
+      setReloadToken(token => token + 1);
+      return;
+    }
+
     setIsLoading(true);
     setTimeout(() => setIsLoading(false), 500);
-  }, []);
+  }, [setTabFrameStatus]);
 
   const handleSelectTab = useCallback((tabId) => {
     if (tabId === null) addTab();
@@ -611,8 +886,9 @@ export function SafariContent({ onClose, onMinimize, onZoom }) {
       if (!selectedTab) return;
       setActiveTabId(tabId);
       setDraftValue(selectedTab.url || "");
+      setFrameStatus(getTabFrameStatus(selectedTab));
     }
-  }, [addTab, tabs]);
+  }, [addTab, getTabFrameStatus, tabs]);
 
   const reopenLastClosedTab = useCallback(() => {
     const { tab: reopenedTab, remaining } = reopenLastClosedSafariTab(
@@ -626,27 +902,86 @@ export function SafariContent({ onClose, onMinimize, onZoom }) {
     setRecentlyClosedTabs(remaining);
     setActiveTabId(reopenedTab.id);
     setDraftValue(reopenedTab.url || "");
+    const reopenedStatus = !reopenedTab.isStart && reopenedTab.kind === "iframe"
+      ? "loading"
+      : "idle";
+    frameStatusByTabRef.current.set(reopenedTab.id, reopenedStatus);
+    setFrameStatus(reopenedStatus);
     setIsHistoryOpen(false);
   }, [recentlyClosedTabs]);
 
-  const navigateFromHistory = useCallback((url) => {
-    navigate(url);
+  const navigateFromHistory = useCallback((entry) => {
+    const historyEntry = entry && typeof entry === "object" ? entry : { url: entry };
+    const hasStoredKind = typeof historyEntry.kind === "string";
+    const page = hasStoredKind
+      ? createStoredSafariPage(historyEntry) || createSafariPage({ kind: "blocked" })
+      : createLegacySafariPage(historyEntry);
+    const tabId = activeTabIdRef.current;
+
+    frameNavigationRef.current.delete(tabId);
+    setTabs(prev => prev.map(tab => (
+      tab.id === tabId ? visitSafariTab(tab, page) : tab
+    )));
+    setHistoryEntries(prev => [...prev, createSafariHistoryEntry(page)]);
+    setTabFrameStatus(tabId, page.kind === "iframe" ? "loading" : "idle");
+    setDraftValue(page.url);
     setIsHistoryOpen(false);
-  }, [navigate]);
+  }, [setTabFrameStatus]);
 
   const clearHistory = useCallback(() => {
     setHistoryEntries(clearSafariHistory());
     setIsHistoryOpen(false);
   }, []);
 
+  const externalFrames = useMemo(() => (
+    tabs
+      .filter(tab => !tab.isStart && tab.kind === "iframe")
+      .map(tab => (
+        <ExternalSiteFrame
+          key={tab.id}
+          tabId={tab.id}
+          url={tab.url}
+          isActive={tab.id === activeTab.id}
+          reloadToken={reloadTokensByTabRef.current.get(tab.id) || 0}
+          onReady={(snapshot) => handleFrameReady(tab.id, snapshot)}
+          onNavigate={(snapshot) => handleFrameNavigate(tab.id, snapshot)}
+          onUnsupported={() => handleFrameUnsupported(tab.id)}
+        />
+      ))
+  ), [
+    tabs,
+    activeTab.id,
+    handleFrameReady,
+    handleFrameNavigate,
+    handleFrameUnsupported,
+    reloadToken,
+  ]);
+
   const renderContent = useMemo(() => {
     if (activeTab.isStart) {
       return <StartPage key={activeTab.id} bookmarks={bookmarks} recentlyClosedTabs={recentlyClosedTabs} onNavigate={navigate} />;
     }
-    const target = normalizeSafariTarget(activeTab.url);
-    if (target.kind === "local") return <PageRenderer command={target.command} onNavigate={navigate} />;
-    return <BlockedPage url={activeTab.url} onGoHome={goHome} />;
-  }, [activeTab.id, activeTab.isStart, activeTab.url, bookmarks, recentlyClosedTabs, navigate, goHome]);
+    if (activeTab.kind === "local") {
+      return <PageRenderer command={activeTab.url} onNavigate={navigate} />;
+    }
+    if (activeTab.kind === "iframe") {
+      return frameStatus === "unsupported"
+        ? <UnsupportedFrame url={activeTab.url || TARGET_URL} onRetry={handleRefresh} onGoHome={goHome} />
+        : null;
+    }
+    return <BlockedPage url={activeTab.url || TARGET_URL} onGoHome={goHome} />;
+  }, [
+    activeTab.id,
+    activeTab.isStart,
+    activeTab.kind,
+    activeTab.url,
+    bookmarks,
+    recentlyClosedTabs,
+    navigate,
+    frameStatus,
+    handleRefresh,
+    goHome,
+  ]);
 
   const canGoBack = activeTab.historyIndex > 0;
   const canGoForward = activeTab.historyIndex < activeTab.history.length - 1;
@@ -719,7 +1054,10 @@ export function SafariContent({ onClose, onMinimize, onZoom }) {
                 aria-label="Address"
               />
               <button type="button" className="sf__refresh-btn" onClick={handleRefresh} title="Reload" aria-label="Reload">
-                <FiRefreshCw size={11} className={isLoading ? "sf--spin" : ""}/>
+                <FiRefreshCw
+                  size={11}
+                  className={isLoading || frameStatus === "loading" ? "sf--spin" : ""}
+                />
               </button>
             </div>
           </div>
@@ -777,7 +1115,10 @@ export function SafariContent({ onClose, onMinimize, onZoom }) {
             ))}
           </aside>
         )}
-        <div className="sf__body-content">{renderContent}</div>
+        <div className="sf__body-content">
+          {externalFrames}
+          {renderContent}
+        </div>
       </div>
     </div>
   );
