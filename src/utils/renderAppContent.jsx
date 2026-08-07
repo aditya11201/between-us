@@ -9,6 +9,16 @@ const MusicContent = lazy(() => import("@/features/music/MusicContent").then(m =
 const SafariContent = lazy(() => import("@/features/safari/SafariContent").then(m => ({ default: m.SafariContent })));
 const CalendarContent = lazy(() => import("@/features/calendar/CalendarContent").then(m => ({ default: m.CalendarContent })));
 const CalculatorContent = lazy(() => import("@/features/calculator/CalculatorContent").then(m => ({ default: m.CalculatorContent })));
+const PhotosContent = lazy(() =>
+  import("@/features/photos/PhotosContent").then((module) => ({
+    default: module.PhotosContent,
+  })),
+);
+const MailContent = lazy(() =>
+  import("@/features/mail/MailContent").then((module) => ({
+    default: module.MailContent,
+  })),
+);
 
 export const renderAppContent = (appId, { closeWindow, minimizeWindow, maximizeWindow, setWallpaper }) => {
   const commonProps = {
@@ -35,6 +45,14 @@ export const renderAppContent = (appId, { closeWindow, minimizeWindow, maximizeW
       return <Suspense fallback={<WindowLoading />}><CalendarContent {...commonProps} /></Suspense>;
     case "calculator":
       return <Suspense fallback={<WindowLoading />}><CalculatorContent {...commonProps} /></Suspense>;
+    case "photos":
+      return (
+        <Suspense fallback={<WindowLoading />}>
+          <PhotosContent {...commonProps} />
+        </Suspense>
+      );
+    case "mail":
+      return <Suspense fallback={<WindowLoading />}><MailContent {...commonProps} /></Suspense>;
     default:
       return <div style={{ padding: 20, color: '#707070' }}>App {appId} not found.</div>;
   }

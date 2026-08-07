@@ -6,46 +6,123 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 36px 24px 48px;
+  padding: 48px 24px 88px;
 }
 
 .sf__start-inner {
   width: 100%;
-  max-width: 760px;
+  max-width: 660px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 32px;
+}
+
+.sf__welcome-card,
+.sf__empty-card,
+.sf__privacy-card {
+  background: rgba(32, 32, 32, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.sf__welcome-card {
+  position: relative;
+  padding: 24px 52px 24px 24px;
+
+  h2 {
+    margin: 0 0 6px;
+    color: rgba(255, 255, 255, 0.96);
+    font-size: 18px;
+    font-weight: 650;
+    letter-spacing: -0.25px;
+  }
+
+  p {
+    max-width: 420px;
+    margin: 0 0 16px;
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}
+
+.sf__welcome-close,
+.sf__customize-close {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.52);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.10);
+    color: rgba(255, 255, 255, 0.90);
+  }
+}
+
+.sf__welcome-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 26px;
+  height: 26px;
+}
+
+.sf__welcome-customize,
+.sf__privacy-more {
+  border: 0;
+  background: transparent;
+  color: #72aee8;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+}
+
+.sf__welcome-customize {
+  padding: 0;
+}
+
+.sf__section {
+  min-width: 0;
 }
 
 .sf__section-title {
-  font-size: 15px;
+  margin: 0 0 12px;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 17px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.90);
-  margin: 0 0 12px 2px;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.18px;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 
 // ── Favorites ─────────────────────────────────────────────────────
 .sf__favs {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 10px 2px;
 }
 
 .sf__fav {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 2px;
+  border: 0;
+  border-radius: 10px;
   background: transparent;
-  border: none;
+  color: rgba(255, 255, 255, 0.65);
   cursor: pointer;
-  padding: 0;
-  width: 72px;
-  transition: transform 0.15s;
+  transition: background 0.15s ease, transform 0.15s ease;
 
   &:hover { 
+    background: rgba(255, 255, 255, 0.06);
     transform: translateY(-2px); 
   }
   
@@ -55,38 +132,55 @@
 }
 
 .sf__fav-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.30),
-    0 6px 18px rgba(0, 0, 0, 0.20),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.10);
   overflow: hidden;
   flex-shrink: 0;
-  transition: box-shadow 0.15s;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
 
-  .sf__fav:hover & {
-    box-shadow:
-      0 6px 16px rgba(0, 0, 0, 0.40),
-      0 12px 32px rgba(0, 0, 0, 0.25),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-  }
+  svg { width: 44px; height: 44px; display: block; }
 }
 
 .sf__fav-label {
-  font-size: 10.5px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.82);
-  text-align: center;
-  white-space: nowrap;
+  max-width: 70px;
   overflow: hidden;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
   text-overflow: ellipsis;
-  max-width: 72px;
+  white-space: nowrap;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.50);
+}
+
+// ── Empty states ──────────────────────────────────────────────────
+.sf__empty-card {
+  min-height: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.sf__empty-icon {
+  color: rgba(255, 255, 255, 0.62);
+  flex-shrink: 0;
+}
+
+.sf__empty-text {
+  max-width: 510px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 // ── Bookmarks ─────────────────────────────────────────────────────
@@ -97,11 +191,11 @@
 }
 
 .sf__bookmark-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
-  border-radius: 8px;
-  color: #fff;
   padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(32, 32, 32, 0.72);
+  color: #fff;
   cursor: pointer;
   transition: background 0.15s;
   
@@ -113,80 +207,216 @@
 // ── Privacy Report ─────────────────────────────────────────────────
 .sf__privacy-card {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  background: rgba(40, 40, 46, 0.62);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 13px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.20);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px;
 }
 
 .sf__privacy-icon {
-  color: rgba(255, 255, 255, 0.45);
+  color: #72bc8f;
   flex-shrink: 0;
   display: flex;
 }
 
 .sf__privacy-text {
-  font-size: 12.5px;
-  color: rgba(255, 255, 255, 0.62);
-  line-height: 1.45;
   margin: 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-// ── From iPhone ───────────────────────────────────────────────────
-.sf__iphone-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+// ── Recently closed ───────────────────────────────────────────────
+.sf__recently-closed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(32, 32, 32, 0.72);
 }
 
-.sf__iphone-tab {
+.sf__recently-closed-item {
   display: flex;
   align-items: center;
-  padding: 9px 13px;
-  background: rgba(40, 40, 46, 0.60);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 9px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
-  cursor: pointer;
-  text-align: left;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px 14px;
+  color: rgba(255, 255, 255, 0.68);
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.75);
-  font-family: inherit;
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
-  transition: background 0.12s, transform 0.10s;
+  overflow: hidden;
 
-  &:hover {
-    background: rgba(55, 55, 62, 0.75);
-    transform: translateY(-1px);
-  }
-  
-  &:active { 
-    transform: scale(0.98); 
+  svg { color: rgba(255, 255, 255, 0.42); flex-shrink: 0; }
+}
+
+// ── Customize popover ─────────────────────────────────────────────
+.sf__customize-popover {
+  position: absolute;
+  right: 24px;
+  bottom: 52px;
+  z-index: 12;
+  width: min(320px, calc(100% - 32px));
+  max-height: calc(100% - 68px);
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(32, 32, 32, 0.98);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+  color: rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.sf__customize-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 650;
   }
 }
 
-// Surprise button
-.sf__surprise-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  color: #fff;
-  font-size: 16px;
-  padding: 12px 24px;
+.sf__customize-close {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.sf__customize-instruction {
+  margin: 0 0 8px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.sf__customize-rows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sf__customize-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  cursor: grab;
+
+  &:last-child { border-bottom: 0; }
+  &:active { cursor: grabbing; }
+  &.is-dragging { opacity: 0.42; }
+}
+
+.sf__drag-icon {
+  color: rgba(255, 255, 255, 0.38);
+  flex-shrink: 0;
+}
+
+.sf__customize-row > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.sf__toggle {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.22);
   cursor: pointer;
-  transition: background 0.2s;
-  
-  &:hover { 
-    background: rgba(255, 255, 255, 0.15); 
+  transition: background 0.15s ease;
+
+  span {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.82);
+    transition: transform 0.15s ease;
+  }
+
+  &.is-on {
+    background: #5e9fe8;
+
+    span { transform: translateX(12px); background: #fff; }
+  }
+}
+
+.sf__background-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 0 2px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.76);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+
+  > span:first-child { flex: 1; }
+  > .sf__toggle { flex: 0 0 30px; }
+
+  &:hover { color: rgba(255, 255, 255, 0.96); }
+}
+
+.sf__edit-btn {
+  position: fixed;
+  right: 16px;
+  bottom: 14px;
+  z-index: 11;
+  height: 24px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #383836;
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.38);
+
+  &:hover { background: #4a4a48; }
+  &[aria-pressed="true"] { background: #5e9fe8; }
+}
+
+@media (max-width: 640px) {
+  .sf__start { padding: 32px 16px 76px; }
+  .sf__start-inner { gap: 28px; }
+  .sf__favs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .sf__welcome-card,
+  .sf__empty-card,
+  .sf__privacy-card { padding: 18px; }
+  .sf__customize-popover {
+    right: 16px;
+    bottom: 48px;
+    width: min(320px, calc(100% - 32px));
+    max-height: calc(100% - 64px);
   }
 }
 
@@ -244,6 +474,32 @@
 ========================================================= */
 
 .light-theme {
+  .sf__welcome-card,
+  .sf__empty-card,
+  .sf__privacy-card {
+    background: rgba(245, 245, 247, 0.86);
+    border-color: rgba(0, 0, 0, 0.10);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .sf__welcome-card {
+    h2 { color: rgba(0, 0, 0, 0.92); }
+    p { color: rgba(0, 0, 0, 0.62); }
+  }
+
+  .sf__welcome-close,
+  .sf__customize-close {
+    color: rgba(0, 0, 0, 0.48);
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.08);
+      color: rgba(0, 0, 0, 0.86);
+    }
+  }
+
+  .sf__welcome-customize,
+  .sf__privacy-more { color: #0a66c2; }
+
   .sf__section-title {
     color: rgba(0, 0, 0, 0.90);
     text-shadow: none;
@@ -255,17 +511,15 @@
   }
 
   .sf__fav-icon {
-    box-shadow:
-      0 2px 6px rgba(0, 0, 0, 0.15),
-      0 6px 18px rgba(0, 0, 0, 0.10),
-      inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  }
 
-    .sf__fav:hover & {
-      box-shadow:
-        0 6px 16px rgba(0, 0, 0, 0.20),
-        0 12px 32px rgba(0, 0, 0, 0.15),
-        inset 0 0 0 1px rgba(0, 0, 0, 0.12);
-    }
+  .sf__empty-text {
+    color: rgba(0, 0, 0, 0.62);
+  }
+
+  .sf__empty-icon {
+    color: rgba(0, 0, 0, 0.56);
   }
 
   .sf__bookmark-btn {
@@ -289,6 +543,44 @@
 
   .sf__privacy-text {
     color: rgba(0, 0, 0, 0.62);
+  }
+
+  .sf__recently-closed-list {
+    border-color: rgba(0, 0, 0, 0.10);
+    background: rgba(245, 245, 247, 0.80);
+  }
+
+  .sf__recently-closed-item {
+    color: rgba(0, 0, 0, 0.68);
+    svg { color: rgba(0, 0, 0, 0.42); }
+  }
+
+  .sf__customize-popover {
+    border-color: rgba(0, 0, 0, 0.12);
+    background: rgba(245, 245, 247, 0.98);
+    color: rgba(0, 0, 0, 0.90);
+  }
+
+  .sf__customize-instruction,
+  .sf__drag-icon { color: rgba(0, 0, 0, 0.44); }
+
+  .sf__customize-rows { border-color: rgba(0, 0, 0, 0.10); }
+
+  .sf__customize-row {
+    border-color: rgba(0, 0, 0, 0.07);
+    color: rgba(0, 0, 0, 0.78);
+  }
+
+  .sf__background-row {
+    color: rgba(0, 0, 0, 0.76);
+    &:hover { color: rgba(0, 0, 0, 0.96); }
+  }
+
+  .sf__edit-btn {
+    background: rgba(225, 225, 230, 0.96);
+    color: rgba(0, 0, 0, 0.88);
+    &:hover { background: rgba(210, 210, 218, 0.98); }
+    &[aria-pressed="true"] { background: #5e9fe8; color: #fff; }
   }
 
   .sf__iphone-tab {
