@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect, memo, forwardRef, useMemo } from "react";
 import { APPS } from "@/core/constants/apps";
 import { AssetIcon } from "@/ui";
+import { PhotosIcon } from "@/features/photos/PhotosIcon";
+import { MailIcon } from "@/features/mail/MailIcon";
 
 const GITHUB_APP = {
   id: "github",
@@ -22,6 +24,8 @@ const DOCK_APPS = [
   APPS.find(a => a.id === "safari"),
   APPS.find(a => a.id === "calendar"),
   APPS.find(a => a.id === "music"),
+  APPS.find((app) => app.id === "photos"),
+  APPS.find((app) => app.id === "mail"),
   { type: "divider" },
   APPS.find(a => a.id === "notes"),
   APPS.find(a => a.id === "calculator"),
@@ -118,6 +122,8 @@ const DockItem = memo(forwardRef(function DockItem({
   isLightTheme
 }, ref) {
   const isGitHub = app.id === "github";
+  const isPhotos = app.id === "photos";
+  const isMail = app.id === "mail";
 
   const handleClick = useCallback(() => {
     if (app.isLink) {
@@ -163,6 +169,10 @@ const DockItem = memo(forwardRef(function DockItem({
               style={{ width: `${BASE_ICON_SIZE}px`, height: `${BASE_ICON_SIZE}px` }}
             />
           </div>
+        ) : isPhotos ? (
+          <PhotosIcon size={BASE_ICON_SIZE} />
+        ) : isMail ? (
+          <MailIcon size={BASE_ICON_SIZE} />
         ) : (
           <AssetIcon
             path={app.iconPath}

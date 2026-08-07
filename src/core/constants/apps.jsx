@@ -79,4 +79,16 @@ export const APPS = [
     icon: APP_ICON_FALLBACK.calculator,
     color: "#FF9500",
   },
+  {
+    id: "photos",
+    name: "Photos",
+    icon: "🖼",
+    color: "#0a84ff",
+  },
+  {
+    id: "mail",
+    name: "Mail",
+    icon: "mail",
+    color: "#2783de",
+  },
 ];
