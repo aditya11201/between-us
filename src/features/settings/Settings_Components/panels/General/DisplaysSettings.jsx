@@ -1,15 +1,16 @@
 import React, { useState } from "react";
+import { useDisplaySettings } from "@/core/providers";
 import { SettingsPanel, SettingsGroup, SettingsRow } from "../../SettingsPanel";
 
 export const DisplaysSettings = () => {
-  const [brightness, setBrightness] = useState(75);
+  const { brightness, setBrightness } = useDisplaySettings();
   const [resolution, setResolution] = useState("default");
 
   return (
     <SettingsPanel title="Displays" icon="display">
       <SettingsGroup label="Settings">
         <SettingsRow label="Brightness">
-          <input type="range" className="ctrl-range" min="0" max="100" value={brightness} onChange={e => setBrightness(e.target.value)} />
+          <input type="range" className="ctrl-range" min="0" max="100" value={brightness} onChange={e => setBrightness(Number(e.target.value))} aria-label="Display brightness" />
         </SettingsRow>
         <SettingsRow label="Resolution">
           <select className="ctrl-select" value={resolution} onChange={e => setResolution(e.target.value)}>

@@ -1,4 +1,5 @@
 import React, { memo, useState, useEffect, useCallback, useMemo } from "react";
+import { useDisplaySettings } from "@/core/providers";
 
 
 export const Desktop = memo(function Desktop({ 
@@ -7,6 +8,7 @@ export const Desktop = memo(function Desktop({
   onContextMenu,
 }) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const { brightness } = useDisplaySettings();
   
   // Предзагрузка обоев с оптимизацией
   useEffect(() => {
@@ -61,6 +63,11 @@ export const Desktop = memo(function Desktop({
       className="desktop"
       style={desktopStyle}
     >
+      <div
+        className="desktop__brightness-overlay"
+        style={{ opacity: 1 - brightness / 100 }}
+        aria-hidden="true"
+      />
       {children}
     </div>
   );

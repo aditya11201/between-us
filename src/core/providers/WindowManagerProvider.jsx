@@ -4,6 +4,31 @@ import { INITIAL_POSITIONS } from "@/core/constants/positions";
 
 const WindowManagerContext = createContext(null);
 
+// Reserve the layer above app windows for the fixed brightness overlay and system UI.
+const APP_WINDOW_Z_INDEX_MIN = 100;
+export const APP_WINDOW_Z_INDEX_MAX = 9499;
+
+export function getNextWindowZIndexState(windows, zCounter) {
+  if (zCounter < APP_WINDOW_Z_INDEX_MAX) {
+    return { windows, zIndex: zCounter + 1 };
+  }
+
+  const normalizedZIndexes = new Map(
+    [...windows]
+      .sort((a, b) => a.zIndex - b.zIndex)
+      .map((window, index) => [window.id, APP_WINDOW_Z_INDEX_MIN + index])
+  );
+  const normalizedWindows = windows.map(window => ({
+    ...window,
+    zIndex: normalizedZIndexes.get(window.id),
+  }));
+
+  return {
+    windows: normalizedWindows,
+    zIndex: APP_WINDOW_Z_INDEX_MIN + normalizedWindows.length,
+  };
+}
+
 // Акции для reducer
 const WINDOW_ACTIONS = {
   OPEN: 'OPEN',
@@ -32,12 +57,13 @@ function windowReducer(state, action) {
       }
       
       const p = position || INITIAL_POSITIONS[appId] || { x: 120, y: 80, w: 600, h: 420 };
-      const newZIndex = state.zCounter + 1;
+      const nextZIndexState = getNextWindowZIndexState(state.windows, state.zCounter);
+      const newZIndex = nextZIndexState.zIndex;
       
       return {
         ...state,
         windows: [
-          ...state.windows,
+          ...nextZIndexState.windows,
           {
             id: appId,
             title: appName || appId,
@@ -129,16 +155,17 @@ function windowReducer(state, action) {
       const { appId } = action.payload;
       if (state.activeWin === appId) return state;
       
-      const target = state.windows.find(w => w.id === appId);
-      if (!target || target.zIndex === state.zCounter + 1) return state;
+      const nextZIndexState = getNextWindowZIndexState(state.windows, state.zCounter);
+      const target = nextZIndexState.windows.find(w => w.id === appId);
+      if (!target || target.zIndex === nextZIndexState.zIndex) return state;
       
       return {
         ...state,
-        windows: state.windows.map(w => 
-          w.id === appId ? { ...w, zIndex: state.zCounter + 1 } : w
+        windows: nextZIndexState.windows.map(w => 
+          w.id === appId ? { ...w, zIndex: nextZIndexState.zIndex } : w
         ),
         activeWin: appId,
-        zCounter: state.zCounter + 1,
+        zCounter: nextZIndexState.zIndex,
       };
     }
     

@@ -1,4 +1,8 @@
 import React, { useRef, useCallback, memo, useState, useEffect } from "react";
+import {
+  getWheelSliderValue,
+  snapSliderValue,
+} from "./sliderMath";
 
 export const VerticalSlider = memo(function VerticalSlider({
   value,
@@ -7,6 +11,7 @@ export const VerticalSlider = memo(function VerticalSlider({
   max = 100,
   step = 1,
   icon: Icon,
+  label,
 }) {
   const barRef = useRef(null);
   const fillRef = useRef(null);
@@ -22,8 +27,13 @@ export const VerticalSlider = memo(function VerticalSlider({
     if (!rect || rect.width === 0) return value;
     let percent = (clientX - rect.left) / rect.width;
     percent = percent < 0 ? 0 : percent > 1 ? 1 : percent;
-    return min + percent * (max - min);
-  }, [min, max, value]);
+    return snapSliderValue(
+      min + percent * (max - min),
+      min,
+      max,
+      step
+    );
+  }, [min, max, step, value]);
 
   // ── Мгновенное визуальное обновление через DOM (без re-render) ────
   const paintFill = useCallback((val) => {
@@ -77,17 +87,34 @@ export const VerticalSlider = memo(function VerticalSlider({
     onChange?.(pendingValue.current);
   }, [onChange]);
 
+  const onWheel = useCallback((e) => {
+    if (e.ctrlKey) return;
+
+    e.preventDefault();
+
+    const next = getWheelSliderValue(
+      pendingValue.current,
+      e.deltaY,
+      min,
+      max,
+      step
+    );
+
+    paintFill(next);
+    scheduleCommit(next);
+  }, [min, max, step, paintFill, scheduleCommit]);
+
   // ── Клавиатура: стрелки / Home / End ───────────────────────────────
   const onKeyDown = useCallback((e) => {
-    let next = value;
+    let next = pendingValue.current;
     switch (e.key) {
       case "ArrowRight":
       case "ArrowUp":
-        next = Math.min(max, value + step);
+        next = Math.min(max, pendingValue.current + step);
         break;
       case "ArrowLeft":
       case "ArrowDown":
-        next = Math.max(min, value - step);
+        next = Math.max(min, pendingValue.current - step);
         break;
       case "Home":
         next = min;
@@ -99,13 +126,31 @@ export const VerticalSlider = memo(function VerticalSlider({
         return;
     }
     e.preventDefault();
+    if (rafId.current != null) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = null;
+    }
+    pendingValue.current = next;
     paintFill(next);
     onChange?.(next);
-  }, [value, min, max, step, onChange, paintFill]);
+  }, [min, max, step, onChange, paintFill]);
+
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return undefined;
+
+    const options = { passive: false };
+    bar.addEventListener("wheel", onWheel, options);
+
+    return () => bar.removeEventListener("wheel", onWheel, options);
+  }, [onWheel]);
 
   // ── Синхронизация DOM с внешним value, когда не тащим ──────────────
   useEffect(() => {
-    if (!isDragging.current) paintFill(value);
+    if (!isDragging.current) {
+      pendingValue.current = value;
+      paintFill(value);
+    }
   }, [value, paintFill]);
 
   // ── Очистка rAF при размонтировании ─────────────────────────────────
@@ -126,6 +171,8 @@ export const VerticalSlider = memo(function VerticalSlider({
         onPointerCancel={onPointerUp}
         onKeyDown={onKeyDown}
         role="slider"
+        aria-label={label}
+        aria-orientation="horizontal"
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={value}
