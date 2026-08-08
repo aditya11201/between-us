@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo } from "react";
 import { AppleIcon } from "@/ui";
-import { useTheme } from "@/core/providers";
+import { useTheme, useDisplaySettings } from "@/core/providers";
 
 import { MenuBarClock } from "./MenuBar/MenuBarClock";
 import { ControlCenter } from "./MenuBar/ControlCenter";
@@ -33,7 +33,7 @@ export const MenuBar = memo(function MenuBar({ activeApp, openApp, onCloseWindow
   const [screenMirror, setScreenMirror] = useState(false);
   
   // ─── Sliders ──────────────────────────────────────────────────────
-  const [brightness, setBrightness] = useState(75);
+  const { brightness, setBrightness } = useDisplaySettings();
   const [volume, setVolume] = useState(55);
 
   // ─── Refs ─────────────────────────────────────────────────────────

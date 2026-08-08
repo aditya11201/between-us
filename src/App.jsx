@@ -1,6 +1,12 @@
 import React, { useState, useCallback, useEffect, memo, useMemo } from "react";
 import { useMobileCheck, useContextMenu } from "@/core/hooks";
-import { WindowManagerProvider, useWindowManager, ThemeProvider, useTheme  } from "@/core/providers";
+import {
+  WindowManagerProvider,
+  useWindowManager,
+  ThemeProvider,
+  useTheme,
+  DisplaySettingsProvider,
+} from "@/core/providers";
 // UI компоненты
 import { BootScreen, MobileNotSupported, ContextMenu } from "@/ui";
 // Layout компоненты
@@ -101,11 +107,13 @@ function AppInner() {
 
   return (
     <ThemeProvider>
-      <WindowManagerProvider>
-        <main role="main" aria-label="macOS Desktop Environment">
-          <AppContent />
-        </main>
-      </WindowManagerProvider>
+      <DisplaySettingsProvider>
+        <WindowManagerProvider>
+          <main role="main" aria-label="macOS Desktop Environment">
+            <AppContent />
+          </main>
+        </WindowManagerProvider>
+      </DisplaySettingsProvider>
     </ThemeProvider>
   );
 }
