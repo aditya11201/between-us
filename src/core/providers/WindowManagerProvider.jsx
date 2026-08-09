@@ -48,17 +48,23 @@ export function windowReducer(state, action) {
       const { payload } = action.payload;
       const existing = state.windows.find(w => w.id === appId);
       if (existing) {
+        const nextZIndexState = getNextWindowZIndexState(state.windows, state.zCounter);
         const newMinimizedApps = new Set(state.minimizedApps);
         newMinimizedApps.delete(appId);
         return {
           ...state,
-          windows: payload === undefined
-            ? state.windows
-            : state.windows.map(window => (
-              window.id === appId ? { ...window, payload } : window
-            )),
+          windows: nextZIndexState.windows.map(window => (
+            window.id === appId
+              ? {
+                  ...window,
+                  zIndex: nextZIndexState.zIndex,
+                  ...(payload === undefined ? {} : { payload }),
+                }
+              : window
+          )),
           activeWin: appId,
           minimizedApps: newMinimizedApps,
+          zCounter: nextZIndexState.zIndex,
         };
       }
       

@@ -315,7 +315,7 @@ test("public openApp updates a same-ID payload without duplicating openApps", as
   assert.deepEqual(state.windows[0].payload, secondPayload);
 });
 
-test("public openApp reopens a minimized preview without changing window layers", async () => {
+test("public openApp reopens a minimized preview, promotes it, and focuses it above Finder", async () => {
   const container = await renderWindowManager();
   const previewId = "preview:favorites/sunset.webp";
   const payload = { id: "favorites/sunset.webp", url: "/photos/sunset.webp" };
@@ -370,6 +370,7 @@ test("public openApp reopens a minimized preview without changing window layers"
   assert.deepEqual(state.openApps, [previewId, "finder"]);
   assert.deepEqual(state.minimizedApps, []);
   assert.equal(state.activeWin, previewId);
-  assert.equal(reopenedPreview.zIndex, previewBeforeMinimize.zIndex);
-  assert.ok(finder.zIndex > reopenedPreview.zIndex);
+  assert.ok(reopenedPreview.zIndex > previewBeforeMinimize.zIndex);
+  assert.ok(reopenedPreview.zIndex > finder.zIndex);
+  assert.notEqual(finder.zIndex, Math.max(...state.windows.map((window) => window.zIndex)));
 });
