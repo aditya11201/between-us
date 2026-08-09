@@ -41,22 +41,35 @@ const WINDOW_ACTIONS = {
 };
 
 // Reducer для управления состоянием окон
-function windowReducer(state, action) {
+export function windowReducer(state, action) {
   switch (action.type) {
     case WINDOW_ACTIONS.OPEN: {
       const { appId, appName, position } = action.payload;
+      const { payload } = action.payload;
       const existing = state.windows.find(w => w.id === appId);
       if (existing) {
+        const nextZIndexState = getNextWindowZIndexState(state.windows, state.zCounter);
         const newMinimizedApps = new Set(state.minimizedApps);
         newMinimizedApps.delete(appId);
         return {
           ...state,
+          windows: nextZIndexState.windows.map(window => (
+            window.id === appId
+              ? {
+                  ...window,
+                  zIndex: nextZIndexState.zIndex,
+                  ...(payload === undefined ? {} : { payload }),
+                }
+              : window
+          )),
           activeWin: appId,
           minimizedApps: newMinimizedApps,
+          zCounter: nextZIndexState.zIndex,
         };
       }
       
-      const p = position || INITIAL_POSITIONS[appId] || { x: 120, y: 80, w: 600, h: 420 };
+      const baseAppId = appId.split(":")[0];
+      const p = position || INITIAL_POSITIONS[appId] || INITIAL_POSITIONS[baseAppId] || { x: 120, y: 80, w: 600, h: 420 };
       const nextZIndexState = getNextWindowZIndexState(state.windows, state.zCounter);
       const newZIndex = nextZIndexState.zIndex;
       
@@ -72,6 +85,7 @@ function windowReducer(state, action) {
             width: p.w,
             height: p.h,
             zIndex: newZIndex,
+            ...(payload === undefined ? {} : { payload }),
           },
         ],
         openApps: state.openApps.includes(appId) ? state.openApps : [...state.openApps, appId],
@@ -237,13 +251,16 @@ export function WindowManagerProvider({ children }) {
     });
   }, []);
 
-  const openApp = useCallback((appId, appName) => {
+  const openApp = useCallback((appId, appName, payload) => {
+    const actionPayload = { appId, appName };
+    if (payload !== undefined) actionPayload.payload = payload;
+
     if (state.minimizedApps.has(appId)) {
       dispatch({ type: WINDOW_ACTIONS.MINIMIZE, payload: { appId } });
       // Удаляем из minimizedApps
       dispatch({ 
         type: WINDOW_ACTIONS.OPEN, 
-        payload: { appId, appName } 
+        payload: actionPayload
       });
       focusWindow(appId);
       return;
@@ -251,7 +268,7 @@ export function WindowManagerProvider({ children }) {
 
     dispatch({ 
       type: WINDOW_ACTIONS.OPEN, 
-      payload: { appId, appName } 
+      payload: actionPayload
     });
     
     if (!state.openApps.includes(appId)) {

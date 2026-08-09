@@ -25,6 +25,7 @@ import {
   clearPhotoSelection,
   updatePhotoSelection,
 } from "./photoSelectionModel.js";
+import { getPhotoPreviewWindowId } from "./photoPreviewModel.js";
 import {
   getPhotoSectionId,
   getVisiblePhotoSections,
@@ -114,7 +115,7 @@ function PhotosNavItem({
   );
 }
 
-export function PhotosContent({ onClose, onMinimize, onMaximize }) {
+export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
   const photosAppRef = useRef(null);
   const showSidebarButtonRef = useRef(null);
   const wasCompact = useRef(false);
@@ -183,6 +184,11 @@ export function PhotosContent({ onClose, onMinimize, onMaximize }) {
     setSelectedPhotoIds((current) =>
       updatePhotoSelection(current, photoId, additive),
     );
+  };
+
+  const handlePhotoDoubleClick = (photo) => {
+    if (typeof openApp !== "function" || !photo?.id) return;
+    openApp(getPhotoPreviewWindowId(photo.id), "Preview", photo);
   };
 
   const emptyTitle = showHints
@@ -394,6 +400,7 @@ export function PhotosContent({ onClose, onMinimize, onMaximize }) {
                     section={section}
                     selectedPhotoIds={selectedPhotoIds}
                     onTogglePhoto={handleTogglePhoto}
+                    onDoubleClickPhoto={handlePhotoDoubleClick}
                   />
                 ))}
               </div>

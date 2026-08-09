@@ -107,7 +107,8 @@ export const MenuBar = memo(function MenuBar({ activeApp, openApp, onCloseWindow
   };
 
   // ─── Render ───────────────────────────────────────────────────────
-  const appName = (activeApp || "Finder").charAt(0).toUpperCase() + (activeApp || "Finder").slice(1);
+  const baseAppId = (activeApp || "Finder").split(":")[0];
+  const appName = baseAppId.charAt(0).toUpperCase() + baseAppId.slice(1);
   const leftItems = [" ", appName, "File", "Edit", "View", "Window", "Help"];
 
   return (
@@ -122,7 +123,12 @@ export const MenuBar = memo(function MenuBar({ activeApp, openApp, onCloseWindow
             
             return (
               <div key={i} className="menuBar__itemWrapper">
-                <span className={`menuBar__item ${clickable ? "isClickable" : ""} ${isActive ? "isActive" : ""} ${isBold ? "isBold" : ""} ${isApple ? "isApple" : ""}`}>
+                <span
+                  className={`menuBar__item ${clickable ? "isClickable" : ""} ${isActive ? "isActive" : ""} ${isBold ? "isBold" : ""} ${isApple ? "isApple" : ""}`}
+                  role={i === 1 ? "heading" : undefined}
+                  aria-level={i === 1 ? "1" : undefined}
+                  aria-label={i === 1 ? `Active application: ${appName}` : undefined}
+                >
                   {isApple ? <AppleIcon /> : item}
                 </span>
 
