@@ -1,4 +1,4 @@
-import{s,W as p,m as e}from"./finder-DfY9H0v5.js";function x(){const{onClose:a,onMinimize:d,onZoom:l,onTitleMouseDown:c}=s.useContext(p),r=[{id:1,title:"Developer Life Plan",content:`# Roadmap 🚀
+import{r as s,W as p,m as e}from"./finder-B-YouP5u.js";function x(){const{onClose:a,onMinimize:d,onZoom:l,onTitleMouseDown:c}=s.useContext(p),r=[{id:1,title:"Developer Life Plan",content:`# Roadmap 🚀
 
 ✔ Learn React
 ✔ Understand useEffect (sometimes)
