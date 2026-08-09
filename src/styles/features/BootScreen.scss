@@ -7,7 +7,10 @@
   align-items: center;
   justify-content: center;
   background: #000;
-  animation: boot-fade-out 0.6s ease-out 3.5s forwards;
+}
+
+.boot-screen--complete {
+  animation: boot-fade-out 0.6s ease-out forwards;
 }
 
 .boot-bg {
