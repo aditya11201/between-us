@@ -7,4 +7,5 @@ export const INITIAL_POSITIONS = {
   safari: { x: 100, y: 60, w: 780, h: 520 },
   photos: { x: 120, y: 64, w: 980, h: 650 },
   mail: { x: 70, y: 56, w: 1120, h: 700 },
+  preview: { x: 220, y: 90, w: 720, h: 560 },
 };
