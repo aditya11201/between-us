@@ -28,6 +28,7 @@ let act;
 let createRoot;
 let WindowContext;
 let PhotoPreviewContent;
+let renderAppContent;
 let photosStyle;
 
 before(async () => {
@@ -44,6 +45,9 @@ before(async () => {
   ));
   ({ PhotoPreviewContent } = await vite.ssrLoadModule(
     "/src/features/photos/PhotoPreviewContent.jsx",
+  ));
+  ({ renderAppContent } = await vite.ssrLoadModule(
+    "/src/utils/renderAppContent.jsx",
   ));
 
   photosStyle = document.createElement("style");
@@ -143,6 +147,25 @@ test("renders a photo payload in a contain-fit preview and delegates window cont
 
   await act(async () => root.unmount());
   container.remove();
+});
+
+test("dispatches dynamic preview IDs with their payload", () => {
+  const photo = {
+    id: "favorites/sunset.webp",
+    name: "sunset.webp",
+    url: "/karenjourney/assets/sunset.webp",
+  };
+  const preview = renderAppContent("preview:favorites/sunset.webp", {
+    closeWindow: () => {},
+    minimizeWindow: () => {},
+    maximizeWindow: () => {},
+    openApp: () => {},
+    payload: photo,
+    setWallpaper: () => {},
+  });
+
+  assert.equal(preview.props.children.props.photo, photo);
+  assert.equal(typeof preview.props.children.type, "object");
 });
 
 test("renders a local fallback when the photo payload is missing or cannot load", async () => {

@@ -107,7 +107,8 @@ export const MenuBar = memo(function MenuBar({ activeApp, openApp, onCloseWindow
   };
 
   // ─── Render ───────────────────────────────────────────────────────
-  const appName = (activeApp || "Finder").charAt(0).toUpperCase() + (activeApp || "Finder").slice(1);
+  const baseAppId = (activeApp || "Finder").split(":")[0];
+  const appName = baseAppId.charAt(0).toUpperCase() + baseAppId.slice(1);
   const leftItems = [" ", appName, "File", "Edit", "View", "Window", "Help"];
 
   return (
