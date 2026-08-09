@@ -17,6 +17,7 @@ Object.assign(globalThis, {
   HTMLElement: browserWindow.HTMLElement,
   Event: browserWindow.Event,
   MouseEvent: browserWindow.MouseEvent,
+  getComputedStyle: browserWindow.getComputedStyle.bind(browserWindow),
   requestAnimationFrame: (callback) => setTimeout(callback, 0),
   cancelAnimationFrame: (id) => clearTimeout(id),
   IS_REACT_ACT_ENVIRONMENT: true,
@@ -241,6 +242,16 @@ test("renders a photo payload in a contain-fit preview and delegates window cont
   });
   assert.equal(calls.drag, 1);
 
+  await act(async () => {
+    container.querySelector(".photos-preview__search").dispatchEvent(
+      new browserWindow.MouseEvent("mousedown", {
+        bubbles: true,
+        button: 0,
+      }),
+    );
+  });
+  assert.equal(calls.drag, 1);
+
   const closeButton = container.querySelector('[aria-label="Close window"]');
   await act(async () => {
     closeButton.dispatchEvent(new browserWindow.MouseEvent("mousedown", {
@@ -305,6 +316,7 @@ test("renders an explicit fallback when the preview payload is missing", async (
   assert.match(fallback.textContent, /Preview unavailable/);
   assert.match(fallback.textContent, /No photo is available to preview\./);
   assert.equal(rendered.container.querySelector("img"), null);
+  assert.equal(rendered.container.querySelector(".photos-preview__thumbnail"), null);
 
   await unmountRendered(rendered);
 });
@@ -423,11 +435,459 @@ test("preview controls render and receive visible keyboard focus", async () => {
   await unmountRendered({ container, root });
 });
 
+test("Preview exposes the Image Viewer toolbar and a toggleable thumbnail sidebar", async () => {
+  const photo = {
+    id: "favorites/sunset.webp",
+    name: "sunset.webp",
+    url: "/karenjourney/assets/sunset.webp",
+  };
+  const rendered = await renderPreview(photo);
+
+  for (const label of [
+    "Zoom out",
+    "Zoom in",
+    "Fit to window",
+    "Show Adjustments",
+    "Show Markup Tools",
+    "Show Edit Tools",
+    "Add Text",
+    "Show Info",
+    "Share",
+    "Search",
+  ]) {
+    assert.ok(
+      rendered.container.querySelector(`[aria-label="${label}"]`),
+      `Preview exposes ${label}`,
+    );
+  }
+
+  assert.ok(rendered.container.querySelector(".photos-preview__sidebar"));
+  const preview = rendered.container.querySelector(".photos-preview");
+  assert.ok(preview.classList.contains("photos-preview--sidebar-open"));
+  assert.equal(
+    rendered.container.querySelector(".photos-preview__sidebar").parentElement,
+    preview,
+  );
+  assert.ok(
+    rendered.container.querySelector('[aria-label="Select sunset.webp"]'),
+  );
+  const titlebar = rendered.container.querySelector(".photos-preview__titlebar");
+  const trafficLights = titlebar.querySelector(".photos-preview__traffic-lights");
+  const sidebarToggle = titlebar.querySelector('[aria-label="Hide Sidebar"]');
+  const title = titlebar.querySelector(".photos-preview__title");
+  const titlebarChildren = [...titlebar.children];
+  assert.ok(trafficLights);
+  assert.equal(titlebar.querySelectorAll(".photos-preview__traffic-lights").length, 1);
+  assert.equal(
+    rendered.container.querySelector(".photos-preview__sidebar .photos-preview__traffic-lights"),
+    null,
+  );
+  assert.equal(
+    rendered.container.querySelector(".photos-preview__sidebar [aria-label=\"Hide Sidebar\"]"),
+    null,
+  );
+  assert.ok(sidebarToggle);
+  assert.ok(title);
+  assert.ok(titlebarChildren.indexOf(trafficLights) < titlebarChildren.indexOf(sidebarToggle));
+  assert.ok(titlebarChildren.indexOf(sidebarToggle) < titlebarChildren.indexOf(title));
+  assert.ok(
+    title.textContent === "sunset.webp",
+  );
+  const toolbar = rendered.container.querySelector(".photos-preview__toolbar");
+  assert.ok(toolbar);
+  assert.equal(toolbar.getAttribute("role"), "toolbar");
+  assert.equal(
+    rendered.container.querySelector(".photos-preview__titlebar").contains(toolbar),
+    true,
+  );
+  assert.equal(sidebarToggle.getAttribute("aria-expanded"), "true");
+  assert.ok(rendered.container.querySelector('input[type="search"]'));
+  assert.ok(rendered.container.querySelector('[aria-label="Add images"]'));
+
+  const hideSidebar = rendered.container.querySelector(
+    '[aria-label="Hide Sidebar"]',
+  );
+  await act(async () => hideSidebar.click());
+  assert.equal(rendered.container.querySelector(".photos-preview__sidebar"), null);
+  assert.equal(preview.classList.contains("photos-preview--sidebar-open"), false);
+
+  const showSidebar = rendered.container.querySelector(
+    '[aria-label="Show Sidebar"]',
+  );
+  await act(async () => showSidebar.click());
+  assert.ok(rendered.container.querySelector(".photos-preview__sidebar"));
+  assert.ok(preview.classList.contains("photos-preview--sidebar-open"));
+  assert.ok(rendered.container.querySelector('[aria-label="Hide Sidebar"]'));
+
+  await unmountRendered(rendered);
+});
+
+test("Preview gives each window unique panel ids and matching controls", async () => {
+  const photo = {
+    id: "favorites/sunset.webp",
+    name: "sunset.webp",
+    url: "/karenjourney/assets/sunset.webp",
+  };
+  const first = await renderPreview(photo);
+  const second = await renderPreview(photo);
+  const firstSidebar = first.container.querySelector(".photos-preview__sidebar");
+  const secondSidebar = second.container.querySelector(".photos-preview__sidebar");
+  const firstSidebarToggle = first.container.querySelector('[aria-label="Hide Sidebar"]');
+  const secondSidebarToggle = second.container.querySelector('[aria-label="Hide Sidebar"]');
+
+  assert.notEqual(firstSidebar.id, secondSidebar.id);
+  assert.equal(firstSidebarToggle.getAttribute("aria-controls"), firstSidebar.id);
+  assert.equal(secondSidebarToggle.getAttribute("aria-controls"), secondSidebar.id);
+
+  await act(async () => {
+    first.container.querySelector('[aria-label="Show Info"]').click();
+    second.container.querySelector('[aria-label="Show Info"]').click();
+  });
+
+  const firstInspector = first.container.querySelector(".photos-preview__inspector");
+  const secondInspector = second.container.querySelector(".photos-preview__inspector");
+  assert.notEqual(firstInspector.id, secondInspector.id);
+  assert.equal(
+    first.container.querySelector('[aria-label="Show Info"]').getAttribute("aria-controls"),
+    firstInspector.id,
+  );
+  assert.equal(
+    second.container.querySelector('[aria-label="Show Info"]').getAttribute("aria-controls"),
+    secondInspector.id,
+  );
+
+  await unmountRendered(first);
+  await unmountRendered(second);
+});
+
+test("Preview returns focus to replacement controls when panels toggle", async () => {
+  const rendered = await renderPreview({
+    id: "favorites/sunset.webp",
+    name: "sunset.webp",
+    url: "/karenjourney/assets/sunset.webp",
+  });
+  const hideSidebar = rendered.container.querySelector('[aria-label="Hide Sidebar"]');
+  hideSidebar.focus();
+
+  await act(async () => hideSidebar.click());
+  const showSidebar = rendered.container.querySelector('[aria-label="Show Sidebar"]');
+  assert.ok(document.activeElement === showSidebar);
+
+  showSidebar.focus();
+  await act(async () => showSidebar.click());
+  const visibleHideSidebar = rendered.container.querySelector('[aria-label="Hide Sidebar"]');
+  assert.ok(document.activeElement === visibleHideSidebar);
+
+  const showInfo = rendered.container.querySelector('[aria-label="Show Info"]');
+  showInfo.focus();
+  await act(async () => showInfo.click());
+  const hideInfo = rendered.container.querySelector('[aria-label="Hide Info"]');
+  hideInfo.focus();
+  await act(async () => hideInfo.click());
+  assert.ok(
+    document.activeElement === rendered.container.querySelector('[aria-label="Show Info"]'),
+  );
+
+  await unmountRendered(rendered);
+});
+
+test("Preview keyboard shortcuts update zoom, rotation, and metadata visibility", async () => {
+  const rendered = await renderPreview({
+    id: "favorites/sunset.webp",
+    name: "sunset.webp",
+    url: "/karenjourney/assets/sunset.webp",
+  });
+  const preview = rendered.container.querySelector(".photos-preview");
+
+  preview.focus();
+  await act(async () => {
+    preview.dispatchEvent(new browserWindow.KeyboardEvent("keydown", {
+      bubbles: true,
+      key: "+",
+    }));
+  });
+  await act(async () => {
+    preview.dispatchEvent(new browserWindow.KeyboardEvent("keydown", {
+      bubbles: true,
+      key: "r",
+    }));
+    rendered.container.querySelector('[aria-label="Show Info"]').click();
+  });
+
+  assert.equal(
+    rendered.container.querySelector(".photos-preview__zoom-value").textContent,
+    "125%",
+  );
+  assert.equal(
+    rendered.container.querySelector(".photos-preview__image").style.transform,
+    "rotate(90deg) scale(1.25)",
+  );
+  assert.equal(
+    rendered.container.querySelector('[aria-label="Fit to window"]').getAttribute(
+      "aria-pressed",
+    ),
+    "false",
+  );
+  assert.ok(rendered.container.querySelector(".photos-preview__inspector"));
+
+  await unmountRendered(rendered);
+});
+
+test("Preview closes transient panels with Escape without intercepting browser shortcuts", async () => {
+  const calls = { close: 0 };
+  const rendered = await renderPreview(
+    {
+      id: "favorites/sunset.webp",
+      name: "sunset.webp",
+      url: "/karenjourney/assets/sunset.webp",
+    },
+    { ...createWindowControls(), onClose: () => { calls.close += 1; } },
+  );
+  const preview = rendered.container.querySelector(".photos-preview");
+  const searchInput = rendered.container.querySelector('input[type="search"]');
+  const rotateButton = rendered.container.querySelector(
+    '[aria-label="Rotate Clockwise"]',
+  );
+
+  searchInput.focus();
+  await act(async () => {
+    searchInput.dispatchEvent(new browserWindow.KeyboardEvent("keydown", {
+      bubbles: true,
+      key: "Escape",
+    }));
+  });
+  assert.ok(rendered.container.querySelector('input[type="search"]'));
+
+  preview.focus();
+  const browserShortcut = new browserWindow.KeyboardEvent("keydown", {
+    bubbles: true,
+    cancelable: true,
+    ctrlKey: true,
+    key: "r",
+  });
+  await act(async () => preview.dispatchEvent(browserShortcut));
+  assert.equal(browserShortcut.defaultPrevented, false);
+  assert.equal(rotateButton.getAttribute("aria-pressed"), null);
+
+  await act(async () => {
+    preview.dispatchEvent(new browserWindow.KeyboardEvent("keydown", {
+      bubbles: true,
+      key: "Escape",
+    }));
+  });
+  assert.equal(calls.close, 0);
+
+  await unmountRendered(rendered);
+});
+
+test("Dropped images start at a fresh fit state instead of inheriting the previous image transform", async () => {
+  const originalCreateObjectURL = URL.createObjectURL;
+  const originalRevokeObjectURL = URL.revokeObjectURL;
+  Object.defineProperty(URL, "createObjectURL", {
+    configurable: true,
+    value: () => "blob://preview-test",
+  });
+  Object.defineProperty(URL, "revokeObjectURL", {
+    configurable: true,
+    value: () => {},
+  });
+
+  try {
+    const rendered = await renderPreview({
+      id: "favorites/original.webp",
+      name: "original.webp",
+      url: "/karenjourney/assets/original.webp",
+    });
+    const preview = rendered.container.querySelector(".photos-preview");
+    const image = rendered.container.querySelector(".photos-preview__image");
+    await act(async () => {
+      rendered.container.querySelector('[aria-label="Zoom in"]').click();
+      rendered.container.querySelector('[aria-label="Rotate Clockwise"]').click();
+    });
+
+    const dropEvent = new browserWindow.Event("drop", { bubbles: true });
+    Object.defineProperty(dropEvent, "dataTransfer", {
+      value: {
+        files: [new browserWindow.File(["image"], "dropped.png", { type: "image/png" })],
+      },
+    });
+    await act(async () => preview.dispatchEvent(dropEvent));
+
+    assert.equal(
+      rendered.container.querySelector(".photos-preview__title").textContent,
+      "dropped.png",
+    );
+    assert.equal(image.style.transform, "rotate(0deg) scale(1)");
+    await unmountRendered(rendered);
+  } finally {
+    if (originalCreateObjectURL) {
+      Object.defineProperty(URL, "createObjectURL", {
+        configurable: true,
+        value: originalCreateObjectURL,
+      });
+    } else {
+      delete URL.createObjectURL;
+    }
+    if (originalRevokeObjectURL) {
+      Object.defineProperty(URL, "revokeObjectURL", {
+        configurable: true,
+        value: originalRevokeObjectURL,
+      });
+    } else {
+      delete URL.revokeObjectURL;
+    }
+  }
+});
+
+test("Share resolves bundled image URLs before copying them", async () => {
+  const originalClipboard = browserWindow.navigator.clipboard;
+  let copiedUrl = "";
+  Object.defineProperty(browserWindow.navigator, "clipboard", {
+    configurable: true,
+    value: { writeText: async (value) => { copiedUrl = value; } },
+  });
+
+  try {
+    const rendered = await renderPreview({
+      id: "favorites/sunset.webp",
+      name: "sunset.webp",
+      url: "/karenjourney/assets/sunset.webp",
+    });
+    await act(async () => {
+      rendered.container.querySelector('[aria-label="Share"]').click();
+    });
+
+    assert.equal(copiedUrl, "http://localhost/karenjourney/assets/sunset.webp");
+    await unmountRendered(rendered);
+  } finally {
+    Object.defineProperty(browserWindow.navigator, "clipboard", {
+      configurable: true,
+      value: originalClipboard,
+    });
+  }
+});
+
+test("Filtered thumbnail keyboard navigation selects the visible image", async () => {
+  const originalCreateObjectURL = URL.createObjectURL;
+  const originalRevokeObjectURL = URL.revokeObjectURL;
+  let objectUrlIndex = 0;
+  Object.defineProperty(URL, "createObjectURL", {
+    configurable: true,
+    value: () => `blob://filtered-${objectUrlIndex++}`,
+  });
+  Object.defineProperty(URL, "revokeObjectURL", {
+    configurable: true,
+    value: () => {},
+  });
+
+  try {
+    const rendered = await renderPreview({
+      id: "favorites/original.webp",
+      name: "original.webp",
+      url: "/karenjourney/assets/original.webp",
+    });
+    const preview = rendered.container.querySelector(".photos-preview");
+    const dropEvent = new browserWindow.Event("drop", { bubbles: true });
+    Object.defineProperty(dropEvent, "dataTransfer", {
+      value: {
+        files: [
+          new browserWindow.File(["one"], "first.png", { type: "image/png" }),
+          new browserWindow.File(["two"], "second.png", { type: "image/png" }),
+        ],
+      },
+    });
+    await act(async () => preview.dispatchEvent(dropEvent));
+    await act(async () => {
+      rendered.container.querySelector('[aria-label="Select original.webp"]').click();
+    });
+
+    const searchInput = rendered.container.querySelector('input[type="search"]');
+    const setInputValue = Object.getOwnPropertyDescriptor(
+      browserWindow.HTMLInputElement.prototype,
+      "value",
+    ).set;
+    setInputValue.call(searchInput, "second");
+    await act(async () => {
+      searchInput.dispatchEvent(new browserWindow.Event("input", { bubbles: true }));
+      searchInput.dispatchEvent(new browserWindow.Event("change", { bubbles: true }));
+    });
+    assert.ok(rendered.container.querySelector('[aria-label="Select second.png"]'));
+    preview.focus();
+    await act(async () => {
+      preview.dispatchEvent(new browserWindow.KeyboardEvent("keydown", {
+        bubbles: true,
+        key: "ArrowRight",
+      }));
+    });
+
+    assert.equal(
+      rendered.container.querySelector(".photos-preview__title").textContent,
+      "second.png",
+    );
+    await unmountRendered(rendered);
+  } finally {
+    if (originalCreateObjectURL) {
+      Object.defineProperty(URL, "createObjectURL", {
+        configurable: true,
+        value: originalCreateObjectURL,
+      });
+    } else {
+      delete URL.createObjectURL;
+    }
+    if (originalRevokeObjectURL) {
+      Object.defineProperty(URL, "revokeObjectURL", {
+        configurable: true,
+        value: originalRevokeObjectURL,
+      });
+    } else {
+      delete URL.revokeObjectURL;
+    }
+  }
+});
+
+test("Fit to window keeps a rotated image inside the available stage", async () => {
+  const rendered = await renderPreview({
+    id: "favorites/panorama.webp",
+    name: "panorama.webp",
+    url: "/karenjourney/assets/panorama.webp",
+  });
+  const image = rendered.container.querySelector(".photos-preview__image");
+  const stage = rendered.container.querySelector(".photos-preview__stage");
+  stage.style.padding = "40px";
+  Object.defineProperties(stage, {
+    clientWidth: { configurable: true, value: 680 },
+    clientHeight: { configurable: true, value: 480 },
+  });
+  Object.defineProperties(image, {
+    naturalWidth: { configurable: true, value: 1200 },
+    naturalHeight: { configurable: true, value: 600 },
+  });
+
+  await act(async () => image.dispatchEvent(new browserWindow.Event("load")));
+  await act(async () => {
+    rendered.container.querySelector('[aria-label="Rotate Clockwise"]').click();
+  });
+  await act(async () => {
+    rendered.container.querySelector('[aria-label="Fit to window"]').click();
+  });
+
+  assert.equal(
+    image.style.transform,
+    "rotate(90deg) scale(0.666)",
+  );
+
+  await unmountRendered(rendered);
+});
+
 test("Photos Sass exposes preview control sizing and focus styles", () => {
   const previewRule = findStyleRule(".photos-preview");
   const titlebarRule = findStyleRule(".photos-preview__titlebar");
   const controlGroupRule = findStyleRule(".photos-preview__traffic-lights");
+  const sidebarRule = findStyleRule(".photos-preview__sidebar");
   const titleRule = findStyleRule(".photos-preview__title");
+  const openTitleRule = findStyleRule(
+    ".photos-preview--sidebar-open .photos-preview__title",
+  );
   const buttonRule = findStyleRule(".photos-preview__traffic-light");
   const focusRule = findStyleRule(
     ".photos-preview__traffic-light:focus-visible",
@@ -437,22 +897,32 @@ test("Photos Sass exposes preview control sizing and focus styles", () => {
   assert.ok(previewRule);
   assert.ok(titlebarRule);
   assert.ok(controlGroupRule);
+  assert.ok(sidebarRule);
   assert.ok(titleRule);
+  assert.equal(openTitleRule, undefined);
   assert.ok(buttonRule);
   assert.equal(previewRule.style.containerType, "inline-size");
   assert.equal(previewRule.style.containerName, "photos-preview");
-  assert.equal(titlebarRule.style.display, "grid");
-  assert.equal(
-    titlebarRule.style.gridTemplateColumns,
-    "148px minmax(0, 1fr) 148px",
-  );
-  assert.equal(titlebarRule.style.flexBasis, "44px");
-  assert.equal(titlebarRule.style.minHeight, "44px");
-  assert.equal(controlGroupRule.style.width, "148px");
+  assert.equal(titlebarRule.style.display, "flex");
+  assert.equal(titlebarRule.style.flexBasis, "60px");
+  assert.equal(titlebarRule.style.minHeight, "60px");
+  assert.equal(controlGroupRule.style.position, "static");
+  assert.equal(controlGroupRule.style.gap, "0");
+  assert.equal(controlGroupRule.style.marginRight, "4px");
+  assert.equal(sidebarRule.style.top, "68px");
+  assert.equal(sidebarRule.style.bottom, "8px");
+  assert.equal(sidebarRule.style.left, "8px");
+  assert.equal(sidebarRule.style.width, "232px");
   assert.equal(titleRule.style.minWidth, "0");
-  assert.equal(titleRule.style.maxWidth, "none");
+  assert.equal(titleRule.style.maxWidth, "340px");
+  assert.equal(titleRule.style.flexBasis, "auto");
+  assert.equal(titleRule.style.marginLeft, "6px");
+  assert.equal(titleRule.style.fontSize, "15px");
+  assert.equal(titleRule.style.fontWeight, "700");
   assert.equal(buttonRule.style.width, "44px");
   assert.equal(buttonRule.style.height, "44px");
+  assert.equal(buttonRule.style.flexBasis, "44px");
+  assert.equal(buttonRule.style.marginRight, "-25px");
 
   assert.ok(focusRule);
   assert.equal(focusRule.style.outlineStyle, "solid");
@@ -460,8 +930,9 @@ test("Photos Sass exposes preview control sizing and focus styles", () => {
   assert.equal(focusRule.style.outlineOffset, "2px");
 
   assert.ok(dotRule);
-  assert.equal(dotRule.style.width, "12px");
-  assert.equal(dotRule.style.height, "12px");
+  assert.equal(dotRule.style.position, "absolute");
+  assert.equal(dotRule.style.width, "11px");
+  assert.equal(dotRule.style.height, "11px");
 });
 
 test("Photos Sass exposes preview selectors and responsive styles", () => {
@@ -496,10 +967,7 @@ test("Photos Sass exposes preview selectors and responsive styles", () => {
   assert.ok(narrowTitlebarRule);
   assert.ok(narrowTitleRule);
   assert.ok(narrowStageRule);
-  assert.equal(
-    narrowTitlebarRule.style.gridTemplateColumns,
-    "148px minmax(0, 1fr)",
-  );
+  assert.equal(narrowTitlebarRule.style.display, "flex");
   assert.equal(narrowTitlebarRule.style.padding, "0px 10px");
   assert.equal(narrowTitleRule.style.textAlign, "left");
   assert.equal(narrowStageRule.style.padding, "16px");
