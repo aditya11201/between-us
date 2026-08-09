@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
+import { compile } from "sass";
 import { createServer } from "vite";
 import { Window } from "happy-dom";
 
@@ -27,6 +28,7 @@ let act;
 let createRoot;
 let WindowContext;
 let PhotoPreviewContent;
+let photosStyle;
 
 before(async () => {
   vite = await createServer({
@@ -43,9 +45,16 @@ before(async () => {
   ({ PhotoPreviewContent } = await vite.ssrLoadModule(
     "/src/features/photos/PhotoPreviewContent.jsx",
   ));
+
+  photosStyle = document.createElement("style");
+  photosStyle.textContent = compile(
+    `${projectRoot}src/styles/components/Photos/Photos.scss`,
+  ).css;
+  document.head.append(photosStyle);
 });
 
 after(async () => {
+  photosStyle?.remove();
   await vite.close();
   browserWindow.close();
 });
@@ -167,4 +176,34 @@ test("renders a local fallback when the photo payload is missing or cannot load"
   assert.equal(failedImage.container.querySelector("img"), null);
   await act(async () => failedImage.root.unmount());
   failedImage.container.remove();
+});
+
+test("keeps preview controls accessible and image sizing stable", async () => {
+  const { container, root } = await renderPreview({
+    id: "favorites/sunset.webp",
+    name: "sunset.webp",
+    url: "/karenjourney/assets/sunset.webp",
+  });
+  const buttons = container.querySelectorAll(".photos-preview__traffic-light");
+  const image = container.querySelector(".photos-preview__image");
+  const imageStyle = browserWindow.getComputedStyle(image);
+  const buttonStyles = [...buttons].map((button) =>
+    browserWindow.getComputedStyle(button),
+  );
+
+  assert.equal(buttons.length, 3);
+  assert.ok(buttonStyles.every((style) => style.width === "44px"));
+  assert.ok(buttonStyles.every((style) => style.height === "44px"));
+  assert.equal(imageStyle.width, "100%");
+  assert.equal(imageStyle.height, "100%");
+  assert.equal(imageStyle.objectFit, "contain");
+
+  const compiledCss = photosStyle.textContent;
+  assert.match(
+    compiledCss,
+    /\.photos-preview__traffic-light::before\s*\{[\s\S]*?width:\s*12px;[\s\S]*?height:\s*12px;/,
+  );
+
+  await act(async () => root.unmount());
+  container.remove();
 });
