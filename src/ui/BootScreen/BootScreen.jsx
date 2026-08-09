@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { flushSync } from "react-dom";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import AppleLogo from "@/assets/icons/preloader/Apple_Logo_Test.svg";
 import startupAudioUrl from "@/assets/audio/apple-mac-startup-soundchime.mp3";
 
@@ -11,7 +10,13 @@ export default function BootScreen({ onComplete }) {
   const [showLogo, setShowLogo] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isStarted, setIsStarted] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const startBootRef = useRef(null);
+
+  const handleStart = useCallback(() => {
+    startBootRef.current?.();
+  }, []);
 
   useEffect(() => {
     const startupAudio = new Audio(startupAudioUrl);
@@ -19,8 +24,7 @@ export default function BootScreen({ onComplete }) {
     startupAudio.loop = false;
 
     let isUnmounted = false;
-    let logoShown = false;
-    let releaseAfterLogo = false;
+    let bootStarted = false;
     let gateReleased = false;
     let hasCompleted = false;
     let startTime = 0;
@@ -52,10 +56,7 @@ export default function BootScreen({ onComplete }) {
 
     const releaseProgressGate = () => {
       if (gateReleased || isUnmounted) return;
-      if (!logoShown) {
-        releaseAfterLogo = true;
-        return;
-      }
+      if (!bootStarted) return;
 
       gateReleased = true;
       startTime = performance.now();
@@ -106,11 +107,11 @@ export default function BootScreen({ onComplete }) {
       }, 5000);
     };
 
-    const logoTimer = setTimeout(() => {
-      if (isUnmounted) return;
+    const startBoot = () => {
+      if (isUnmounted || bootStarted) return;
 
-      logoShown = true;
-      flushSync(() => setShowLogo(true));
+      bootStarted = true;
+      setIsStarted(true);
 
       try {
         const playResult = startupAudio.play();
@@ -120,15 +121,21 @@ export default function BootScreen({ onComplete }) {
       } catch {
         releaseProgressGate();
       }
+    };
 
-      if (releaseAfterLogo) releaseProgressGate();
+    const logoTimer = setTimeout(() => {
+      if (isUnmounted) return;
+
+      setShowLogo(true);
     }, 150);
 
     startupAudio.addEventListener("ended", releaseProgressGate);
     startupAudio.addEventListener("error", releaseProgressGate);
+    startBootRef.current = startBoot;
 
     return () => {
       isUnmounted = true;
+      startBootRef.current = null;
       clearTimeout(logoTimer);
       if (progressTimer !== null) clearTimeout(progressTimer);
       if (safetyTimer !== null) clearTimeout(safetyTimer);
@@ -149,10 +156,14 @@ export default function BootScreen({ onComplete }) {
       <div className="boot-bg" />
 
       <div className="boot-container">
-        <div
+        <button
+          type="button"
           className={`boot-logo ${
             showLogo ? "boot-logo--show" : ""
           }`}
+          aria-label="Start macOS"
+          disabled={isStarted}
+          onClick={handleStart}
         >
           <img
             src={AppleLogo}
@@ -162,7 +173,7 @@ export default function BootScreen({ onComplete }) {
             fetchPriority="high"
             decoding="async"
           />
-        </div>
+        </button>
 
         {showProgress && (
           <div className="boot-progress">

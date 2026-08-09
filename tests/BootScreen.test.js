@@ -310,6 +310,14 @@ function requireAudio(container, controller) {
   return audio;
 }
 
+function requireStartButton(container) {
+  const logo = container.querySelector(".boot-logo");
+  assert.ok(logo, "BootScreen should render the Apple logo control");
+  assert.equal(logo.tagName, "BUTTON");
+  assert.equal(logo.getAttribute("aria-label"), "Start macOS");
+  return logo;
+}
+
 async function renderBoot({ onComplete = () => {} } = {}) {
   const container = document.createElement("div");
   document.body.append(container);
@@ -375,82 +383,145 @@ after(async () => {
   browserWindow.close();
 });
 
-test("shows the logo before play and gates progress until audio ends", async () => {
-  // Arrange: successful playback starts but does not end until the test signals it.
+test("reveals a native Start macOS button without starting boot", async () => {
+  // Arrange: mount with a deterministic, never-ending audio mock.
+  const clock = installClock();
+  const audio = installAudioMock("pending");
+  const mount = await renderBoot();
+
+  // Act: allow the logo timer to reveal the start control.
+  await advanceTimers(200);
+  requireStartButton(mount.container);
+
+  // Assert: the logo is the accessible affordance and boot remains idle.
+  assert.equal(audio.playCalls, 0);
+  assert.equal(mount.container.querySelector(".boot-progress"), null);
+  assert.equal(clock.activeIntervalCount(), 0);
+});
+
+test("starts playback only from one logo click and gates progress until ended", async () => {
+  // Arrange: successful playback resolves but does not emit ended automatically.
   const clock = installClock();
   const audio = installAudioMock("resolve");
   const mount = await renderBoot();
 
-  // Act: allow the logo transition, then let the successful audio remain active.
+  // Act: reveal the button, click it, and wait beyond the progress delay.
   await advanceTimers(200);
+  const startButton = requireStartButton(mount.container);
   const startupAudio = requireAudio(mount.container, audio);
+  await act(async () => {
+    startButton.dispatchEvent(
+      new browserWindow.MouseEvent("click", { bubbles: true }),
+    );
+  });
   await flushEffects();
   await advanceTimers(1000);
 
-  // Assert: the logo preceded playback, and loading did not begin before ended.
+  // Assert: the user click starts playback, but ended still gates loading.
+  assert.equal(audio.playCalls, 1);
   assert.deepEqual(audio.logoVisibleAtPlay, [true]);
   assert.equal(mount.container.querySelector(".boot-progress"), null);
   assert.equal(clock.activeIntervalCount(), 0);
 
-  // Act: signal the media completion and advance the existing progress delay.
+  // Act: signal media completion and advance the existing progress delay.
   await act(async () => audio.dispatch(startupAudio, "ended"));
   await advanceTimers(500);
 
-  // Assert: the existing boot flow proceeds only after the chime completes.
+  // Assert: progress starts only after successful playback ends.
   assert.ok(mount.container.querySelector(".boot-progress"));
 });
 
-test("sets startup audio to 50% volume and disables looping", async () => {
-  // Arrange: mount the boot screen with a deterministic, never-ending media mock.
+test("configures startup audio without autoplaying before the logo is clicked", async () => {
+  // Arrange: mount with pending playback so only an explicit click can start it.
   installClock();
   const audio = installAudioMock("pending");
   const mount = await renderBoot();
-
-  // Act: wait for the effect that configures and starts the chime.
-  await advanceTimers(200);
   const startupAudio = requireAudio(mount.container, audio);
 
-  // Assert: the audio contract is audible at half volume and completion-driven.
+  // Act: wait through the logo timer without activating the control.
+  await advanceTimers(200);
+
+  // Assert: audio settings are ready while playback remains user-gated.
   assert.equal(startupAudio.volume, 0.5);
   assert.equal(startupAudio.loop, false);
+  assert.equal(audio.playCalls, 0);
 });
 
-test("continues boot when play is rejected by autoplay policy", async () => {
-  // Arrange: the browser rejects audible playback, as an autoplay policy may.
+test("releases the progress gate when clicked playback is rejected", async () => {
+  // Arrange: the browser rejects the user-initiated playback promise.
   const clock = installClock();
   const audio = installAudioMock("reject");
   const mount = await renderBoot();
 
-  // Act: flush the rejected play promise and allow fallback loading to start.
+  // Act: click after the logo appears, then flush the rejection fallback.
   await advanceTimers(200);
-  requireAudio(mount.container, audio);
+  const startButton = requireStartButton(mount.container);
+  assert.equal(audio.playCalls, 0);
+  await act(async () => {
+    startButton.dispatchEvent(
+      new browserWindow.MouseEvent("click", { bubbles: true }),
+    );
+  });
   await flushEffects();
   await advanceTimers(500);
 
-  // Assert: rejection falls through to boot instead of waiting for ended.
+  // Assert: rejection releases loading instead of leaving boot blocked.
   assert.equal(audio.playCalls, 1);
   assert.ok(mount.container.querySelector(".boot-progress"));
   assert.ok(clock.activeIntervalCount() > 0);
 });
 
-test("continues boot when the startup audio emits a media error", async () => {
-  // Arrange: playback remains pending so only the media error can release boot.
-  installClock();
+test("releases the progress gate when clicked audio emits a media error", async () => {
+  // Arrange: playback stays pending so only the media error can release boot.
+  const clock = installClock();
   const audio = installAudioMock("pending");
   const mount = await renderBoot();
 
-  // Act: emit an audio load/error failure without emitting ended.
+  // Act: click the logo, then emit an audio load/error failure.
   await advanceTimers(200);
+  const startButton = requireStartButton(mount.container);
   const startupAudio = requireAudio(mount.container, audio);
+  await act(async () => {
+    startButton.dispatchEvent(
+      new browserWindow.MouseEvent("click", { bubbles: true }),
+    );
+  });
+  assert.equal(audio.playCalls, 1);
+  assert.equal(mount.container.querySelector(".boot-progress"), null);
   await act(async () => audio.dispatch(startupAudio, "error"));
   await advanceTimers(500);
 
-  // Assert: media failure also releases the progress gate.
+  // Assert: media failure releases the gate and starts fallback progress.
   assert.ok(mount.container.querySelector(".boot-progress"));
+  assert.ok(clock.activeIntervalCount() > 0);
 });
 
-test("cleans up audio and delayed boot work on unmount", async () => {
-  // Arrange: mount with a pending play promise and a completion spy.
+test("does not duplicate playback for duplicate logo clicks", async () => {
+  // Arrange: use pending playback so duplicate activation is observable.
+  const clock = installClock();
+  const audio = installAudioMock("pending");
+  const mount = await renderBoot();
+
+  // Act: send two click events before media can end.
+  await advanceTimers(200);
+  const startButton = requireStartButton(mount.container);
+  await act(async () => {
+    const click = () => startButton.dispatchEvent(
+      new browserWindow.MouseEvent("click", { bubbles: true }),
+    );
+    click();
+    click();
+  });
+  await advanceTimers(1000);
+
+  // Assert: one user gesture sequence produces one play call and no progress.
+  assert.equal(audio.playCalls, 1);
+  assert.equal(mount.container.querySelector(".boot-progress"), null);
+  assert.equal(clock.activeIntervalCount(), 0);
+});
+
+test("cleans up audio and delayed boot work after click-time unmount", async () => {
+  // Arrange: start a pending chime and provide a completion spy.
   const clock = installClock();
   const audio = installAudioMock("pending");
   const completions = [];
@@ -458,9 +529,19 @@ test("cleans up audio and delayed boot work on unmount", async () => {
     onComplete: () => completions.push("complete"),
   });
   await advanceTimers(200);
+  const startButton = requireStartButton(mount.container);
   const startupAudio = requireAudio(mount.container, audio);
 
-  // Act: unmount, then deliver late media events and advance all delayed work.
+  // Act: click, release the gate, unmount, then deliver late work.
+  await act(async () => {
+    startButton.dispatchEvent(
+      new browserWindow.MouseEvent("click", { bubbles: true }),
+    );
+  });
+  assert.equal(audio.playCalls, 1);
+  await act(async () => audio.dispatch(startupAudio, "ended"));
+  await advanceTimers(500);
+  assert.ok(mount.container.querySelector(".boot-progress"));
   await unmount(mount);
   await act(async () => {
     audio.dispatch(startupAudio, "ended");
@@ -468,7 +549,7 @@ test("cleans up audio and delayed boot work on unmount", async () => {
   });
   await advanceTimers(6000);
 
-  // Assert: cleanup pauses media and prevents late timers/events from completing boot.
+  // Assert: cleanup pauses media, clears timers, and blocks late completion.
   assert.ok(audio.pauseCalls >= 1);
   assert.equal(clock.activeTimerCount(), 0);
   assert.deepEqual(completions, []);
