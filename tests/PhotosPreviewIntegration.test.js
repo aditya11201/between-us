@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
+import { after, afterEach, before, test } from "node:test";
 import { compile } from "sass";
 import { createServer } from "vite";
 import { Window } from "happy-dom";
@@ -40,6 +40,7 @@ let MenuBar;
 let PhotosContent;
 let photoCatalog;
 let photosStyle;
+const mountedRoots = [];
 
 before(async () => {
   vite = await createServer({
@@ -84,6 +85,13 @@ after(async () => {
   browserWindow.close();
 });
 
+afterEach(async () => {
+  for (const { root, container } of mountedRoots.splice(0)) {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});
+
 function createWindowControls() {
   return {
     onClose: () => {},
@@ -95,9 +103,7 @@ function createWindowControls() {
 }
 
 async function renderPreview(photo, controls = createWindowControls()) {
-  const container = document.createElement("div");
-  document.body.append(container);
-  const root = createRoot(container);
+  const { container, root } = createMountedRoot();
 
   await act(async () => {
     root.render(
@@ -112,6 +118,15 @@ async function renderPreview(photo, controls = createWindowControls()) {
   return { container, root };
 }
 
+function createMountedRoot() {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const mounted = { container, root };
+  mountedRoots.push(mounted);
+  return mounted;
+}
+
 async function settleReact() {
   await act(async () => {
     await Promise.resolve();
@@ -119,12 +134,39 @@ async function settleReact() {
   });
 }
 
+async function unmountRendered({ container, root }) {
+  const mountedIndex = mountedRoots.findIndex((mounted) =>
+    mounted.container === container && mounted.root === root,
+  );
+  if (mountedIndex >= 0) mountedRoots.splice(mountedIndex, 1);
+  await act(async () => root.unmount());
+  container.remove();
+}
+
+function collectCssRules(rules = photosStyle.sheet.cssRules) {
+  return [...rules].flatMap((rule) => [
+    rule,
+    ...(rule.cssRules ? collectCssRules(rule.cssRules) : []),
+  ]);
+}
+
+function findStyleRule(selector, rules = photosStyle.sheet.cssRules) {
+  return collectCssRules(rules).find((rule) =>
+    typeof rule.selectorText === "string" &&
+    rule.selectorText.split(",").some((candidate) => candidate.trim() === selector),
+  );
+}
+
+function findConditionalRule(predicate) {
+  return collectCssRules().find((rule) =>
+    typeof rule.conditionText === "string" && predicate(rule.conditionText),
+  );
+}
+
 test("keeps modified-click selection while opening the complete photo on double-click", async () => {
   const photo = photoCatalog[0];
   const openAppCalls = [];
-  const container = document.createElement("div");
-  document.body.append(container);
-  const root = createRoot(container);
+  const { container, root } = createMountedRoot();
 
   await act(async () => {
     root.render(
@@ -159,8 +201,7 @@ test("keeps modified-click selection while opening the complete photo on double-
   assert.equal(card.getAttribute("aria-pressed"), "true");
   assert.deepEqual(openAppCalls, [[`preview:${photo.id}`, "Preview", photo]]);
 
-  await act(async () => root.unmount());
-  container.remove();
+  await unmountRendered({ container, root });
 });
 
 test("renders a photo payload in a contain-fit preview and delegates window controls", async () => {
@@ -217,8 +258,35 @@ test("renders a photo payload in a contain-fit preview and delegates window cont
   assert.equal(calls.minimize, 1);
   assert.equal(calls.zoom, 1);
 
-  await act(async () => root.unmount());
-  container.remove();
+  await unmountRendered({ container, root });
+});
+
+test("keeps a non-square payload image contain-fitted inside the preview stage", async () => {
+  // Arrange: use a deliberately non-square image and surrounding whitespace in its URL.
+  const photo = {
+    id: "favorites/panorama.webp",
+    name: "panorama.webp",
+    url: "  /karenjourney/assets/panorama.webp  ",
+  };
+  const rendered = await renderPreview(photo);
+  const image = rendered.container.querySelector(".photos-preview__image");
+  assert.ok(image);
+
+  // Act: give the real DOM image a 16:9 intrinsic shape.
+  image.setAttribute("width", "640");
+  image.setAttribute("height", "360");
+
+  // Assert: the URL is normalized and the image surface never switches to cover-fit.
+  assert.equal(image.getAttribute("src"), "/karenjourney/assets/panorama.webp");
+  assert.equal(image.width, 640);
+  assert.equal(image.height, 360);
+  assert.equal(image.style.objectFit, "contain");
+  assert.equal(
+    browserWindow.getComputedStyle(image).objectFit,
+    "contain",
+  );
+
+  await unmountRendered(rendered);
 });
 
 test("WindowList renders and updates a preview from public window-manager payloads", async () => {
@@ -240,9 +308,7 @@ test("WindowList renders and updates a preview from public window-manager payloa
     return null;
   }
 
-  const container = document.createElement("div");
-  document.body.append(container);
-  const root = createRoot(container);
+  const { container, root } = createMountedRoot();
 
   await act(async () => {
     root.render(
@@ -276,14 +342,11 @@ test("WindowList renders and updates a preview from public window-manager payloa
   assert.equal(image.getAttribute("src"), secondPhoto.url);
   assert.equal(container.querySelectorAll(".photos-preview").length, 1);
 
-  await act(async () => root.unmount());
-  container.remove();
+  await unmountRendered({ container, root });
 });
 
 test("renders Preview for a dynamic MenuBar app ID", async () => {
-  const container = document.createElement("div");
-  document.body.append(container);
-  const root = createRoot(container);
+  const { container, root } = createMountedRoot();
 
   await act(async () => {
     root.render(
@@ -307,41 +370,114 @@ test("renders Preview for a dynamic MenuBar app ID", async () => {
   assert.equal(appLabel.textContent, "Preview");
   assert.doesNotMatch(container.textContent, /preview:favorites\/sunset\.webp/);
 
-  await act(async () => root.unmount());
-  container.remove();
+  await unmountRendered({ container, root });
 });
 
-test("renders a local fallback when the photo payload is missing or cannot load", async () => {
-  const missingPayload = await renderPreview();
-  assert.ok(missingPayload.container.querySelector(".photos-preview__fallback"));
-  assert.equal(missingPayload.container.querySelector("img"), null);
-  await act(async () => missingPayload.root.unmount());
-  missingPayload.container.remove();
+test("renders an explicit fallback when the preview payload is missing", async () => {
+  // Arrange: mount Preview without a photo payload.
+  const rendered = await renderPreview();
 
-  const missingUrl = await renderPreview({
-    id: "favorites/unknown.webp",
-    name: "unknown.webp",
-  });
-  assert.ok(missingUrl.container.querySelector(".photos-preview__fallback"));
-  assert.equal(missingUrl.container.querySelector("img"), null);
-  await act(async () => missingUrl.root.unmount());
-  missingUrl.container.remove();
+  // Act: read the fallback rendered by the real component.
+  const fallback = rendered.container.querySelector(".photos-preview__fallback");
 
-  const failedImage = await renderPreview({
+  // Assert: missing data never leaves a broken image-only surface.
+  assert.ok(fallback);
+  assert.equal(fallback.getAttribute("role"), "status");
+  assert.equal(fallback.querySelector("strong").textContent, "Preview unavailable");
+  assert.equal(
+    fallback.querySelector("p").textContent,
+    "No photo is available to preview.",
+  );
+  assert.equal(rendered.container.querySelector("img"), null);
+
+  await unmountRendered(rendered);
+});
+
+test("renders a fallback for a missing or blank photo URL", async () => {
+  for (const photo of [
+    { id: "favorites/unknown.webp", name: "unknown.webp" },
+    { id: "favorites/blank.webp", name: "blank.webp", url: "   " },
+  ]) {
+    // Arrange: provide a photo payload that cannot identify an image URL.
+    const rendered = await renderPreview(photo);
+
+    // Act: inspect the rendered preview state.
+    const fallback = rendered.container.querySelector(".photos-preview__fallback");
+
+    // Assert: both absent and whitespace-only URLs use the local fallback.
+    assert.ok(fallback);
+    assert.equal(fallback.querySelector("p").textContent, "This photo could not be loaded.");
+    assert.equal(rendered.container.querySelector("img"), null);
+
+    await unmountRendered(rendered);
+  }
+});
+
+test("replaces an image-error event with the local preview fallback", async () => {
+  // Arrange: mount a preview with a URL so an image element is initially present.
+  const rendered = await renderPreview({
     id: "favorites/broken.webp",
     name: "broken.webp",
     url: "/karenjourney/assets/broken.webp",
   });
+  const image = rendered.container.querySelector(".photos-preview__image");
+  assert.ok(image);
+
+  // Act: simulate the browser reporting a failed image load.
   await act(async () => {
-    failedImage.container.querySelector("img").dispatchEvent(
+    image.dispatchEvent(new browserWindow.Event("error"));
+  });
+
+  // Assert: the failed image is removed and the accessible fallback is shown.
+  assert.equal(rendered.container.querySelector(".photos-preview__image"), null);
+  assert.ok(rendered.container.querySelector(".photos-preview__fallback"));
+
+  await unmountRendered(rendered);
+});
+
+test("resets failed preview state on payload changes and removes the root cleanly", async () => {
+  // Arrange: keep the surrounding document count so this test can detect leaks.
+  const initialPreviewCount = document.body.querySelectorAll(".photos-preview").length;
+  const firstPhoto = {
+    id: "favorites/broken.webp",
+    name: "broken.webp",
+    url: "/karenjourney/assets/broken.webp",
+  };
+  const nextPhoto = {
+    id: "favorites/mountain.webp",
+    name: "mountain.webp",
+    url: "/karenjourney/assets/mountain.webp",
+  };
+  const rendered = await renderPreview(firstPhoto);
+
+  // Act: fail the first image, then update the same mounted root with a new payload.
+  await act(async () => {
+    rendered.container.querySelector("img").dispatchEvent(
       new browserWindow.Event("error"),
     );
   });
+  await act(async () => {
+    rendered.root.render(
+      React.createElement(
+        WindowContext.Provider,
+        { value: createWindowControls() },
+        React.createElement(PhotoPreviewContent, { photo: nextPhoto }),
+      ),
+    );
+  });
+  await settleReact();
 
-  assert.ok(failedImage.container.querySelector(".photos-preview__fallback"));
-  assert.equal(failedImage.container.querySelector("img"), null);
-  await act(async () => failedImage.root.unmount());
-  failedImage.container.remove();
+  // Assert: a new URL gets a fresh image and never duplicates the Preview surface.
+  const image = rendered.container.querySelector(".photos-preview__image");
+  assert.ok(image);
+  assert.equal(image.getAttribute("src"), nextPhoto.url);
+  assert.equal(rendered.container.querySelectorAll(".photos-preview").length, 1);
+
+  await unmountRendered(rendered);
+  assert.equal(
+    document.body.querySelectorAll(".photos-preview").length,
+    initialPreviewCount,
+  );
 });
 
 test("keeps preview controls accessible and image sizing stable", async () => {
@@ -350,8 +486,9 @@ test("keeps preview controls accessible and image sizing stable", async () => {
     name: "sunset.webp",
     url: "/karenjourney/assets/sunset.webp",
   });
+  const preview = container.querySelector(".photos-preview");
   const previewStyle = browserWindow.getComputedStyle(
-    container.querySelector(".photos-preview"),
+    preview,
   );
   const buttons = container.querySelectorAll(".photos-preview__traffic-light");
   const image = container.querySelector(".photos-preview__image");
@@ -368,6 +505,11 @@ test("keeps preview controls accessible and image sizing stable", async () => {
   assert.equal(buttons.length, 3);
   assert.equal(previewStyle.containerType, "inline-size");
   assert.equal(previewStyle.containerName, "photos-preview");
+  assert.equal(titlebarStyle.display, "grid");
+  assert.equal(
+    titlebarStyle.gridTemplateColumns,
+    "148px minmax(0, 1fr) 148px",
+  );
   assert.equal(titlebarStyle.flexBasis, "44px");
   assert.equal(titlebarStyle.minHeight, "44px");
   assert.equal(controlGroupStyle.width, "148px");
@@ -378,8 +520,8 @@ test("keeps preview controls accessible and image sizing stable", async () => {
 
   buttons[0].focus();
   assert.equal(document.activeElement, buttons[0]);
-  const focusRule = [...photosStyle.sheet.cssRules].find((rule) =>
-    rule.selectorText === ".photos-preview__traffic-light:focus-visible",
+  const focusRule = findStyleRule(
+    ".photos-preview__traffic-light:focus-visible",
   );
   assert.ok(focusRule);
   assert.equal(focusRule.style.outlineStyle, "solid");
@@ -395,23 +537,66 @@ test("keeps preview controls accessible and image sizing stable", async () => {
   assert.equal(imageStyle.height, "100%");
   assert.equal(imageStyle.objectFit, "contain");
 
-  const dotRule = [...photosStyle.sheet.cssRules].find((rule) =>
-    rule.selectorText === ".photos-preview__traffic-light::before",
+  const dotRule = findStyleRule(
+    ".photos-preview__traffic-light::before",
   );
   assert.ok(dotRule);
   assert.equal(dotRule.style.width, "12px");
   assert.equal(dotRule.style.height, "12px");
 
-  const compiledCss = photosStyle.textContent;
-  assert.match(
-    compiledCss,
-    /@container\s+photos-preview\s*\(max-width:\s*360px\)[\s\S]*?grid-template-columns:\s*148px\s+minmax\(0, 1fr\);/,
+  for (const selector of [
+    ".photos-preview",
+    ".photos-preview__titlebar",
+    ".photos-preview__traffic-lights",
+    ".photos-preview__traffic-light",
+    ".photos-preview__stage",
+    ".photos-preview__image",
+    ".photos-preview__fallback",
+  ]) {
+    assert.ok(findStyleRule(selector), `compiled Sass exposes ${selector}`);
+  }
+
+  const narrowLayoutRule = findConditionalRule((condition) =>
+    condition.includes("photos-preview") && condition.includes("max-width: 360px"),
   );
-  assert.match(
-    compiledCss,
-    /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.photos-preview \*[\s\S]*?transition:\s*none\s*!important/,
+  assert.ok(narrowLayoutRule);
+  const narrowTitlebarRule = findStyleRule(
+    ".photos-preview__titlebar",
+    narrowLayoutRule.cssRules,
+  );
+  const narrowTitleRule = findStyleRule(
+    ".photos-preview__title",
+    narrowLayoutRule.cssRules,
+  );
+  const narrowStageRule = findStyleRule(
+    ".photos-preview__stage",
+    narrowLayoutRule.cssRules,
+  );
+  assert.equal(
+    narrowTitlebarRule.style.gridTemplateColumns,
+    "148px minmax(0, 1fr)",
+  );
+  assert.equal(narrowTitlebarRule.style.padding, "0px 10px");
+  assert.equal(narrowTitleRule.style.textAlign, "left");
+  assert.equal(narrowStageRule.style.padding, "16px");
+
+  const reducedMotionRule = findConditionalRule((condition) =>
+    condition.includes("prefers-reduced-motion") && condition.includes("reduce"),
+  );
+  assert.ok(reducedMotionRule);
+  const reducedMotionPreviewRule = findStyleRule(
+    ".photos-preview",
+    reducedMotionRule.cssRules,
+  );
+  assert.ok(reducedMotionPreviewRule);
+  assert.equal(
+    reducedMotionPreviewRule.style.getPropertyValue("transition"),
+    "none",
+  );
+  assert.equal(
+    reducedMotionPreviewRule.style.getPropertyPriority("transition"),
+    "important",
   );
 
-  await act(async () => root.unmount());
-  container.remove();
+  await unmountRendered({ container, root });
 });
