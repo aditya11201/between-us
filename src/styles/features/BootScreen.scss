@@ -30,11 +30,61 @@
 
 /*=== Логотип ===*/
 .boot-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
   opacity: 0;
-  transition: opacity 0.5s ease-out;
-  
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    opacity 0.5s ease-out,
+    transform 180ms ease-out,
+    filter 180ms ease-out;
+  animation: boot-logo-pulse 2.4s ease-in-out infinite;
+
   &--show {
     opacity: 1;
+  }
+
+  &:hover:not(:disabled) {
+    animation-play-state: paused;
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 22px rgba(255, 255, 255, 0.5));
+  }
+
+  &:active:not(:disabled) {
+    animation-play-state: paused;
+    transform: scale(0.96);
+    transition-duration: 100ms;
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.85);
+    outline-offset: 10px;
+  }
+
+  &:disabled {
+    cursor: default;
+    animation: none;
+  }
+}
+
+@keyframes boot-logo-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.25));
+  }
+
+  50% {
+    transform: scale(1.035);
+    filter: drop-shadow(0 0 24px rgba(255, 255, 255, 0.55));
   }
 }
 
@@ -94,5 +144,28 @@
   to {
     opacity: 0;
     pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-logo {
+    animation: none;
+    transition: opacity 0.01ms linear;
+
+    &:hover:not(:disabled),
+    &:active:not(:disabled) {
+      transform: none;
+      filter: none;
+      transition: none;
+    }
+  }
+
+  .boot-progress {
+    animation: none;
+    opacity: 1;
+  }
+
+  .boot-screen--complete {
+    animation-duration: 0.01ms;
   }
 }
