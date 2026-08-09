@@ -11,10 +11,13 @@ const { document } = browserWindow;
 Object.assign(globalThis, {
   window: browserWindow,
   document,
+  localStorage: browserWindow.localStorage,
   Element: browserWindow.Element,
   HTMLElement: browserWindow.HTMLElement,
   Event: browserWindow.Event,
   MouseEvent: browserWindow.MouseEvent,
+  requestAnimationFrame: (callback) => setTimeout(callback, 0),
+  cancelAnimationFrame: (id) => clearTimeout(id),
   IS_REACT_ACT_ENVIRONMENT: true,
 });
 Object.defineProperty(globalThis, "navigator", {
@@ -28,7 +31,12 @@ let act;
 let createRoot;
 let WindowContext;
 let PhotoPreviewContent;
-let renderAppContent;
+let WindowManagerProvider;
+let useWindowManager;
+let WindowList;
+let ThemeProvider;
+let DisplaySettingsProvider;
+let MenuBar;
 let photosStyle;
 
 before(async () => {
@@ -46,9 +54,14 @@ before(async () => {
   ({ PhotoPreviewContent } = await vite.ssrLoadModule(
     "/src/features/photos/PhotoPreviewContent.jsx",
   ));
-  ({ renderAppContent } = await vite.ssrLoadModule(
-    "/src/utils/renderAppContent.jsx",
-  ));
+  ({
+    WindowManagerProvider,
+    useWindowManager,
+    ThemeProvider,
+    DisplaySettingsProvider,
+  } = await vite.ssrLoadModule("/src/core/providers/index.js"));
+  ({ WindowList } = await vite.ssrLoadModule("/src/windows/WindowList.jsx"));
+  ({ MenuBar } = await vite.ssrLoadModule("/src/features/menubar/MenuBar.jsx"));
 
   photosStyle = document.createElement("style");
   photosStyle.textContent = compile(
@@ -89,6 +102,13 @@ async function renderPreview(photo, controls = createWindowControls()) {
   });
 
   return { container, root };
+}
+
+async function settleReact() {
+  await act(async () => {
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }
 
 test("renders a photo payload in a contain-fit preview and delegates window controls", async () => {
@@ -149,23 +169,94 @@ test("renders a photo payload in a contain-fit preview and delegates window cont
   container.remove();
 });
 
-test("dispatches dynamic preview IDs with their payload", () => {
-  const photo = {
+test("WindowList renders and updates a preview from public window-manager payloads", async () => {
+  const previewId = "preview:favorites/sunset.webp";
+  const firstPhoto = {
     id: "favorites/sunset.webp",
     name: "sunset.webp",
     url: "/karenjourney/assets/sunset.webp",
   };
-  const preview = renderAppContent("preview:favorites/sunset.webp", {
-    closeWindow: () => {},
-    minimizeWindow: () => {},
-    maximizeWindow: () => {},
-    openApp: () => {},
-    payload: photo,
-    setWallpaper: () => {},
+  const secondPhoto = {
+    id: "favorites/mountain.webp",
+    name: "mountain.webp",
+    url: "/karenjourney/assets/mountain.webp",
+  };
+  let publicOpenApp;
+
+  function OpenAppProbe() {
+    publicOpenApp = useWindowManager().openApp;
+    return null;
+  }
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      React.createElement(
+        WindowManagerProvider,
+        null,
+        React.createElement(OpenAppProbe),
+        React.createElement(WindowList, { setWallpaper: () => {} }),
+      ),
+    );
   });
 
-  assert.equal(preview.props.children.props.photo, photo);
-  assert.equal(typeof preview.props.children.type, "object");
+  assert.equal(typeof publicOpenApp, "function");
+
+  await act(async () => {
+    publicOpenApp(previewId, "Preview", firstPhoto);
+  });
+  await settleReact();
+
+  let image = container.querySelector(".photos-preview__image");
+  assert.ok(image);
+  assert.equal(image.getAttribute("src"), firstPhoto.url);
+
+  await act(async () => {
+    publicOpenApp(previewId, "Preview", secondPhoto);
+  });
+  await settleReact();
+
+  image = container.querySelector(".photos-preview__image");
+  assert.ok(image);
+  assert.equal(image.getAttribute("src"), secondPhoto.url);
+  assert.equal(container.querySelectorAll(".photos-preview").length, 1);
+
+  await act(async () => root.unmount());
+  container.remove();
+});
+
+test("renders Preview for a dynamic MenuBar app ID", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      React.createElement(
+        ThemeProvider,
+        null,
+        React.createElement(
+          DisplaySettingsProvider,
+          null,
+          React.createElement(MenuBar, {
+            activeApp: "preview:favorites/sunset.webp",
+          }),
+        ),
+      ),
+    );
+  });
+
+  const appLabel = container.querySelectorAll(
+    ".menuBar__left .menuBar__item",
+  )[1];
+  assert.equal(appLabel.textContent, "Preview");
+  assert.doesNotMatch(container.textContent, /preview:favorites\/sunset\.webp/);
+
+  await act(async () => root.unmount());
+  container.remove();
 });
 
 test("renders a local fallback when the photo payload is missing or cannot load", async () => {
