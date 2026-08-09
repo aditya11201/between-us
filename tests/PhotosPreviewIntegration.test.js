@@ -262,7 +262,7 @@ test("renders a photo payload in a contain-fit preview and delegates window cont
   await unmountRendered({ container, root });
 });
 
-test("preview image exposes the contain-fit CSS contract", async () => {
+test("renders a normalized preview image in contain-fit mode", async () => {
   // Arrange: use a preview URL with surrounding whitespace to verify normalization.
   const photo = {
     id: "favorites/panorama.webp",
@@ -273,21 +273,24 @@ test("preview image exposes the contain-fit CSS contract", async () => {
   const image = rendered.container.querySelector(".photos-preview__image");
   assert.ok(image);
 
-  // Assert: URL normalization and the explicit CSS contract are stable.
+  // Assert: URL normalization and the rendered image contract are stable.
   assert.equal(image.getAttribute("src"), "/karenjourney/assets/panorama.webp");
   assert.equal(image.style.objectFit, "contain");
-  const imageRule = findStyleRule(".photos-preview__image");
-  assert.ok(imageRule);
-  assert.equal(imageRule.style.width, "100%");
-  assert.equal(imageRule.style.height, "100%");
-  assert.equal(imageRule.style.objectFit, "contain");
-  assert.equal(imageRule.style.objectPosition, "center");
   assert.equal(
     browserWindow.getComputedStyle(image).objectFit,
     "contain",
   );
 
   await unmountRendered(rendered);
+});
+
+test("Photos Sass exposes the contain-fit image contract", () => {
+  const imageRule = findStyleRule(".photos-preview__image");
+  assert.ok(imageRule);
+  assert.equal(imageRule.style.width, "100%");
+  assert.equal(imageRule.style.height, "100%");
+  assert.equal(imageRule.style.objectFit, "contain");
+  assert.equal(imageRule.style.objectPosition, "center");
 });
 
 test("renders an explicit fallback when the preview payload is missing", async () => {
@@ -403,7 +406,7 @@ test("resets failed preview state on payload changes and removes the root cleanl
   );
 });
 
-test("preview controls expose 44px targets and visible keyboard focus", async () => {
+test("preview controls render and receive visible keyboard focus", async () => {
   const { container, root } = await renderPreview({
     id: "favorites/sunset.webp",
     name: "sunset.webp",
@@ -411,6 +414,17 @@ test("preview controls expose 44px targets and visible keyboard focus", async ()
   });
   const preview = container.querySelector(".photos-preview");
   const buttons = container.querySelectorAll(".photos-preview__traffic-light");
+
+  assert.ok(preview);
+  assert.equal(buttons.length, 3);
+  buttons[0].focus();
+  assert.equal(document.activeElement, buttons[0]);
+
+  await unmountRendered({ container, root });
+});
+
+test("Photos Sass exposes preview control sizing and focus styles", () => {
+  const previewRule = findStyleRule(".photos-preview");
   const titlebarRule = findStyleRule(".photos-preview__titlebar");
   const controlGroupRule = findStyleRule(".photos-preview__traffic-lights");
   const titleRule = findStyleRule(".photos-preview__title");
@@ -420,15 +434,13 @@ test("preview controls expose 44px targets and visible keyboard focus", async ()
   );
   const dotRule = findStyleRule(".photos-preview__traffic-light::before");
 
-  assert.ok(preview);
+  assert.ok(previewRule);
   assert.ok(titlebarRule);
   assert.ok(controlGroupRule);
   assert.ok(titleRule);
   assert.ok(buttonRule);
-  const previewStyle = browserWindow.getComputedStyle(preview);
-  assert.equal(buttons.length, 3);
-  assert.equal(previewStyle.containerType, "inline-size");
-  assert.equal(previewStyle.containerName, "photos-preview");
+  assert.equal(previewRule.style.containerType, "inline-size");
+  assert.equal(previewRule.style.containerName, "photos-preview");
   assert.equal(titlebarRule.style.display, "grid");
   assert.equal(
     titlebarRule.style.gridTemplateColumns,
@@ -442,8 +454,6 @@ test("preview controls expose 44px targets and visible keyboard focus", async ()
   assert.equal(buttonRule.style.width, "44px");
   assert.equal(buttonRule.style.height, "44px");
 
-  buttons[0].focus();
-  assert.equal(document.activeElement, buttons[0]);
   assert.ok(focusRule);
   assert.equal(focusRule.style.outlineStyle, "solid");
   assert.equal(focusRule.style.outlineWidth, "2px");
@@ -452,17 +462,9 @@ test("preview controls expose 44px targets and visible keyboard focus", async ()
   assert.ok(dotRule);
   assert.equal(dotRule.style.width, "12px");
   assert.equal(dotRule.style.height, "12px");
-
-  await unmountRendered({ container, root });
 });
 
-test("Photos Sass exposes responsive and reduced-motion style selectors", async () => {
-  const rendered = await renderPreview({
-    id: "favorites/sunset.webp",
-    name: "sunset.webp",
-    url: "/karenjourney/assets/sunset.webp",
-  });
-
+test("Photos Sass exposes preview selectors and responsive styles", () => {
   for (const selector of [
     ".photos-preview",
     ".photos-preview__titlebar",
@@ -501,7 +503,9 @@ test("Photos Sass exposes responsive and reduced-motion style selectors", async 
   assert.equal(narrowTitlebarRule.style.padding, "0px 10px");
   assert.equal(narrowTitleRule.style.textAlign, "left");
   assert.equal(narrowStageRule.style.padding, "16px");
+});
 
+test("Photos Sass disables preview transitions for reduced motion", () => {
   const reducedMotionRule = findConditionalRule((condition) =>
     condition.includes("prefers-reduced-motion") && condition.includes("reduce"),
   );
@@ -519,6 +523,4 @@ test("Photos Sass exposes responsive and reduced-motion style selectors", async 
     assert.equal(rule.style.getPropertyValue("transition"), "none");
     assert.equal(rule.style.getPropertyPriority("transition"), "important");
   }
-
-  await unmountRendered(rendered);
 });

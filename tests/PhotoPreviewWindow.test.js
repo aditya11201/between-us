@@ -201,7 +201,11 @@ test("MenuBar exposes Preview instead of a dynamic preview ID", async () => {
     ),
   );
 
-  assert.match(container.textContent, /Preview/);
+  const activeAppLabel = container.querySelector(
+    '[role="heading"][aria-label="Active application: Preview"]',
+  );
+  assert.ok(activeAppLabel);
+  assert.equal(activeAppLabel.textContent, "Preview");
   assert.equal(container.textContent.includes(previewId), false);
 });
 

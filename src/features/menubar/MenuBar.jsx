@@ -123,7 +123,12 @@ export const MenuBar = memo(function MenuBar({ activeApp, openApp, onCloseWindow
             
             return (
               <div key={i} className="menuBar__itemWrapper">
-                <span className={`menuBar__item ${clickable ? "isClickable" : ""} ${isActive ? "isActive" : ""} ${isBold ? "isBold" : ""} ${isApple ? "isApple" : ""}`}>
+                <span
+                  className={`menuBar__item ${clickable ? "isClickable" : ""} ${isActive ? "isActive" : ""} ${isBold ? "isBold" : ""} ${isApple ? "isApple" : ""}`}
+                  role={i === 1 ? "heading" : undefined}
+                  aria-level={i === 1 ? "1" : undefined}
+                  aria-label={i === 1 ? `Active application: ${appName}` : undefined}
+                >
                   {isApple ? <AppleIcon /> : item}
                 </span>
 
