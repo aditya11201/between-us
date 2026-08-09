@@ -16,7 +16,8 @@ const WindowItem = memo(function WindowItem({ winId, setWallpaper }) {
     closeWindow, 
     minimizeWindow, 
     maximizeWindow, 
-    focusWindow 
+    focusWindow,
+    openApp,
   } = useWindowManager();
   
   const win = windows.find(w => w.id === winId);
@@ -43,10 +44,12 @@ const WindowItem = memo(function WindowItem({ winId, setWallpaper }) {
         closeWindow: handleClose, 
         minimizeWindow: handleMinimize, 
         maximizeWindow: handleZoom, 
-        setWallpaper 
+        setWallpaper,
+        openApp,
+        payload: win.payload,
       })}
     </Suspense>
-  ), [winId, handleClose, handleMinimize, handleZoom, setWallpaper]);
+  ), [winId, handleClose, handleMinimize, handleZoom, setWallpaper, openApp, win.payload]);
 
   return (
     <AppWindow

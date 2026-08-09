@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from "react";
 import { WindowLoading } from "@/ui";
+import { isPhotoPreviewWindow } from "@/features/photos/photoPreviewModel";
 
 const FinderContent = lazy(() => import("@/features/finder/FinderContent"));
 const TerminalContent = lazy(() => import("@/features/terminal/Terminal").then(m => ({ default: m.TerminalContent })));
@@ -19,14 +20,31 @@ const MailContent = lazy(() =>
     default: module.MailContent,
   })),
 );
+const PhotoPreviewContent = lazy(() =>
+  import("@/features/photos/PhotoPreviewContent").then((module) => ({
+    default: module.PhotoPreviewContent,
+  })),
+);
 
-export const renderAppContent = (appId, { closeWindow, minimizeWindow, maximizeWindow, setWallpaper }) => {
+export const renderAppContent = (
+  appId,
+  { closeWindow, minimizeWindow, maximizeWindow, setWallpaper, openApp, payload },
+) => {
   const commonProps = {
     onClose: () => closeWindow(appId),
     onMinimize: () => minimizeWindow(appId),
     onMaximize: () => maximizeWindow(appId),
     onZoom: () => maximizeWindow(appId),
+    openApp,
   };
+
+  if (isPhotoPreviewWindow(appId)) {
+    return (
+      <Suspense fallback={<WindowLoading />}>
+        <PhotoPreviewContent photo={payload} />
+      </Suspense>
+    );
+  }
 
   switch (appId) {
     case "finder":
