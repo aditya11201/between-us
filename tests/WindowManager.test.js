@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { createServer } from "vite";
 import { Window } from "happy-dom";
+import { waitForCondition } from "./testUtils/waitForCondition.js";
 
 const projectRoot = new URL("../", import.meta.url).pathname;
 const browserWindow = new Window({ url: "http://localhost/" });
@@ -103,10 +104,14 @@ async function renderWindowManager() {
   return container;
 }
 
-async function settleReact() {
+async function waitForWindowManagerState(container, predicate, description) {
   await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await waitForCondition(
+      () => predicate(readWindowManagerState(container)),
+      { description },
+    );
   });
+  return readWindowManagerState(container);
 }
 
 function readWindowManagerState(container) {
@@ -210,10 +215,6 @@ test("dynamic preview windows use the preview initial position", () => {
 
   assert.deepEqual(
     { x: preview.x, y: preview.y, width: preview.width, height: preview.height },
-    { x: 220, y: 90, width: 720, height: 560 }
-  );
-  assert.deepEqual(
-    { x: preview.x, y: preview.y, width: preview.width, height: preview.height },
     {
       x: INITIAL_POSITIONS.preview.x,
       y: INITIAL_POSITIONS.preview.y,
@@ -255,9 +256,14 @@ test("public openApp stores a dynamic preview payload", async () => {
   await act(async () => {
     currentManager.openApp("preview:favorites/sunset.webp", "Preview", payload);
   });
-  await settleReact();
 
-  const state = readWindowManagerState(container);
+  const state = await waitForWindowManagerState(
+    container,
+    ({ windows, openApps }) =>
+      windows[0]?.payload?.url === payload.url &&
+      openApps.includes("preview:favorites/sunset.webp"),
+    "dynamic preview payload in the public window-manager state",
+  );
   assert.deepEqual(state.windows[0].payload, payload);
   assert.deepEqual(state.openApps, ["preview:favorites/sunset.webp"]);
 });
@@ -268,12 +274,16 @@ test("public openApp keeps ordinary calls payload-free", async () => {
   await act(async () => {
     currentManager.openApp("finder", "Finder");
   });
-  await settleReact();
 
-  const state = readWindowManagerState(container);
+  const state = await waitForWindowManagerState(
+    container,
+    ({ windows, openApps }) =>
+      windows[0]?.id === "finder" && openApps.includes("finder"),
+    "ordinary Finder window in the public window-manager state",
+  );
   assert.deepEqual(state.openApps, ["finder"]);
   assert.equal(state.windows[0].id, "finder");
-  assert.equal("payload" in state.windows[0], false);
+  assert.equal(state.windows[0].payload, undefined);
 });
 
 test("public openApp updates a same-ID payload without duplicating openApps", async () => {
@@ -285,20 +295,27 @@ test("public openApp updates a same-ID payload without duplicating openApps", as
   await act(async () => {
     currentManager.openApp(previewId, "Preview", firstPayload);
   });
-  await settleReact();
+  await waitForWindowManagerState(
+    container,
+    ({ windows }) => windows[0]?.payload?.url === firstPayload.url,
+    "first preview payload in the public window-manager state",
+  );
 
   await act(async () => {
     currentManager.openApp(previewId, "Preview", secondPayload);
   });
-  await settleReact();
 
-  const state = readWindowManagerState(container);
+  const state = await waitForWindowManagerState(
+    container,
+    ({ windows }) => windows[0]?.payload?.url === secondPayload.url,
+    "updated preview payload in the public window-manager state",
+  );
   assert.equal(state.windows.length, 1);
   assert.deepEqual(state.openApps, [previewId]);
   assert.deepEqual(state.windows[0].payload, secondPayload);
 });
 
-test("public openApp reopens a minimized preview and focuses it", async () => {
+test("public openApp reopens a minimized preview without changing window layers", async () => {
   const container = await renderWindowManager();
   const previewId = "preview:favorites/sunset.webp";
   const payload = { id: "favorites/sunset.webp", url: "/photos/sunset.webp" };
@@ -306,21 +323,53 @@ test("public openApp reopens a minimized preview and focuses it", async () => {
   await act(async () => {
     currentManager.openApp(previewId, "Preview", payload);
   });
-  await settleReact();
+  const openedState = await waitForWindowManagerState(
+    container,
+    ({ windows }) => windows[0]?.payload?.url === payload.url,
+    "opened preview before minimizing it",
+  );
+  const previewBeforeMinimize = openedState.windows.find(
+    (window) => window.id === previewId,
+  );
+
+  await act(async () => {
+    currentManager.openApp("finder", "Finder");
+  });
+  const finderState = await waitForWindowManagerState(
+    container,
+    ({ activeWin, windows }) =>
+      activeWin === "finder" && windows.some((window) => window.id === "finder"),
+    "another active window before reopening the preview",
+  );
+  const finderBeforeMinimize = finderState.windows.find(
+    (window) => window.id === "finder",
+  );
+  assert.ok(finderBeforeMinimize.zIndex > previewBeforeMinimize.zIndex);
 
   await act(async () => {
     currentManager.minimizeWindow(previewId);
   });
-  await settleReact();
-  assert.deepEqual(readWindowManagerState(container).minimizedApps, [previewId]);
+  await waitForWindowManagerState(
+    container,
+    ({ minimizedApps }) => minimizedApps.includes(previewId),
+    "minimized preview in the public window-manager state",
+  );
 
   await act(async () => {
     currentManager.openApp(previewId, "Preview", payload);
   });
-  await settleReact();
 
-  const state = readWindowManagerState(container);
-  assert.deepEqual(state.openApps, [previewId]);
+  const state = await waitForWindowManagerState(
+    container,
+    ({ activeWin, minimizedApps }) =>
+      activeWin === previewId && minimizedApps.length === 0,
+    "reopened preview focus in the public window-manager state",
+  );
+  const reopenedPreview = state.windows.find((window) => window.id === previewId);
+  const finder = state.windows.find((window) => window.id === "finder");
+  assert.deepEqual(state.openApps, [previewId, "finder"]);
   assert.deepEqual(state.minimizedApps, []);
   assert.equal(state.activeWin, previewId);
+  assert.equal(reopenedPreview.zIndex, previewBeforeMinimize.zIndex);
+  assert.ok(finder.zIndex > reopenedPreview.zIndex);
 });

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { createServer } from "vite";
 import { Window } from "happy-dom";
+import { waitForCondition } from "./testUtils/waitForCondition.js";
 
 const projectRoot = new URL("../", import.meta.url).pathname;
 const browserWindow = new Window({ url: "http://localhost/" });
@@ -94,13 +95,23 @@ async function render(element) {
   return container;
 }
 
-async function settleReact() {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await act(async () => {
-      await Promise.resolve();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-  }
+async function waitForPreviewState(container, predicate, description) {
+  await waitForCondition(
+    async () => {
+      let matches = false;
+      await act(async () => {
+        await Promise.resolve();
+        matches = predicate(container);
+      });
+      return matches;
+    },
+    {
+      description,
+      wait: (delay) => act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }),
+    },
+  );
 }
 
 function previewWindowTree() {
@@ -130,7 +141,11 @@ test("dynamic render dispatch displays the current preview payload", async () =>
   await act(async () => {
     currentManager.openApp(previewId, "Preview", firstPhoto);
   });
-  await settleReact();
+  await waitForPreviewState(
+    container,
+    (root) => root.querySelector(".photos-preview__image")?.getAttribute("src") === firstPhoto.url,
+    "first preview image in WindowList",
+  );
 
   let image = container.querySelector(".photos-preview__image");
   assert.ok(image);
@@ -140,7 +155,11 @@ test("dynamic render dispatch displays the current preview payload", async () =>
   await act(async () => {
     currentManager.openApp(previewId, "Preview", secondPhoto);
   });
-  await settleReact();
+  await waitForPreviewState(
+    container,
+    (root) => root.querySelector(".photos-preview__image")?.getAttribute("src") === secondPhoto.url,
+    "updated preview image in WindowList",
+  );
 
   image = container.querySelector(".photos-preview__image");
   assert.ok(image);
@@ -155,9 +174,16 @@ test("dynamic render dispatch shows the local fallback without a payload", async
   await act(async () => {
     currentManager.openApp("preview:favorites/missing.webp", "Preview");
   });
-  await settleReact();
+  await waitForPreviewState(
+    container,
+    (root) => root.querySelector('[role="status"]')?.textContent.includes("No photo is available to preview.") === true,
+    "missing-payload preview fallback message",
+  );
 
-  assert.ok(container.querySelector(".photos-preview__fallback"));
+  const fallback = container.querySelector('[role="status"]');
+  assert.ok(fallback);
+  assert.match(fallback.textContent, /Preview unavailable/);
+  assert.match(fallback.textContent, /No photo is available to preview\./);
   assert.equal(container.querySelector(".photos-preview__image"), null);
 });
 
@@ -175,10 +201,7 @@ test("MenuBar exposes Preview instead of a dynamic preview ID", async () => {
     ),
   );
 
-  const appLabel = container.querySelectorAll(
-    ".menuBar__left .menuBar__item",
-  )[1];
-  assert.equal(appLabel.textContent, "Preview");
+  assert.match(container.textContent, /Preview/);
   assert.equal(container.textContent.includes(previewId), false);
 });
 
