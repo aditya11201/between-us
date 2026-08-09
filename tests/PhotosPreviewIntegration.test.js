@@ -37,6 +37,8 @@ let WindowList;
 let ThemeProvider;
 let DisplaySettingsProvider;
 let MenuBar;
+let PhotosContent;
+let photoCatalog;
 let photosStyle;
 
 before(async () => {
@@ -62,6 +64,12 @@ before(async () => {
   } = await vite.ssrLoadModule("/src/core/providers/index.js"));
   ({ WindowList } = await vite.ssrLoadModule("/src/windows/WindowList.jsx"));
   ({ MenuBar } = await vite.ssrLoadModule("/src/features/menubar/MenuBar.jsx"));
+  ({ PhotosContent } = await vite.ssrLoadModule(
+    "/src/features/photos/PhotosContent.jsx",
+  ));
+  ({ photoCatalog } = await vite.ssrLoadModule(
+    "/src/features/photos/photoCatalog.js",
+  ));
 
   photosStyle = document.createElement("style");
   photosStyle.textContent = compile(
@@ -110,6 +118,50 @@ async function settleReact() {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 }
+
+test("keeps modified-click selection while opening the complete photo on double-click", async () => {
+  const photo = photoCatalog[0];
+  const openAppCalls = [];
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      React.createElement(PhotosContent, {
+        onClose: () => {},
+        onMinimize: () => {},
+        onMaximize: () => {},
+        openApp: (...args) => openAppCalls.push(args),
+      }),
+    );
+  });
+
+  const card = [...container.querySelectorAll(".photos-card")].find(
+    (candidate) => candidate.getAttribute("aria-label") === photo.name,
+  );
+  assert.ok(card);
+
+  await act(async () => {
+    card.dispatchEvent(new browserWindow.MouseEvent("click", {
+      bubbles: true,
+      ctrlKey: true,
+    }));
+  });
+  assert.equal(card.getAttribute("aria-pressed"), "true");
+
+  await act(async () => {
+    card.dispatchEvent(new browserWindow.MouseEvent("dblclick", {
+      bubbles: true,
+    }));
+  });
+
+  assert.equal(card.getAttribute("aria-pressed"), "true");
+  assert.deepEqual(openAppCalls, [[`preview:${photo.id}`, "Preview", photo]]);
+
+  await act(async () => root.unmount());
+  container.remove();
+});
 
 test("renders a photo payload in a contain-fit preview and delegates window controls", async () => {
   const calls = {

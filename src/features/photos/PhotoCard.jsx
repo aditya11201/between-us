@@ -1,4 +1,4 @@
-export function PhotoCard({ photo, selected, onToggle }) {
+export function PhotoCard({ photo, selected, onToggle, onDoubleClick }) {
   return (
     <button
       type="button"
@@ -6,6 +6,10 @@ export function PhotoCard({ photo, selected, onToggle }) {
       aria-pressed={selected}
       aria-label={photo.name}
       onClick={(event) => onToggle(photo.id, event.metaKey || event.ctrlKey)}
+      onDoubleClick={(event) => {
+        event.stopPropagation();
+        onDoubleClick(photo);
+      }}
     >
       <img
         src={photo.url}
