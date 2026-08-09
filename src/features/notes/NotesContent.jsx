@@ -7,38 +7,14 @@ export function NotesContent() {
   const initialNotes = [
     {
       id: 1,
-      title: "Developer Life Plan",
-      content: "# Roadmap 🚀\n\n✔ Learn React\n✔ Understand useEffect (sometimes)\n✔ Stop breaking layouts by 2px\n✔ Build something that looks like Apple UI\n\n🔲 Become rich\n🔲 Sleep 8 hours (optional feature)\n🔲 Stop using console.log as a debugger framework",
-      modified: "Just now",
+      title: "Histories",
+      content: "Love arrives\nand in its train come ecstasies\nold memories of pleasure\nancient histories of pain.\nYet if we are bold,\nlove strikes away the chains of fear\nfrom our souls.",
+      modified: "Today",
     },
     {
       id: 2,
-      title: "Debugging Thoughts",
-      content: "useEffect(() => {\n  // why is this running 17 times?\n  // I didn't change anything\n  // it just started working differently\n}, [])\n\n// 2 hours later:\n// turns out I did change everything",
-      modified: "Yesterday",
-    },
-    {
-      id: 3,
-      title: "Essential Survival Kit",
-      content: "- Coffee ☕\n- More coffee ☕☕\n- Motivation (not found)\n- npm install --force\n- Hope\n- 1% battery and blind confidence",
-      modified: "2 days ago",
-    },
-    {
-      id: 4,
-      title: "JavaScript Summary",
-      content: "let life = undefined;\n\nsetTimeout(() => {\n  life = null;\n}, 0);\n\nconsole.log(life);\n\n// expected: meaning\n// actual: undefined",
-      modified: "Today",
-    },
-    {
-      id: 5,
-      title: "Developer Philosophy",
-      content: "If it works — don't touch it.\n\nIf it doesn't work — you didn't touch anything.\n\nIf everything breaks — it's webpack's fault.",
-      modified: "Today",
-    },
-    {
-      id: 6,
-      title: "Git Commit Reality",
-      content: "feat: added feature\nfix: fixed feature\nchore: touched something I don't understand\nrefactor: moved code around and prayed\n\n// everything works until you push to production",
+      title: "Home",
+      content: "I'm falling in love with you and I guess it scares me because from the very beginning, I told myself not to.\n\nPart of me,\n\nthe human part of me, is warning me to be careful, to not allow myself to feel this way, to protect myself\n\nfrom getting hurt.\n\nBut my soul... my soul feels like I am home, and there is no reason to lock the door because I am safe.\n",
       modified: "Today",
     },
   ];
