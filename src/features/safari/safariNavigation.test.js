@@ -25,6 +25,42 @@ test("canonicalizes a target URL without a trailing slash", () => {
   );
 });
 
+const APOLOGY_URL = "https://aditya11201.github.io/apology-web-app/";
+
+test("accepts the apology-app root URL", () => {
+  assert.deepEqual(resolveSafariNavigation(APOLOGY_URL), {
+    kind: "iframe",
+    url: APOLOGY_URL,
+    title: APOLOGY_URL,
+  });
+});
+
+test("canonicalizes the apology-app root without a trailing slash", () => {
+  assert.equal(
+    resolveSafariNavigation("https://aditya11201.github.io/apology-web-app").url,
+    APOLOGY_URL,
+  );
+});
+
+test("accepts apology-app descendants with query and hash values", () => {
+  const result = resolveSafariNavigation(
+    "https://aditya11201.github.io/apology-web-app/section?scene=finale#message",
+  );
+
+  assert.equal(result.kind, "iframe");
+  assert.equal(
+    result.url,
+    "https://aditya11201.github.io/apology-web-app/section?scene=finale#message",
+  );
+});
+
+test("rejects a lookalike apology-app path", () => {
+  assert.equal(
+    resolveSafariNavigation("https://aditya11201.github.io/apology-web-app-attacker/").kind,
+    "blocked",
+  );
+});
+
 test("preserves allowed target query and hash values", () => {
   const result = resolveSafariNavigation(
     "https://aditya11201.github.io/birthday-wishes/?scene=finale#message",
