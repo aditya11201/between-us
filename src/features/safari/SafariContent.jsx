@@ -13,7 +13,11 @@ import safariBg from "@/assets/images/Safari_Wallpapers/Safari_Background.webp";
 import { AboutPage, HackintoshPage, CatsPage, SurprisePage } from "./Local_Pages/LocalPages";
 import { MemoryGame } from "./Local_Pages/MemoryGame";
 import { ExternalSiteFrame } from "./ExternalSiteFrame.jsx";
-import { resolveSafariNavigation, TARGET_URL } from "./safariNavigation.js";
+import {
+  resolveSafariNavigation,
+  TARGET_URL,
+  APOLOGY_TARGET_URL,
+} from "./safariNavigation.js";
 import {
   clearSafariHistory,
   createSafariTab,
@@ -43,6 +47,13 @@ const FAVORITES = [
   { title: "iCloud", icon: TextFavicon, iconProps: { fontSize: 22 }, bg: "#2384d7", url: "https://www.icloud.com" },
   { title: "Google", icon: TextFavicon, bg: "#fff", iconProps: { fontSize: 27 }, iconColor: "#4285f4", url: "https://www.google.com" },
   { title: "Birthday ❤️", icon: TextFavicon, iconProps: { fontSize: 20 }, bg: "#c45a8a", url: TARGET_URL },
+  {
+    title: "Apologies ❤️",
+    icon: TextFavicon,
+    iconProps: { fontSize: 20 },
+    bg: "#ff8fab",
+    url: APOLOGY_TARGET_URL,
+  },
 ];
 
 const CUSTOMIZE_ROWS = [
