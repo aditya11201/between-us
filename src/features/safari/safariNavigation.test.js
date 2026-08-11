@@ -25,6 +25,43 @@ test("canonicalizes a target URL without a trailing slash", () => {
   );
 });
 
+const APOLOGY_URL = "https://aditya11201.github.io/apology-web-app/";
+const ALLOWLISTED_PATHS = ["/birthday-wishes/", "/apology-web-app/"];
+
+test("accepts the apology-app root URL", () => {
+  assert.deepEqual(resolveSafariNavigation(APOLOGY_URL), {
+    kind: "iframe",
+    url: APOLOGY_URL,
+    title: APOLOGY_URL,
+  });
+});
+
+test("canonicalizes the apology-app root without a trailing slash", () => {
+  assert.equal(
+    resolveSafariNavigation("https://aditya11201.github.io/apology-web-app").url,
+    APOLOGY_URL,
+  );
+});
+
+test("accepts apology-app descendants with query and hash values", () => {
+  const result = resolveSafariNavigation(
+    "https://aditya11201.github.io/apology-web-app/section?scene=finale#message",
+  );
+
+  assert.equal(result.kind, "iframe");
+  assert.equal(
+    result.url,
+    "https://aditya11201.github.io/apology-web-app/section?scene=finale#message",
+  );
+});
+
+test("rejects a lookalike apology-app path", () => {
+  assert.equal(
+    resolveSafariNavigation("https://aditya11201.github.io/apology-web-app-attacker/").kind,
+    "blocked",
+  );
+});
+
 test("preserves allowed target query and hash values", () => {
   const result = resolveSafariNavigation(
     "https://aditya11201.github.io/birthday-wishes/?scene=finale#message",
@@ -55,26 +92,32 @@ test("rejects a lookalike path", () => {
   );
 });
 
-test("rejects another origin", () => {
-  assert.equal(resolveSafariNavigation("https://evil.example/birthday-wishes/").kind, "blocked");
+test("rejects another origin for every allowlisted path prefix", () => {
+  for (const path of ALLOWLISTED_PATHS) {
+    assert.equal(resolveSafariNavigation(`https://evil.example${path}`).kind, "blocked");
+  }
 });
 
 test("rejects non-HTTPS and executable protocols", () => {
-  for (const value of [
-    "http://aditya11201.github.io/birthday-wishes/",
-    "javascript:alert(1)",
-    "data:text/html,hello",
-    "file:///etc/passwd",
-  ]) {
+  for (const path of ALLOWLISTED_PATHS) {
+    assert.equal(
+      resolveSafariNavigation(`http://aditya11201.github.io${path}`).kind,
+      "blocked",
+    );
+  }
+
+  for (const value of ["javascript:alert(1)", "data:text/html,hello", "file:///etc/passwd"]) {
     assert.equal(resolveSafariNavigation(value).kind, "blocked");
   }
 });
 
-test("rejects embedded credentials", () => {
-  assert.equal(
-    resolveSafariNavigation("https://user:secret@aditya11201.github.io/birthday-wishes/").kind,
-    "blocked",
-  );
+test("rejects embedded credentials for every allowlisted path prefix", () => {
+  for (const path of ALLOWLISTED_PATHS) {
+    assert.equal(
+      resolveSafariNavigation(`https://user:secret@aditya11201.github.io${path}`).kind,
+      "blocked",
+    );
+  }
 });
 
 test("redacts credentials from blocked navigation results", () => {

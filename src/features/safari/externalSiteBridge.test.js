@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Window } from "happy-dom";
 import {
+  getExternalFrameSnapshot,
   inspectExternalDocument,
   readExternalFrameSnapshot,
   subscribeExternalFrameNavigation,
@@ -25,16 +26,17 @@ test("marks the birthday document ready when its root exists", () => {
   );
 });
 
-test("marks an unexpected document unsupported", () => {
+test("marks a loaded document ready without the birthday root marker", () => {
   const window = new Window();
-  window.document.title = "Not the birthday app";
+  window.document.title = "Untuk Kakak Cantik — Stasya Annesty";
+  window.document.body.innerHTML = '<section id="s1"></section>';
 
   assert.deepEqual(
     inspectExternalDocument(window.document, TARGET_URL),
     {
-      status: "unsupported",
+      status: "ready",
       url: TARGET_URL,
-      title: "Not the birthday app",
+      title: "Untuk Kakak Cantik — Stasya Annesty",
       hasTargetRoot: false,
     },
   );
@@ -46,7 +48,7 @@ test("uses the frame URL when the document has no title", () => {
   assert.deepEqual(
     inspectExternalDocument(window.document, TARGET_URL),
     {
-      status: "unsupported",
+      status: "ready",
       url: TARGET_URL,
       title: TARGET_URL,
       hasTargetRoot: false,
@@ -76,6 +78,22 @@ test("returns an inaccessible snapshot when frame access throws", () => {
 
   assert.deepEqual(readExternalFrameSnapshot(inaccessibleFrame), {
     status: "inaccessible",
+  });
+});
+
+test("treats a loaded cross-origin frame as an opaque ready page", () => {
+  const inaccessibleFrame = {
+    get location() {
+      throw new Error("cross-origin access denied");
+    },
+  };
+
+  assert.deepEqual(getExternalFrameSnapshot(inaccessibleFrame, TARGET_URL), {
+    status: "ready",
+    url: TARGET_URL,
+    title: TARGET_URL,
+    hasTargetRoot: false,
+    isOpaque: true,
   });
 });
 

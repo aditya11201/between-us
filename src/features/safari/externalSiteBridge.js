@@ -3,7 +3,7 @@ export function inspectExternalDocument(frameDocument, frameHref) {
   const title = frameDocument.title || frameHref;
 
   return {
-    status: hasTargetRoot ? "ready" : "unsupported",
+    status: "ready",
     url: frameHref,
     title,
     hasTargetRoot,
@@ -17,6 +17,19 @@ export function readExternalFrameSnapshot(frameWindow) {
   } catch {
     return { status: "inaccessible" };
   }
+}
+
+export function getExternalFrameSnapshot(frameWindow, frameHref) {
+  const snapshot = readExternalFrameSnapshot(frameWindow);
+  if (snapshot.status !== "inaccessible") return snapshot;
+
+  return {
+    status: "ready",
+    url: frameHref,
+    title: frameHref,
+    hasTargetRoot: false,
+    isOpaque: true,
+  };
 }
 
 export function subscribeExternalFrameNavigation(frameWindow, onChange) {

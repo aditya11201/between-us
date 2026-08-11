@@ -1,6 +1,6 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
-  readExternalFrameSnapshot,
+  getExternalFrameSnapshot,
   subscribeExternalFrameNavigation,
 } from "./externalSiteBridge.js";
 
@@ -78,7 +78,7 @@ export function ExternalSiteFrame({
 
     const frameWindow = frame.contentWindow;
     const snapshot = frameWindow
-      ? readExternalFrameSnapshot(frameWindow)
+      ? getExternalFrameSnapshot(frameWindow, url)
       : { status: "inaccessible" };
 
     if (snapshot.status === "ready") {
@@ -89,6 +89,7 @@ export function ExternalSiteFrame({
       latest.onReady?.(snapshot);
 
       if (lifecycleRef.current.cycle !== cycle || iframeRef.current !== frame) return;
+      if (snapshot.isOpaque) return;
 
       clearBridge();
 

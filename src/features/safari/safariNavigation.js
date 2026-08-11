@@ -1,6 +1,13 @@
 export const TARGET_ORIGIN = "https://aditya11201.github.io";
 export const TARGET_PATH_PREFIX = "/birthday-wishes/";
 export const TARGET_URL = "https://aditya11201.github.io/birthday-wishes/";
+export const APOLOGY_TARGET_PATH_PREFIX = "/apology-web-app/";
+export const APOLOGY_TARGET_URL = "https://aditya11201.github.io/apology-web-app/";
+
+const TARGET_PATH_PREFIXES = [
+  TARGET_PATH_PREFIX,
+  APOLOGY_TARGET_PATH_PREFIX,
+];
 
 const LOCAL_COMMANDS = Object.freeze({
   about: "About",
@@ -21,6 +28,11 @@ function blocked(url, reason) {
 
 function redactCredentials(parsed) {
   return `${parsed.protocol}//${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
+function matchesTargetPath(pathname, prefix) {
+  const rootPath = prefix.slice(0, -1);
+  return pathname === rootPath || pathname === prefix || pathname.startsWith(prefix);
 }
 
 export function resolveSafariNavigation(rawValue) {
@@ -57,10 +69,13 @@ export function resolveSafariNavigation(rawValue) {
   if (parsed.username || parsed.password) return blocked(safeHref, "credentials");
   if (parsed.origin !== TARGET_ORIGIN) return blocked(safeHref, "origin");
 
-  const rootPath = TARGET_PATH_PREFIX.slice(0, -1);
-  if (parsed.pathname === rootPath) parsed.pathname = TARGET_PATH_PREFIX;
-  if (!parsed.pathname.startsWith(TARGET_PATH_PREFIX)) {
-    return blocked(safeHref, "path");
+  const targetPrefix = TARGET_PATH_PREFIXES.find((prefix) => (
+    matchesTargetPath(parsed.pathname, prefix)
+  ));
+
+  if (!targetPrefix) return blocked(safeHref, "path");
+  if (parsed.pathname === targetPrefix.slice(0, -1)) {
+    parsed.pathname = targetPrefix;
   }
 
   return { kind: "iframe", url: parsed.href, title: parsed.href };
