@@ -19,6 +19,19 @@ export function readExternalFrameSnapshot(frameWindow) {
   }
 }
 
+export function getExternalFrameSnapshot(frameWindow, frameHref) {
+  const snapshot = readExternalFrameSnapshot(frameWindow);
+  if (snapshot.status !== "inaccessible") return snapshot;
+
+  return {
+    status: "ready",
+    url: frameHref,
+    title: frameHref,
+    hasTargetRoot: false,
+    isOpaque: true,
+  };
+}
+
 export function subscribeExternalFrameNavigation(frameWindow, onChange) {
   const handleNavigation = () => onChange(readExternalFrameSnapshot(frameWindow));
 

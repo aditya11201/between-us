@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Window } from "happy-dom";
 import {
+  getExternalFrameSnapshot,
   inspectExternalDocument,
   readExternalFrameSnapshot,
   subscribeExternalFrameNavigation,
@@ -76,6 +77,22 @@ test("returns an inaccessible snapshot when frame access throws", () => {
 
   assert.deepEqual(readExternalFrameSnapshot(inaccessibleFrame), {
     status: "inaccessible",
+  });
+});
+
+test("treats a loaded cross-origin frame as an opaque ready page", () => {
+  const inaccessibleFrame = {
+    get location() {
+      throw new Error("cross-origin access denied");
+    },
+  };
+
+  assert.deepEqual(getExternalFrameSnapshot(inaccessibleFrame, TARGET_URL), {
+    status: "ready",
+    url: TARGET_URL,
+    title: TARGET_URL,
+    hasTargetRoot: false,
+    isOpaque: true,
   });
 });
 

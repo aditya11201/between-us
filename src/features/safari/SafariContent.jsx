@@ -41,16 +41,8 @@ const TextFavicon = memo(({ children, fontSize = 25 }) => (
 const FAVORITES = [
   { title: "Apple", icon: AppleFavicon, bg: "#3a3a3c", url: "https://www.apple.com" },
   { title: "iCloud", icon: TextFavicon, iconProps: { fontSize: 22 }, bg: "#2384d7", url: "https://www.icloud.com" },
-  { title: "Yahoo", icon: TextFavicon, iconProps: { fontSize: 21 }, bg: "#5f01d1", url: "https://www.yahoo.com" },
-  { title: "Bing", icon: TextFavicon, bg: "#174a8b", url: "https://www.bing.com" },
   { title: "Google", icon: TextFavicon, bg: "#fff", iconProps: { fontSize: 27 }, iconColor: "#4285f4", url: "https://www.google.com" },
-  { title: "Wikipedia", icon: TextFavicon, bg: "#fff", iconProps: { fontSize: 29 }, iconColor: "#111", url: "https://www.wikipedia.org" },
-  { title: "Facebook", icon: TextFavicon, bg: "#1877f2", iconProps: { fontSize: 31 }, url: "https://www.facebook.com" },
-  { title: "Twitter", icon: TextFavicon, bg: "#fff", iconProps: { fontSize: 26 }, iconColor: "#737373", url: "https://twitter.com" },
-  { title: "LinkedIn", icon: TextFavicon, bg: "#0a66c2", iconProps: { fontSize: 20 }, url: "https://www.linkedin.com" },
-  { title: "The Weather Channel", icon: TextFavicon, bg: "#0b3d6b", iconProps: { fontSize: 14 }, url: "https://weather.com" },
-  { title: "Yelp", icon: TextFavicon, bg: "#d32323", iconProps: { fontSize: 19 }, url: "https://www.yelp.com" },
-  { title: "TripAdvisor", icon: TextFavicon, bg: "#00af87", iconProps: { fontSize: 22 }, url: "https://www.tripadvisor.com" },
+  { title: "Birthday ❤️", icon: TextFavicon, iconProps: { fontSize: 20 }, bg: "#c45a8a", url: TARGET_URL },
 ];
 
 const CUSTOMIZE_ROWS = [
