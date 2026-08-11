@@ -3,7 +3,7 @@ export function inspectExternalDocument(frameDocument, frameHref) {
   const title = frameDocument.title || frameHref;
 
   return {
-    status: hasTargetRoot ? "ready" : "unsupported",
+    status: "ready",
     url: frameHref,
     title,
     hasTargetRoot,
