@@ -103,8 +103,9 @@
 // ── Favorites ─────────────────────────────────────────────────────
 .sf__favs {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
-  gap: 10px 2px;
+  grid-template-columns: repeat(auto-fit, 76px);
+  justify-content: center;
+  gap: 10px 0;
 }
 
 .sf__fav {
@@ -132,8 +133,8 @@
 }
 
 .sf__fav-icon {
-  width: 44px;
-  height: 44px;
+  width: 60px;
+  height: 60px;
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -142,7 +143,65 @@
   flex-shrink: 0;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
 
-  svg { width: 44px; height: 44px; display: block; }
+  svg { width: 60px; height: 60px; display: block; }
+}
+
+.sf__fav-icon--apple {
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #e8e8ea 100%);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  svg {
+    width: 34px;
+    height: 46px;
+  }
+}
+
+.sf__fav-icon--google {
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  svg {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+.sf__fav-icon--icloud {
+  border-radius: 14px;
+  background: #f5f6fa;
+  border: 1px solid #d9d9de;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  svg {
+    width: 47px;
+    height: 31px;
+  }
+}
+
+.sf__fav-icon--birthday {
+  border-radius: 14px;
+  background: #f6f5fa;
+  border: 1px solid #cdc8f2;
+  box-shadow: 0 5px 12px rgba(63, 14, 92, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  svg {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+.sf__fav-icon--apologies {
+  border-radius: 14px;
+  background: #f6f7fb;
+  border: 1px solid #dff3c8;
+  box-shadow: 0 5px 12px rgba(122, 74, 43, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  svg {
+    width: 48px;
+    height: 50px;
+  }
 }
 
 .sf__fav-label {
@@ -408,7 +467,6 @@
 @media (max-width: 640px) {
   .sf__start { padding: 32px 16px 76px; }
   .sf__start-inner { gap: 28px; }
-  .sf__favs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .sf__welcome-card,
   .sf__empty-card,
   .sf__privacy-card { padding: 18px; }
