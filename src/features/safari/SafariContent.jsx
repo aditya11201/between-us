@@ -80,11 +80,91 @@ const ICloudFavicon = memo(() => (
   </svg>
 ));
 
-const TextFavicon = memo(({ children, fontSize = 25 }) => (
-  <svg viewBox="0 0 60 60" width="30" height="30" fill="currentColor" aria-hidden="true">
-    <text x="30" y="40" textAnchor="middle" fontFamily="-apple-system, BlinkMacSystemFont, sans-serif" fontSize={fontSize} fontWeight="700">
-      {children}
-    </text>
+const BirthdayFavicon = memo(() => (
+  <svg viewBox="0 0 500 500" aria-hidden="true">
+    <g stroke="#3f0e5c" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M250 96 L255 134" fill="none" />
+      <g transform="rotate(-4 250 160)">
+        <rect x="158" y="168" width="196" height="62" rx="16" fill="#efc189" />
+        <path fill="#f9f8fd" d="M146 188 C132 172 136 140 164 130 C190 120 260 108 306 108 C336 108 356 122 356 146 C356 166 348 180 334 178 C322 176 318 164 308 156 C298 148 286 152 278 162 C270 172 260 180 246 176 C234 172 230 160 218 156 C206 152 196 160 190 170 C182 182 160 200 146 188 Z" />
+      </g>
+      <g id="birthday-hearts-a" fill="#e8615c">
+        <path d="M150 216 C150 213 145 211 143 214 C141 217 146 221 150 225 C154 221 159 217 157 214 C155 211 150 213 150 216 Z" />
+        <path d="M240 212 C240 209 235 207 233 210 C231 213 236 217 240 221 C244 217 249 213 247 210 C245 207 240 209 240 212 Z" />
+        <path d="M318 220 C318 217 313 215 311 218 C309 221 314 225 318 229 C322 225 327 221 325 218 C323 215 318 217 318 220 Z" />
+      </g>
+      <g transform="rotate(2 250 260)">
+        <rect x="120" y="268" width="260" height="72" rx="18" fill="#efc189" />
+        <path fill="#f9f8fd" d="M106 292 C94 276 94 240 118 228 C140 218 200 212 258 210 C316 208 366 212 386 220 C406 230 408 256 398 272 C390 286 376 290 366 282 C358 275 352 266 340 268 C326 270 322 286 310 294 C296 303 278 298 270 286 C262 274 256 262 242 260 C226 258 216 270 208 282 C198 296 180 298 170 286 C162 276 158 266 146 266 C134 266 120 280 106 292 Z" />
+      </g>
+      <g id="birthday-hearts-b" fill="#e8615c">
+        <path d="M128 330 C128 326 122 324 120 328 C118 332 124 337 128 342 C132 337 138 332 136 328 C134 324 128 326 128 330 Z" />
+        <path d="M246 324 C246 320 240 318 238 322 C236 326 242 331 246 336 C250 331 256 326 254 322 C252 318 246 320 246 324 Z" />
+        <path d="M352 318 C352 314 346 312 344 316 C342 320 348 325 352 330 C356 325 362 320 360 316 C358 312 352 314 352 318 Z" />
+      </g>
+      <g transform="rotate(-2 250 400)">
+        <rect x="92" y="372" width="316" height="80" rx="20" fill="#efc189" />
+        <path fill="#f9f8fd" d="M76 418 C60 400 58 360 86 344 C110 330 170 324 250 320 C330 316 390 314 412 322 C438 332 442 362 434 384 C428 400 414 406 404 398 C394 390 390 380 378 380 C364 380 360 396 350 408 C338 422 316 424 304 410 C294 398 290 382 276 376 C260 370 246 378 238 390 C228 404 212 412 196 406 C182 401 176 388 162 384 C148 380 136 390 128 402 C120 414 92 434 76 418 Z" />
+      </g>
+      <path fill="#cdc8f2" d="M60 450 L440 446 L402 476 C340 486 160 486 98 476 Z" />
+      <g id="birthday-topper" fill="#e8615c">
+        <path d="M250 54 C250 38 230 34 224 46 C218 58 238 72 250 84 C262 72 282 58 276 46 C270 34 250 38 250 54 Z" />
+      </g>
+    </g>
+  </svg>
+));
+
+const ApologiesFavicon = memo(() => (
+  <svg viewBox="0 0 500 520" aria-hidden="true">
+    <ellipse cx="278" cy="470" rx="105" ry="16" fill="#dff3c8" />
+    <g stroke="#7a4a2b" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M165 234 C150 285 195 330 207 372" fill="none" strokeWidth="2.5" />
+      <path d="M152 212 L178 212 L170 234 L160 234 Z" fill="#ef4b4b" stroke="#b23434" strokeWidth="3" />
+      <g id="apologies-balloon">
+        <path d="M165 215 C165 215 55 150 55 82 C55 45 85 25 115 25 C138 25 158 38 165 60 C172 38 192 25 215 25 C245 25 275 45 275 82 C275 150 165 215 165 215 Z" fill="#ef4b4b" stroke="#b23434" strokeWidth="4" />
+        <ellipse cx="135" cy="90" rx="55" ry="42" fill="#fff" opacity=".12" stroke="none" />
+        <circle cx="90" cy="70" r="9" fill="#fff" stroke="none" />
+        <circle cx="78" cy="92" r="5.5" fill="#fff" stroke="none" />
+        <circle cx="86" cy="108" r="4" fill="#fff" stroke="none" />
+        <circle cx="190" cy="42" r="7" fill="#fff" stroke="none" />
+        <circle cx="176" cy="56" r="4" fill="#fff" stroke="none" />
+        <text x="165" y="132" textAnchor="middle" transform="rotate(-8 165 130)" fill="#fff" stroke="none" fontFamily="system-ui, sans-serif" fontSize="29" fontWeight="700" letterSpacing="2">I'M SORRY</text>
+      </g>
+      <g id="apologies-chick">
+        <circle cx="322" cy="414" r="40" fill="#fbe45c" strokeWidth="3" />
+        <circle cx="310" cy="400" r="4" fill="#2b1b12" stroke="none" />
+        <circle cx="337" cy="400" r="4" fill="#2b1b12" stroke="none" />
+        <circle cx="309" cy="398.5" r="1.4" fill="#fff" stroke="none" />
+        <circle cx="336" cy="398.5" r="1.4" fill="#fff" stroke="none" />
+        <ellipse cx="323" cy="412" rx="8" ry="5.5" fill="#f2989c" stroke="#d76f74" strokeWidth="1.5" />
+        <ellipse cx="312" cy="456" rx="6" ry="4" fill="#f2989c" stroke="none" />
+        <ellipse cx="340" cy="456" rx="6" ry="4" fill="#f2989c" stroke="none" />
+      </g>
+      <g id="apologies-bunny">
+        <ellipse cx="268" cy="243" rx="17" ry="47" fill="#fff" strokeWidth="3" transform="rotate(-14 268 245)" />
+        <ellipse cx="268" cy="248" rx="8.5" ry="29" fill="#f6aec3" stroke="none" />
+        <ellipse cx="322" cy="248" rx="17" ry="47" fill="#fff" strokeWidth="3" transform="rotate(16 322 250)" />
+        <ellipse cx="322" cy="253" rx="8.5" ry="29" fill="#f6aec3" stroke="none" />
+        <ellipse cx="252" cy="418" rx="47" ry="52" fill="#fff" strokeWidth="3" />
+        <ellipse cx="216" cy="464" rx="15" ry="9" fill="#fff" strokeWidth="2.5" />
+        <ellipse cx="268" cy="468" rx="15" ry="9" fill="#fff" strokeWidth="2.5" />
+        <ellipse cx="278" cy="312" rx="80" ry="74" fill="#fff" strokeWidth="3" />
+        <path d="M236 283 q10 -8 20 -4 M302 297 q10 -6 20 -2" fill="none" strokeWidth="2.5" />
+        <circle cx="246" cy="298" r="8.5" fill="#2b1b12" stroke="none" />
+        <circle cx="243" cy="295" r="3" fill="#fff" stroke="none" />
+        <circle cx="313" cy="313" r="8.5" fill="#2b1b12" stroke="none" />
+        <circle cx="310" cy="310" r="3" fill="#fff" stroke="none" />
+        <ellipse cx="219" cy="306" rx="9" ry="5.5" fill="#f6aec3" opacity=".85" stroke="none" />
+        <ellipse cx="330" cy="332" rx="9" ry="5.5" fill="#f6aec3" opacity=".85" stroke="none" />
+        <path d="M267 316 Q272 323 278 316 Q284 323 289 316" fill="none" strokeWidth="2.5" />
+        <path d="M234 404 Q216 394 208 378" fill="none" stroke="#7a4a2b" strokeWidth="15" />
+        <path d="M234 404 Q216 394 208 378" fill="none" stroke="#fff" strokeWidth="10" />
+        <circle cx="207" cy="373" r="8" fill="#fff" strokeWidth="2.5" />
+        <path d="M258 404 Q276 410 290 402" fill="none" stroke="#7a4a2b" strokeWidth="15" />
+        <path d="M258 404 Q276 410 290 402" fill="none" stroke="#fff" strokeWidth="10" />
+      </g>
+      <ellipse cx="299" cy="424" rx="9" ry="14" fill="#fbe45c" strokeWidth="2.5" transform="rotate(-15 299 424)" />
+    </g>
   </svg>
 ));
 
@@ -93,14 +173,8 @@ const FAVORITES = [
   { title: "Apple", variant: "apple", icon: AppleFavicon, url: "https://www.apple.com" },
   { title: "iCloud", variant: "icloud", icon: ICloudFavicon, url: "https://www.icloud.com" },
   { title: "Google", variant: "google", icon: GoogleFavicon, url: "https://www.google.com" },
-  { title: "Birthday ❤️", icon: TextFavicon, iconProps: { fontSize: 20 }, bg: "#c45a8a", url: TARGET_URL },
-  {
-    title: "Apologies ❤️",
-    icon: TextFavicon,
-    iconProps: { fontSize: 20 },
-    bg: "#ff8fab",
-    url: APOLOGY_TARGET_URL,
-  },
+  { title: "Birthday ❤️", variant: "birthday", icon: BirthdayFavicon, url: TARGET_URL },
+  { title: "Apologies ❤️", variant: "apologies", icon: ApologiesFavicon, url: APOLOGY_TARGET_URL },
 ];
 
 const CUSTOMIZE_ROWS = [
@@ -407,10 +481,9 @@ const StartPage = memo(({ bookmarks, recentlyClosedTabs, onNavigate }) => {
               return (
                 <button key={favorite.title} type="button" className="sf__fav" onClick={() => onNavigate(favorite.url)}>
                   <span
-                    className={favorite.variant ? `sf__fav-icon sf__fav-icon--${favorite.variant}` : "sf__fav-icon"}
-                    style={favorite.variant ? undefined : { background: favorite.bg, color: favorite.iconColor || "#fff" }}
+                    className={`sf__fav-icon sf__fav-icon--${favorite.variant}`}
                   >
-                    <IconComponent {...favorite.iconProps}>{favorite.title.charAt(0)}</IconComponent>
+                    <IconComponent />
                   </span>
                   <span className="sf__fav-label">{favorite.title}</span>
                 </button>

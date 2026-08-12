@@ -16,6 +16,8 @@ function appWindowShouldMemo(prevProps, nextProps) {
     return (
       prevProps.win.x === nextProps.win.x &&
       prevProps.win.y === nextProps.win.y &&
+      prevProps.win.width === nextProps.win.width &&
+      prevProps.win.height === nextProps.win.height &&
       prevProps.win.zIndex === nextProps.win.zIndex &&
       prevProps.isMinimized === nextProps.isMinimized &&
       prevProps.children === nextProps.children
@@ -26,6 +28,10 @@ function appWindowShouldMemo(prevProps, nextProps) {
   return (
     prevProps.win.id === nextProps.win.id &&
     prevProps.isActive === nextProps.isActive &&
+    prevProps.win.x === nextProps.win.x &&
+    prevProps.win.y === nextProps.win.y &&
+    prevProps.win.width === nextProps.win.width &&
+    prevProps.win.height === nextProps.win.height &&
     prevProps.isMinimized === nextProps.isMinimized &&
     prevProps.children === nextProps.children
   );
@@ -69,6 +75,11 @@ export const AppWindow = memo(function AppWindow({
   const sizeRef = useRef(size);
   const isMaximizedRef = useRef(isMaximized);
   const prevRectRef = useRef(prevRect);
+
+  useLayoutEffect(() => {
+    posRef.current = pos;
+    sizeRef.current = size;
+  }, [pos, size]);
   
   useLayoutEffect(() => {
     isMaximizedRef.current = isMaximized;

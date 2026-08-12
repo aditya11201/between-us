@@ -286,6 +286,58 @@ test("public openApp keeps ordinary calls payload-free", async () => {
   assert.equal(state.windows[0].payload, undefined);
 });
 
+test("public maximizeWindow restores the saved rectangle on the second call", async () => {
+  const container = await renderWindowManager();
+
+  await act(async () => {
+    currentManager.openApp("safari", "Safari");
+  });
+  const initialState = await waitForWindowManagerState(
+    container,
+    ({ windows }) => windows[0]?.id === "safari",
+    "initial Safari window before maximizing",
+  );
+  const initialWindow = initialState.windows[0];
+
+  await act(async () => {
+    currentManager.maximizeWindow("safari");
+  });
+  await waitForWindowManagerState(
+    container,
+    ({ windows }) => windows[0]?.x === 0 && windows[0]?.y === 28,
+    "maximized Safari window",
+  );
+
+  await act(async () => {
+    currentManager.maximizeWindow("safari");
+  });
+  const restoredState = await waitForWindowManagerState(
+    container,
+    ({ windows }) => (
+      windows[0]?.x === initialWindow.x
+      && windows[0]?.y === initialWindow.y
+      && windows[0]?.width === initialWindow.width
+      && windows[0]?.height === initialWindow.height
+    ),
+    "restored Safari window after the second maximize call",
+  );
+
+  assert.deepEqual(
+    {
+      x: restoredState.windows[0].x,
+      y: restoredState.windows[0].y,
+      width: restoredState.windows[0].width,
+      height: restoredState.windows[0].height,
+    },
+    {
+      x: initialWindow.x,
+      y: initialWindow.y,
+      width: initialWindow.width,
+      height: initialWindow.height,
+    },
+  );
+});
+
 test("public openApp updates a same-ID payload without duplicating openApps", async () => {
   const container = await renderWindowManager();
   const previewId = "preview:favorites/sunset.webp";

@@ -11,18 +11,9 @@ test("keeps the default Favorites order and apology tile wiring", () => {
 
   const titles = [...favoritesBlock.matchAll(/title: "([^"]+)"/g)].map((match) => match[1]);
   assert.deepEqual(titles, ["Apple", "iCloud", "Google", "Birthday ❤️", "Apologies ❤️"]);
-
-  const apologyFavorite = favoritesBlock.match(
-    /\{\s*title: "Apologies ❤️",[\s\S]*?\n\s*\},/,
-  )?.[0];
-  assert.ok(apologyFavorite, "Apologies Favorite should be present");
-  assert.match(apologyFavorite, /icon: TextFavicon/);
-  assert.match(apologyFavorite, /url: APOLOGY_TARGET_URL/);
+  assert.match(favoritesBlock, /title: "Apologies ❤️", variant: "apologies", icon: ApologiesFavicon/);
+  assert.match(favoritesBlock, /title: "Apologies ❤️",[^\n]*url: APOLOGY_TARGET_URL/);
   assert.equal(APOLOGY_TARGET_URL, "https://aditya11201.github.io/apology-web-app/");
-  assert.match(
-    source,
-    /<IconComponent \{\.\.\.favorite\.iconProps\}>\{favorite\.title\.charAt\(0\)\}<\/IconComponent>/,
-  );
 });
 
 test("uses the provided Apple logo treatment without changing the label size", () => {
@@ -31,8 +22,7 @@ test("uses the provided Apple logo treatment without changing the label size", (
   assert.match(source, /<stop offset="0" stopColor="#8e8e93" \/>/);
   assert.match(source, /<stop offset="1" stopColor="#48484a" \/>/);
   assert.match(source, /title: "Apple",\s*variant: "apple",/);
-  assert.match(source, /className=\{favorite\.variant \? `sf__fav-icon sf__fav-icon--\$\{favorite\.variant\}` : "sf__fav-icon"\}/);
-  assert.match(source, /style=\{favorite\.variant \? undefined :/);
+  assert.match(source, /className=\{`sf__fav-icon sf__fav-icon--\$\{favorite\.variant\}`\}/);
 });
 
 test("uses the provided Google logo treatment without changing the label size", () => {
@@ -42,7 +32,7 @@ test("uses the provided Google logo treatment without changing the label size", 
   assert.match(source, /fill="#FBBC05"/);
   assert.match(source, /fill="#EA4335"/);
   assert.match(source, /title: "Google",\s*variant: "google",\s*icon: GoogleFavicon,/);
-  assert.match(source, /className=\{favorite\.variant \? `sf__fav-icon sf__fav-icon--\$\{favorite\.variant\}` : "sf__fav-icon"\}/);
+  assert.match(source, /className=\{`sf__fav-icon sf__fav-icon--\$\{favorite\.variant\}`\}/);
 });
 
 test("uses the supplied SVG iCloud logo without changing the Favorite label", () => {
@@ -54,4 +44,24 @@ test("uses the supplied SVG iCloud logo without changing the Favorite label", ()
   assert.match(source, /id="icloud-favorite-left"/);
   assert.match(source, /title: "iCloud", variant: "icloud", icon: ICloudFavicon,/);
   assert.match(source, /title: "iCloud",[^\n]*url: "https:\/\/www\.icloud\.com"/);
+});
+
+test("uses the supplied static Birthday cake logo without changing the Favorite label", () => {
+  assert.match(source, /const BirthdayFavicon = memo\(\(\) => \(/);
+  assert.match(source, /viewBox="0 0 500 500"/);
+  assert.match(source, /id="birthday-hearts-a"/);
+  assert.match(source, /id="birthday-hearts-b"/);
+  assert.match(source, /id="birthday-topper"/);
+  assert.match(source, /title: "Birthday ❤️", variant: "birthday", icon: BirthdayFavicon,/);
+  assert.match(source, /title: "Birthday ❤️",[^\n]*url: TARGET_URL/);
+});
+
+test("uses the supplied static Apologies scene without changing the Favorite label", () => {
+  assert.match(source, /const ApologiesFavicon = memo\(\(\) => \(/);
+  assert.match(source, /viewBox="0 0 500 520"/);
+  assert.match(source, /I'M SORRY/);
+  assert.match(source, /id="apologies-bunny"/);
+  assert.match(source, /id="apologies-chick"/);
+  assert.match(source, /title: "Apologies ❤️", variant: "apologies", icon: ApologiesFavicon,/);
+  assert.match(source, /title: "Apologies ❤️",[\s\S]*?url: APOLOGY_TARGET_URL/);
 });

@@ -180,6 +180,30 @@
   }
 }
 
+.sf__fav-icon--birthday {
+  border-radius: 14px;
+  background: #f6f5fa;
+  border: 1px solid #cdc8f2;
+  box-shadow: 0 5px 12px rgba(63, 14, 92, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  svg {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+.sf__fav-icon--apologies {
+  border-radius: 14px;
+  background: #f6f7fb;
+  border: 1px solid #dff3c8;
+  box-shadow: 0 5px 12px rgba(122, 74, 43, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  svg {
+    width: 48px;
+    height: 50px;
+  }
+}
+
 .sf__fav-label {
   max-width: 70px;
   overflow: hidden;

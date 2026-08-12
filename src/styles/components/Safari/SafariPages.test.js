@@ -47,3 +47,17 @@ test("styles the iCloud Favorite as a pale rounded card", () => {
   assert.match(source, /\.sf__fav-icon--icloud[\s\S]*?border:\s*1px solid #d9d9de;/);
   assert.match(source, /\.sf__fav-icon--icloud[\s\S]*?svg\s*\{\s*width:\s*47px;\s*height:\s*31px;/);
 });
+
+test("styles the Birthday Favorite as a cake-colored rounded card", () => {
+  assert.match(source, /\.sf__fav-icon--birthday\s*\{/);
+  assert.match(source, /\.sf__fav-icon--birthday[\s\S]*?background:\s*#f6f5fa;/);
+  assert.match(source, /\.sf__fav-icon--birthday[\s\S]*?border:\s*1px solid #cdc8f2;/);
+  assert.match(source, /\.sf__fav-icon--birthday[\s\S]*?svg\s*\{\s*width:\s*48px;\s*height:\s*48px;/);
+});
+
+test("styles the Apologies Favorite as a bright rounded card", () => {
+  assert.match(source, /\.sf__fav-icon--apologies\s*\{/);
+  assert.match(source, /\.sf__fav-icon--apologies[\s\S]*?background:\s*#f6f7fb;/);
+  assert.match(source, /\.sf__fav-icon--apologies[\s\S]*?border:\s*1px solid #dff3c8;/);
+  assert.match(source, /\.sf__fav-icon--apologies[\s\S]*?svg\s*\{\s*width:\s*48px;\s*height:\s*50px;/);
+});
