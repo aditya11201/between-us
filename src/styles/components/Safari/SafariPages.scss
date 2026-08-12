@@ -103,7 +103,7 @@
 // ── Favorites ─────────────────────────────────────────────────────
 .sf__favs {
   display: grid;
-  grid-template-columns: repeat(auto-fit, 68px);
+  grid-template-columns: repeat(auto-fit, 76px);
   justify-content: center;
   gap: 10px 0;
 }
@@ -133,8 +133,8 @@
 }
 
 .sf__fav-icon {
-  width: 52px;
-  height: 52px;
+  width: 60px;
+  height: 60px;
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -143,7 +143,7 @@
   flex-shrink: 0;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
 
-  svg { width: 52px; height: 52px; display: block; }
+  svg { width: 60px; height: 60px; display: block; }
 }
 
 .sf__fav-label {
