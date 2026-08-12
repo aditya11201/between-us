@@ -31,8 +31,8 @@ test("uses the provided Apple logo treatment without changing the label size", (
   assert.match(source, /<stop offset="0" stopColor="#8e8e93" \/>/);
   assert.match(source, /<stop offset="1" stopColor="#48484a" \/>/);
   assert.match(source, /title: "Apple",\s*variant: "apple",/);
-  assert.match(source, /className=\{favorite\.variant === "apple" \? "sf__fav-icon sf__fav-icon--apple" : "sf__fav-icon"\}/);
-  assert.match(source, /style=\{favorite\.variant === "apple" \? undefined :/);
+  assert.match(source, /className=\{favorite\.variant \? `sf__fav-icon sf__fav-icon--\$\{favorite\.variant\}` : "sf__fav-icon"\}/);
+  assert.match(source, /style=\{favorite\.variant \? undefined :/);
 });
 
 test("uses the provided Google logo treatment without changing the label size", () => {
@@ -42,5 +42,5 @@ test("uses the provided Google logo treatment without changing the label size", 
   assert.match(source, /fill="#FBBC05"/);
   assert.match(source, /fill="#EA4335"/);
   assert.match(source, /title: "Google",\s*variant: "google",\s*icon: GoogleFavicon,/);
-  assert.match(source, /className=\{favorite\.variant === "google" \? "sf__fav-icon sf__fav-icon--google"/);
+  assert.match(source, /className=\{favorite\.variant \? `sf__fav-icon sf__fav-icon--\$\{favorite\.variant\}` : "sf__fav-icon"\}/);
 });

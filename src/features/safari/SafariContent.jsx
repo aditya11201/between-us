@@ -39,6 +39,15 @@ const AppleFavicon = memo(() => (
   </svg>
 ));
 
+const GoogleFavicon = memo(() => (
+  <svg viewBox="0 0 48 48" aria-hidden="true">
+    <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z" />
+    <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z" />
+    <path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.46 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.07 2 20.44 2 24c0 3.56.85 6.93 2.34 9.88l7.35-5.7z" />
+    <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z" />
+  </svg>
+));
+
 const TextFavicon = memo(({ children, fontSize = 25 }) => (
   <svg viewBox="0 0 60 60" width="30" height="30" fill="currentColor" aria-hidden="true">
     <text x="30" y="40" textAnchor="middle" fontFamily="-apple-system, BlinkMacSystemFont, sans-serif" fontSize={fontSize} fontWeight="700">
@@ -51,7 +60,7 @@ const TextFavicon = memo(({ children, fontSize = 25 }) => (
 const FAVORITES = [
   { title: "Apple", variant: "apple", icon: AppleFavicon, url: "https://www.apple.com" },
   { title: "iCloud", icon: TextFavicon, iconProps: { fontSize: 22 }, bg: "#2384d7", url: "https://www.icloud.com" },
-  { title: "Google", icon: TextFavicon, bg: "#fff", iconProps: { fontSize: 27 }, iconColor: "#4285f4", url: "https://www.google.com" },
+  { title: "Google", variant: "google", icon: GoogleFavicon, url: "https://www.google.com" },
   { title: "Birthday ❤️", icon: TextFavicon, iconProps: { fontSize: 20 }, bg: "#c45a8a", url: TARGET_URL },
   {
     title: "Apologies ❤️",
@@ -366,8 +375,8 @@ const StartPage = memo(({ bookmarks, recentlyClosedTabs, onNavigate }) => {
               return (
                 <button key={favorite.title} type="button" className="sf__fav" onClick={() => onNavigate(favorite.url)}>
                   <span
-                    className={favorite.variant === "apple" ? "sf__fav-icon sf__fav-icon--apple" : "sf__fav-icon"}
-                    style={favorite.variant === "apple" ? undefined : { background: favorite.bg, color: favorite.iconColor || "#fff" }}
+                    className={favorite.variant ? `sf__fav-icon sf__fav-icon--${favorite.variant}` : "sf__fav-icon"}
+                    style={favorite.variant ? undefined : { background: favorite.bg, color: favorite.iconColor || "#fff" }}
                   >
                     <IconComponent {...favorite.iconProps}>{favorite.title.charAt(0)}</IconComponent>
                   </span>
