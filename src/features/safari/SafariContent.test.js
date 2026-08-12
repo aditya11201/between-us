@@ -24,3 +24,13 @@ test("keeps the default Favorites order and apology tile wiring", () => {
     /<IconComponent \{\.\.\.favorite\.iconProps\}>\{favorite\.title\.charAt\(0\)\}<\/IconComponent>/,
   );
 });
+
+test("uses the provided Apple logo treatment without changing the label size", () => {
+  assert.match(source, /const AppleFavicon = memo\(\(\) => \(\s*<svg viewBox="0 0 384 512"/);
+  assert.match(source, /<linearGradient id="apple-favorite-gradient"/);
+  assert.match(source, /<stop offset="0" stopColor="#8e8e93" \/>/);
+  assert.match(source, /<stop offset="1" stopColor="#48484a" \/>/);
+  assert.match(source, /title: "Apple",\s*variant: "apple",/);
+  assert.match(source, /className=\{favorite\.variant === "apple" \? "sf__fav-icon sf__fav-icon--apple" : "sf__fav-icon"\}/);
+  assert.match(source, /style=\{favorite\.variant === "apple" \? undefined :/);
+});

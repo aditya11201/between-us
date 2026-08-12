@@ -27,3 +27,9 @@ test("enlarges Favorite logos without changing label size", () => {
   assert.match(favoriteIconBlock, /svg\s*\{\s*width:\s*60px;\s*height:\s*60px;/);
   assert.match(favoriteLabelBlock, /font-size:\s*10px;/);
 });
+
+test("styles the Apple Favorite as a light rounded card", () => {
+  assert.match(source, /\.sf__fav-icon--apple\s*\{/);
+  assert.match(source, /\.sf__fav-icon--apple[\s\S]*?background:\s*linear-gradient\(180deg,\s*#ffffff 0%,\s*#e8e8ea 100%\);/);
+  assert.match(source, /\.sf__fav-icon--apple[\s\S]*?border-radius:\s*14px;/);
+});
