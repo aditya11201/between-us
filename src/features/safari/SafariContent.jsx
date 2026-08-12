@@ -28,8 +28,14 @@ import {
 
 // ── Optimized favicons ───────────────────────────────
 const AppleFavicon = memo(() => (
-  <svg viewBox="0 0 60 60" width="30" height="30" fill="white">
-    <path d="M42.56 46.5c-1.93 2.87-3.97 5.67-7.05 5.73-3.1.07-4.1-1.84-7.61-1.84-3.55 0-4.63 1.79-7.57 1.91-3.03.11-5.33-3.06-7.27-5.87C9.83 39.37 6.86 28.84 10.87 21.7c2.01-3.52 5.63-5.74 9.54-5.81 2.97-.05 5.78 2.01 7.62 2.01 1.8 0 5.23-2.48 8.82-2.1 1.5.06 5.71.6 8.42 4.58-.2.14-5.02 2.97-4.97 8.83.06 6.99 6.14 9.32 6.2 9.35-.06.16-.98 3.34-3.2 6.54M30.15 8.1c1.7-1.92 4.49-3.38 6.81-3.47.3 2.7-.78 5.44-2.4 7.38-1.6 1.97-4.24 3.5-6.83 3.29-.35-2.65.96-5.43 2.42-7.2"/>
+  <svg viewBox="0 0 384 512" aria-hidden="true">
+    <defs>
+      <linearGradient id="apple-favorite-gradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#8e8e93" />
+        <stop offset="1" stopColor="#48484a" />
+      </linearGradient>
+    </defs>
+    <path fill="url(#apple-favorite-gradient)" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
   </svg>
 ));
 
@@ -43,7 +49,7 @@ const TextFavicon = memo(({ children, fontSize = 25 }) => (
 
 // Static data (never recreated)
 const FAVORITES = [
-  { title: "Apple", icon: AppleFavicon, bg: "#3a3a3c", url: "https://www.apple.com" },
+  { title: "Apple", variant: "apple", icon: AppleFavicon, url: "https://www.apple.com" },
   { title: "iCloud", icon: TextFavicon, iconProps: { fontSize: 22 }, bg: "#2384d7", url: "https://www.icloud.com" },
   { title: "Google", icon: TextFavicon, bg: "#fff", iconProps: { fontSize: 27 }, iconColor: "#4285f4", url: "https://www.google.com" },
   { title: "Birthday ❤️", icon: TextFavicon, iconProps: { fontSize: 20 }, bg: "#c45a8a", url: TARGET_URL },
@@ -359,7 +365,10 @@ const StartPage = memo(({ bookmarks, recentlyClosedTabs, onNavigate }) => {
               const IconComponent = favorite.icon;
               return (
                 <button key={favorite.title} type="button" className="sf__fav" onClick={() => onNavigate(favorite.url)}>
-                  <span className="sf__fav-icon" style={{ background: favorite.bg, color: favorite.iconColor || "#fff" }}>
+                  <span
+                    className={favorite.variant === "apple" ? "sf__fav-icon sf__fav-icon--apple" : "sf__fav-icon"}
+                    style={favorite.variant === "apple" ? undefined : { background: favorite.bg, color: favorite.iconColor || "#fff" }}
+                  >
                     <IconComponent {...favorite.iconProps}>{favorite.title.charAt(0)}</IconComponent>
                   </span>
                   <span className="sf__fav-label">{favorite.title}</span>
