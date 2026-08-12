@@ -34,3 +34,13 @@ test("uses the provided Apple logo treatment without changing the label size", (
   assert.match(source, /className=\{favorite\.variant === "apple" \? "sf__fav-icon sf__fav-icon--apple" : "sf__fav-icon"\}/);
   assert.match(source, /style=\{favorite\.variant === "apple" \? undefined :/);
 });
+
+test("uses the provided Google logo treatment without changing the label size", () => {
+  assert.match(source, /const GoogleFavicon = memo\(\(\) => \(\s*<svg viewBox="0 0 48 48"/);
+  assert.match(source, /fill="#4285F4"/);
+  assert.match(source, /fill="#34A853"/);
+  assert.match(source, /fill="#FBBC05"/);
+  assert.match(source, /fill="#EA4335"/);
+  assert.match(source, /title: "Google",\s*variant: "google",\s*icon: GoogleFavicon,/);
+  assert.match(source, /className=\{favorite\.variant === "google" \? "sf__fav-icon sf__fav-icon--google"/);
+});

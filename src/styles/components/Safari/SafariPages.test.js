@@ -33,3 +33,10 @@ test("styles the Apple Favorite as a light rounded card", () => {
   assert.match(source, /\.sf__fav-icon--apple[\s\S]*?background:\s*linear-gradient\(180deg,\s*#ffffff 0%,\s*#e8e8ea 100%\);/);
   assert.match(source, /\.sf__fav-icon--apple[\s\S]*?border-radius:\s*14px;/);
 });
+
+test("styles the Google Favorite as a light rounded card", () => {
+  assert.match(source, /\.sf__fav-icon--google\s*\{/);
+  assert.match(source, /\.sf__fav-icon--google[\s\S]*?background:\s*#ffffff;/);
+  assert.match(source, /\.sf__fav-icon--google[\s\S]*?border-radius:\s*14px;/);
+  assert.match(source, /\.sf__fav-icon--google[\s\S]*?svg\s*\{\s*width:\s*44px;\s*height:\s*44px;/);
+});
