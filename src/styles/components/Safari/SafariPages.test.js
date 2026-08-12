@@ -40,3 +40,10 @@ test("styles the Google Favorite as a light rounded card", () => {
   assert.match(source, /\.sf__fav-icon--google[\s\S]*?border-radius:\s*14px;/);
   assert.match(source, /\.sf__fav-icon--google[\s\S]*?svg\s*\{\s*width:\s*44px;\s*height:\s*44px;/);
 });
+
+test("styles the iCloud Favorite as a pale rounded card", () => {
+  assert.match(source, /\.sf__fav-icon--icloud\s*\{/);
+  assert.match(source, /\.sf__fav-icon--icloud[\s\S]*?background:\s*#f5f6fa;/);
+  assert.match(source, /\.sf__fav-icon--icloud[\s\S]*?border:\s*1px solid #d9d9de;/);
+  assert.match(source, /\.sf__fav-icon--icloud[\s\S]*?svg\s*\{\s*width:\s*47px;\s*height:\s*31px;/);
+});

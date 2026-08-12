@@ -48,6 +48,38 @@ const GoogleFavicon = memo(() => (
   </svg>
 ));
 
+const ICloudFavicon = memo(() => (
+  <svg viewBox="0 0 704 456" aria-hidden="true">
+    <defs>
+      <linearGradient id="icloud-favorite-big" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stopColor="#4cb9f5" />
+        <stop offset="1" stopColor="#2e86e8" />
+      </linearGradient>
+      <linearGradient id="icloud-favorite-right" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stopColor="#48a8f2" />
+        <stop offset="1" stopColor="#2c66e2" />
+      </linearGradient>
+      <linearGradient id="icloud-favorite-left" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stopColor="#a8dcf5" />
+        <stop offset="1" stopColor="#4ab5f3" />
+      </linearGradient>
+      <linearGradient id="icloud-favorite-small" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor="#86ccf1" />
+        <stop offset="1" stopColor="#4fbaf3" />
+      </linearGradient>
+      <linearGradient id="icloud-favorite-base" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stopColor="#7cc9f6" />
+        <stop offset="1" stopColor="#3793ec" />
+      </linearGradient>
+    </defs>
+    <circle cx="401" cy="190" r="190" fill="url(#icloud-favorite-big)" />
+    <circle cx="568" cy="319" r="135" fill="url(#icloud-favorite-right)" opacity=".95" />
+    <rect x="145" y="300" width="423" height="154" fill="url(#icloud-favorite-base)" />
+    <circle cx="145" cy="309" r="145" fill="url(#icloud-favorite-left)" />
+    <circle cx="193" cy="197" r="108" fill="url(#icloud-favorite-small)" opacity=".8" />
+  </svg>
+));
+
 const TextFavicon = memo(({ children, fontSize = 25 }) => (
   <svg viewBox="0 0 60 60" width="30" height="30" fill="currentColor" aria-hidden="true">
     <text x="30" y="40" textAnchor="middle" fontFamily="-apple-system, BlinkMacSystemFont, sans-serif" fontSize={fontSize} fontWeight="700">
@@ -59,7 +91,7 @@ const TextFavicon = memo(({ children, fontSize = 25 }) => (
 // Static data (never recreated)
 const FAVORITES = [
   { title: "Apple", variant: "apple", icon: AppleFavicon, url: "https://www.apple.com" },
-  { title: "iCloud", icon: TextFavicon, iconProps: { fontSize: 22 }, bg: "#2384d7", url: "https://www.icloud.com" },
+  { title: "iCloud", variant: "icloud", icon: ICloudFavicon, url: "https://www.icloud.com" },
   { title: "Google", variant: "google", icon: GoogleFavicon, url: "https://www.google.com" },
   { title: "Birthday ❤️", icon: TextFavicon, iconProps: { fontSize: 20 }, bg: "#c45a8a", url: TARGET_URL },
   {

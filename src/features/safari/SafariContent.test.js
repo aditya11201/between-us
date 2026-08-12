@@ -44,3 +44,14 @@ test("uses the provided Google logo treatment without changing the label size", 
   assert.match(source, /title: "Google",\s*variant: "google",\s*icon: GoogleFavicon,/);
   assert.match(source, /className=\{favorite\.variant \? `sf__fav-icon sf__fav-icon--\$\{favorite\.variant\}` : "sf__fav-icon"\}/);
 });
+
+test("uses the supplied SVG iCloud logo without changing the Favorite label", () => {
+  assert.doesNotMatch(source, /icloudFavoriteLogo|icloud-logo-49270\.webp/);
+  assert.match(source, /const ICloudFavicon = memo\(\(\) => \(/);
+  assert.match(source, /viewBox="0 0 704 456"/);
+  assert.match(source, /id="icloud-favorite-big"/);
+  assert.match(source, /id="icloud-favorite-right"/);
+  assert.match(source, /id="icloud-favorite-left"/);
+  assert.match(source, /title: "iCloud", variant: "icloud", icon: ICloudFavicon,/);
+  assert.match(source, /title: "iCloud",[^\n]*url: "https:\/\/www\.icloud\.com"/);
+});
