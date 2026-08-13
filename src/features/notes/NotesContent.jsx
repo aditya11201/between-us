@@ -17,10 +17,16 @@ export function NotesContent() {
       content: "I'm falling in love with you and I guess it scares me because from the very beginning, I told myself not to.\n\nPart of me,\n\nthe human part of me, is warning me to be careful, to not allow myself to feel this way, to protect myself\n\nfrom getting hurt.\n\nBut my soul... my soul feels like I am home, and there is no reason to lock the door because I am safe.\n",
       modified: "Today",
     },
+    {
+      id: 3,
+      title: "Reason for Being",
+      content: "I am a wanderer who has spent my life gazing at maps, while you are the north that keeps me from losing my way. Perhaps the universe is too vast to ever be possessed, yet somehow, every step I take always finds its way toward the same direction. Just as the sun never asks the Earth to revolve around it, you never asked me to make you the center of everything. And yet, without even realizing it, your name became the axis around which all my happiness revolves.",
+      modified: "Today",
+    },
   ];
 
   const [notes, setNotes] = useState(initialNotes);
-  const [activeId, setActiveId] = useState(1);
+  const [activeId, setActiveId] = useState(3);
 
   const activeNote = notes.find((n) => n.id === activeId);
 
