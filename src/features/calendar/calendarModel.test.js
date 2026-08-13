@@ -4,6 +4,7 @@ import {
   BIRTHDAY_EVENT,
   getEventsForDate,
   restoreEvents,
+  restoreHiddenEventIds,
 } from "./calendarModel.js";
 
 test("keeps one-time events on their exact calendar date", () => {
@@ -21,6 +22,12 @@ test("shows the seeded birthday once every April 5", () => {
   assert.deepEqual(getEventsForDate(events, "2026-04-05"), [BIRTHDAY_EVENT]);
   assert.deepEqual(getEventsForDate(events, "2027-04-05"), [BIRTHDAY_EVENT]);
   assert.deepEqual(getEventsForDate(events, "2027-04-06"), []);
+});
+
+test("does not recreate a birthday event that was unsubscribed", () => {
+  const hiddenIds = restoreHiddenEventIds(JSON.stringify([BIRTHDAY_EVENT.id]));
+
+  assert.deepEqual(restoreEvents(null, hiddenIds), {});
 });
 
 test("migrates the stored birthday title to the current copy", () => {

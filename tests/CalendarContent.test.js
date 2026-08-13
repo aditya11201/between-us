@@ -50,8 +50,11 @@ function freezeToday() {
 }
 
 async function renderCalendar() {
+  const desktop = document.createElement("div");
+  desktop.className = "desktop";
+  document.body.append(desktop);
   const container = document.createElement("div");
-  document.body.append(container);
+  desktop.append(container);
   const root = createRoot(container);
   const mount = { container, root };
   mountedRoots.push(mount);
@@ -114,17 +117,60 @@ test("shows the annual birthday in April and opens its detail without opening ad
 
   await click(birthday);
 
-  const detail = mount.container.querySelector(".calendar-event-detail");
-  const closeButton = detail.querySelector(".calendar-event-detail-close");
+  const detail = document.body.querySelector(".calendar-event-detail");
+  const focusTarget = detail;
   assert.match(detail.textContent, /Repeats yearly/);
-  assert.equal(document.activeElement, closeButton);
+  assert.equal(document.activeElement, focusTarget);
   assert.equal(mount.container.querySelector(".calendar-event-popup"), null);
 
   await act(async () => {
     document.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   });
-  assert.equal(mount.container.querySelector(".calendar-event-detail"), null);
+  assert.equal(document.body.querySelector(".calendar-event-detail"), null);
   assert.equal(document.activeElement, birthday);
+  restoreDate();
+});
+
+test("uses a heart icon for the April 5 birthday event", async () => {
+  const restoreDate = freezeToday();
+  const mount = await renderCalendar();
+  const birthday = mount.container.querySelector('[data-date="2026-04-05"] .calendar-day-event');
+
+  const heart = birthday.querySelector('[data-calendar-icon="heart"]');
+  assert.ok(heart);
+  assert.equal(heart.getAttribute("fill"), "none");
+  assert.equal(heart.getAttribute("stroke"), "currentColor");
+  assert.match(heart.innerHTML, /M20\.84 4\.61/);
+  assert.equal(birthday.querySelector('[data-calendar-icon="star"]'), null);
+  restoreDate();
+});
+
+test("matches the reference event detail popover structure and actions", async () => {
+  const restoreDate = freezeToday();
+  const mount = await renderCalendar();
+  const birthday = mount.container.querySelector('[data-date="2026-04-05"] .calendar-day-event');
+
+  await click(birthday);
+
+  const detail = document.body.querySelector(".calendar-event-detail");
+  assert.ok(detail.classList.contains("calendar-event-detail--open"));
+  assert.ok(detail.querySelector(".calendar-event-detail-header"));
+  assert.ok(detail.querySelector(".calendar-event-detail-color"));
+  assert.ok(detail.querySelector(".calendar-event-detail-when"));
+  assert.ok(detail.querySelector(".calendar-event-detail-repeat-settings"));
+  assert.ok(detail.querySelector(".calendar-event-detail-unsubscribe"));
+  assert.match(detail.querySelector(".calendar-event-detail-date").textContent, /5 Apr 2026/);
+  assert.match(detail.querySelector(".calendar-event-detail-repeat").textContent, /Repeats yearly/);
+  assert.notEqual(detail.style.left, "");
+  assert.notEqual(detail.style.top, "");
+
+  await click(detail.querySelector(".calendar-event-detail-color"));
+  assert.match(document.body.querySelector(".calendar-toast").textContent, /Pemilih warna/);
+
+  await click(detail.querySelector(".calendar-event-detail-unsubscribe"));
+  assert.equal(document.body.querySelector(".calendar-event-detail"), null);
+  assert.match(document.body.querySelector(".calendar-toast").textContent, /Berhenti berlangganan/);
+  assert.equal(document.activeElement, mount.container.querySelector('[data-date="2026-04-05"]'));
   restoreDate();
 });
 
@@ -145,7 +191,7 @@ test("closes event detail before starting a new event from another day", async (
 
   await click(mount.container.querySelector('[data-date="2026-04-06"]'));
 
-  assert.equal(mount.container.querySelector(".calendar-event-detail"), null);
+  assert.equal(document.body.querySelector(".calendar-event-detail"), null);
   assert.equal(mount.container.querySelector(".calendar-event-popup"), null);
   restoreDate();
 });

@@ -22,7 +22,29 @@ function hasBirthday(events) {
   );
 }
 
-export function restoreEvents(savedEvents) {
+export function restoreHiddenEventIds(savedIds) {
+  try {
+    const parsedIds = savedIds ? JSON.parse(savedIds) : [];
+    return Array.isArray(parsedIds) ? parsedIds.filter((id) => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function removeHiddenEvents(events, hiddenEventIds) {
+  return Object.fromEntries(
+    Object.entries(events)
+      .map(([dateKey, dateEvents]) => [
+        dateKey,
+        dateEvents.filter((event) => !hiddenEventIds.includes(event.id)),
+      ])
+      .filter(([, dateEvents]) => dateEvents.length > 0),
+  );
+}
+
+export function restoreEvents(savedEvents, hiddenEventIds = []) {
+  const birthdayHidden = hiddenEventIds.includes(BIRTHDAY_EVENT.id);
+
   try {
     const parsedEvents = savedEvents ? JSON.parse(savedEvents) : {};
     const restoredEvents = parsedEvents && typeof parsedEvents === "object" && !Array.isArray(parsedEvents)
@@ -33,6 +55,7 @@ export function restoreEvents(savedEvents) {
       )
       : {};
 
+    if (birthdayHidden) return removeHiddenEvents(restoredEvents, hiddenEventIds);
     if (hasBirthday(restoredEvents)) return restoredEvents;
 
     return {
@@ -40,7 +63,7 @@ export function restoreEvents(savedEvents) {
       [BIRTHDAY_DATE_KEY]: [...(restoredEvents[BIRTHDAY_DATE_KEY] || []), BIRTHDAY_EVENT],
     };
   } catch {
-    return { [BIRTHDAY_DATE_KEY]: [BIRTHDAY_EVENT] };
+    return birthdayHidden ? {} : { [BIRTHDAY_DATE_KEY]: [BIRTHDAY_EVENT] };
   }
 }
 
