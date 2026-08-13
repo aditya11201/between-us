@@ -1,5 +1,13 @@
-import React, { useState, useContext, useMemo, useCallback } from "react";
+import React, { useState, useContext, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { FiHeart } from "react-icons/fi";
 import { WindowContext } from "@/windows";
+import {
+  BIRTHDAY_EVENT,
+  getEventsForDate as getEventsForDateKey,
+  restoreEvents,
+  restoreHiddenEventIds,
+} from "./calendarModel";
 
 // Списки календарей
 const ICLOUD_CALENDARS = [
@@ -13,6 +21,15 @@ const OTHER_CALENDARS = [
   { id: "siri", name: "Siri Suggestions", color: "#eab308", checked: true },
 ];
 
+const isCalendar = (calendar) => (
+  calendar &&
+  typeof calendar === "object" &&
+  typeof calendar.id === "string" &&
+  typeof calendar.name === "string" &&
+  typeof calendar.color === "string" &&
+  typeof calendar.checked === "boolean"
+);
+
 export function CalendarContent() {
   const { onClose, onMinimize, onZoom, onTitleMouseDown } = useContext(WindowContext);
 
@@ -24,10 +41,19 @@ export function CalendarContent() {
 
   // Календари (состояние чекбоксов)
   const [calendars, setCalendars] = useState(() => {
-    const saved = localStorage.getItem("calendar-lists");
-    if (saved) {
-      return JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem("calendar-lists");
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (parsed && Array.isArray(parsed.icloud) && Array.isArray(parsed.other)) {
+        return {
+          icloud: parsed.icloud.filter(isCalendar),
+          other: parsed.other.filter(isCalendar),
+        };
+      }
+    } catch {
+      // Fall through to the default calendar lists.
     }
+
     return {
       icloud: ICLOUD_CALENDARS,
       other: OTHER_CALENDARS,
@@ -35,18 +61,43 @@ export function CalendarContent() {
   });
 
   // События (хранятся в localStorage)
+  const [hiddenEventIds, setHiddenEventIds] = useState(() => (
+    restoreHiddenEventIds(localStorage.getItem("calendar-hidden-events"))
+  ));
   const [events, setEvents] = useState(() => {
-    const saved = localStorage.getItem("calendar-events");
-    return saved ? JSON.parse(saved) : {};
+    try {
+      return restoreEvents(
+        localStorage.getItem("calendar-events"),
+        restoreHiddenEventIds(localStorage.getItem("calendar-hidden-events")),
+      );
+    } catch {
+      return restoreEvents(null);
+    }
   });
 
   // Сохранение при изменении
   React.useEffect(() => {
-    localStorage.setItem("calendar-events", JSON.stringify(events));
+    try {
+      localStorage.setItem("calendar-events", JSON.stringify(events));
+    } catch {
+      // ponytail: events still work for the open session if storage is unavailable.
+    }
   }, [events]);
 
   React.useEffect(() => {
-    localStorage.setItem("calendar-lists", JSON.stringify(calendars));
+    try {
+      localStorage.setItem("calendar-hidden-events", JSON.stringify(hiddenEventIds));
+    } catch {
+      // ponytail: a dismissed event stays dismissed for the open session.
+    }
+  }, [hiddenEventIds]);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem("calendar-lists", JSON.stringify(calendars));
+    } catch {
+      // ponytail: calendar list changes remain in memory if storage is unavailable.
+    }
   }, [calendars]);
 
   const currentYear = currentDate.getFullYear();
@@ -66,8 +117,7 @@ export function CalendarContent() {
     const lastDay = new Date(currentYear, currentMonth + 1, 0);
     const days = [];
 
-    let startDay = firstDay.getDay() - 1;
-    if (startDay < 0) startDay = 6;
+    const startDay = firstDay.getDay();
 
     const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
     for (let i = startDay - 1; i >= 0; i--) {
@@ -101,8 +151,7 @@ export function CalendarContent() {
     const lastDay = new Date(currentYear, currentMonth + 1, 0);
     const days = [];
 
-    let startDay = firstDay.getDay() - 1;
-    if (startDay < 0) startDay = 6;
+    const startDay = firstDay.getDay();
 
     for (let i = 0; i < startDay; i++) {
       days.push(null);
@@ -136,7 +185,7 @@ export function CalendarContent() {
   const getEventsForDate = useCallback((date) => {
     if (!date) return [];
     const key = formatDateKey(date);
-    return events[key] || [];
+    return getEventsForDateKey(events, key);
   }, [events]);
 
   const formatDateKey = useCallback((date) => {
@@ -177,14 +226,49 @@ export function CalendarContent() {
   // Управление событиями
   const [showEventInput, setShowEventInput] = useState(false);
   const [newEventText, setNewEventText] = useState("");
+  const [newEventRepeatsYearly, setNewEventRepeatsYearly] = useState(false);
   const [eventForDate, setEventForDate] = useState(null);
+  const [eventDetail, setEventDetail] = useState(null);
+  const [eventDetailPosition, setEventDetailPosition] = useState(null);
+  const [toastMessage, setToastMessage] = useState("");
+  const eventDetailRef = useRef(null);
+  const eventDetailTriggerRef = useRef(null);
+  const toastTimerRef = useRef(null);
+  const positionFrameRef = useRef(null);
 
-  const handleDateClick = useCallback((date) => {
+  const closeEventDetail = useCallback((restoreFocus = true) => {
+    setEventDetail(null);
+    setEventDetailPosition(null);
+    if (restoreFocus) eventDetailTriggerRef.current?.focus();
+  }, []);
+
+  const openEventDetail = useCallback((event, date, trigger) => {
+    eventDetailTriggerRef.current = trigger;
+    setEventDetailPosition(null);
+    setEventDetail({ event, date });
+  }, []);
+
+  const showToast = useCallback((message) => {
+    setToastMessage(message);
+    window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToastMessage(""), 1800);
+  }, []);
+
+  const openEventInput = useCallback((date) => {
     setSelectedDate(date);
     setEventForDate(date);
     setShowEventInput(true);
     setNewEventText("");
+    setNewEventRepeatsYearly(false);
   }, []);
+
+  const handleDateClick = useCallback((date) => {
+    if (eventDetail) {
+      closeEventDetail();
+      return;
+    }
+    openEventInput(date);
+  }, [closeEventDetail, eventDetail, openEventInput]);
 
   const addEvent = useCallback(() => {
     if (!newEventText.trim() || !eventForDate) return;
@@ -194,29 +278,138 @@ export function CalendarContent() {
       text: newEventText.trim(),
       createdAt: new Date().toISOString(),
       allDay: true,
+      repeatYearly: newEventRepeatsYearly,
     };
     setEvents(prev => ({
       ...prev,
       [key]: [...(prev[key] || []), newEvent]
     }));
     setNewEventText("");
+    setNewEventRepeatsYearly(false);
     setShowEventInput(false);
-  }, [newEventText, eventForDate, formatDateKey]);
+  }, [newEventText, newEventRepeatsYearly, eventForDate, formatDateKey]);
 
   const deleteEvent = useCallback((eventId, date) => {
-    const key = formatDateKey(date);
-    setEvents(prev => ({
-      ...prev,
-      [key]: (prev[key] || []).filter(e => e.id !== eventId)
-    }));
-  }, [formatDateKey]);
+    if (eventId === BIRTHDAY_EVENT.id) {
+      setHiddenEventIds((ids) => ids.includes(eventId) ? ids : [...ids, eventId]);
+    }
+    setEvents(prev => Object.fromEntries(
+      Object.entries(prev)
+        .map(([key, dateEvents]) => [key, dateEvents.filter((event) => event.id !== eventId)])
+        .filter(([, dateEvents]) => dateEvents.length > 0),
+    ));
+  }, []);
+
+  const handleUnsubscribe = useCallback(() => {
+    if (!eventDetail) return;
+    const trigger = eventDetailTriggerRef.current;
+    deleteEvent(eventDetail.event.id, eventDetail.date);
+    showToast(`Berhenti berlangganan: ${eventDetail.event.text}`);
+    closeEventDetail(false);
+    trigger?.closest(".calendar-day")?.focus();
+  }, [closeEventDetail, deleteEvent, eventDetail, showToast]);
 
   // Подсчёт событий для даты
   const getEventCount = useCallback((date) => {
     if (!date) return 0;
-    const key = formatDateKey(date);
-    return (events[key] || []).length;
-  }, [events, formatDateKey]);
+    return getEventsForDate(date).length;
+  }, [getEventsForDate]);
+
+  const updateEventDetailPosition = useCallback(() => {
+    if (!eventDetail || !eventDetailRef.current || !eventDetailTriggerRef.current) return;
+
+    const chipRect = eventDetailTriggerRef.current.getBoundingClientRect();
+    const popover = eventDetailRef.current;
+    const viewportWidth = window.innerWidth || 1024;
+    const viewportHeight = window.innerHeight || 768;
+    const popoverWidth = popover.offsetWidth || Math.min(520, viewportWidth - 20);
+    const popoverHeight = popover.offsetHeight || 320;
+    const centerY = chipRect.top + chipRect.height / 2;
+    const gap = 14;
+    let left = chipRect.right + gap;
+    let flip = false;
+
+    if (left + popoverWidth > viewportWidth - 8) {
+      left = chipRect.left - gap - popoverWidth;
+      flip = true;
+    }
+
+    if (left < 8) {
+      left = Math.min(chipRect.right + gap, viewportWidth - popoverWidth - 8);
+      flip = false;
+    }
+    left = Math.max(8, left);
+    const top = Math.max(8, Math.min(centerY - popoverHeight / 2, viewportHeight - popoverHeight - 8));
+    const arrowTop = Math.max(24, Math.min(centerY - top, popoverHeight - 24));
+
+    setEventDetailPosition((previous) => {
+      if (
+        previous?.left === left &&
+        previous?.top === top &&
+        previous?.arrowTop === arrowTop &&
+        previous?.flip === flip
+      ) {
+        return previous;
+      }
+
+      return { left, top, arrowTop, flip };
+    });
+  }, [eventDetail]);
+
+  useLayoutEffect(() => {
+    updateEventDetailPosition();
+  }, [updateEventDetailPosition]);
+
+  useEffect(() => {
+    if (!eventDetail) return undefined;
+
+    eventDetailRef.current?.focus();
+
+    const dismissEventDetail = (event) => {
+      if (event.type === "keydown" && event.key !== "Escape") return;
+      if (event.type === "click" && event.target.closest(".calendar-event-detail, .calendar-day-event")) return;
+      closeEventDetail();
+    };
+
+    document.addEventListener("click", dismissEventDetail);
+    document.addEventListener("keydown", dismissEventDetail);
+    window.addEventListener("resize", dismissEventDetail);
+    return () => {
+      document.removeEventListener("click", dismissEventDetail);
+      document.removeEventListener("keydown", dismissEventDetail);
+      window.removeEventListener("resize", dismissEventDetail);
+    };
+  }, [closeEventDetail, eventDetail, updateEventDetailPosition]);
+
+  useEffect(() => {
+    if (!eventDetail) return undefined;
+
+    const schedulePositionUpdate = () => {
+      if (positionFrameRef.current !== null) return;
+      const requestFrame = window.requestAnimationFrame
+        ? window.requestAnimationFrame.bind(window)
+        : window.setTimeout.bind(window);
+      positionFrameRef.current = requestFrame(() => {
+        positionFrameRef.current = null;
+        updateEventDetailPosition();
+      });
+    };
+
+    window.addEventListener("scroll", schedulePositionUpdate, true);
+    window.addEventListener("mousemove", schedulePositionUpdate);
+
+    return () => {
+      window.removeEventListener("scroll", schedulePositionUpdate, true);
+      window.removeEventListener("mousemove", schedulePositionUpdate);
+      if (positionFrameRef.current !== null) {
+        window.cancelAnimationFrame?.(positionFrameRef.current);
+        window.clearTimeout(positionFrameRef.current);
+        positionFrameRef.current = null;
+      }
+    };
+  }, [eventDetail, updateEventDetailPosition]);
+
+  useEffect(() => () => window.clearTimeout(toastTimerRef.current), []);
 
   // Поиск событий
   const filteredEvents = useMemo(() => {
@@ -275,10 +468,7 @@ export function CalendarContent() {
         {/* Sidebar */}
         <div className="calendar-sidebar">
           {/* Create Event Button */}
-          <button className="calendar-create-btn" onClick={() => {
-            setEventForDate(selectedDate);
-            setShowEventInput(true);
-          }}>
+          <button className="calendar-create-btn" aria-label="Add event" onClick={() => openEventInput(selectedDate)}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 0a1 1 0 0 1 1 1v6h6a1 1 0 0 1 0 2H9v6a1 1 0 0 1-2 0V9H1a1 1 0 0 1 0-2h6V1a1 1 0 0 1 1-1z"/>
             </svg>
@@ -378,6 +568,8 @@ export function CalendarContent() {
               return (
                 <div
                   key={index}
+                  data-date={formatDateKey(date)}
+                  tabIndex={-1}
                   className={`calendar-day ${!isCurrentMonth ? 'other-month' : ''} ${isToday(date) ? 'today' : ''} ${isSelected(date) ? 'selected' : ''}`}
                   onClick={() => handleDateClick(date)}
                 >
@@ -385,10 +577,33 @@ export function CalendarContent() {
                   {hasEvents && (
                     <div className="calendar-day-events">
                       {getEventsForDate(date).slice(0, 3).map((evt, i) => (
-                        <div key={evt.id} className="calendar-day-event">
-                          <span className="calendar-event-indicator" />
+                        <button
+                          key={`${evt.id}-${i}`}
+                          type="button"
+                          className={`calendar-day-event ${evt.type === "birthday" ? "birthday" : ""}`}
+                          aria-label={`Open ${evt.text}`}
+                          title={evt.text}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openEventDetail(evt, date, event.currentTarget);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              openEventDetail(evt, date, event.currentTarget);
+                            }
+                          }}
+                        >
+                          <span className="calendar-event-indicator" aria-hidden="true">
+                            {evt.type === "birthday" ? (
+                              <FiHeart data-calendar-icon="heart" aria-hidden="true" />
+                            ) : (
+                              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h2v2h6V2h2v2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V2zm-3 8v10h16V10H4z" /></svg>
+                            )}
+                          </span>
                           <span className="calendar-event-title">{evt.text}</span>
-                        </div>
+                        </button>
                       ))}
                       {eventCount > 3 && (
                         <div className="calendar-day-more">+{eventCount - 3} more</div>
@@ -415,11 +630,61 @@ export function CalendarContent() {
                 placeholder="Add event..."
                 value={newEventText}
                 onChange={(e) => setNewEventText(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addEvent()}
+                onKeyDown={(e) => e.key === 'Enter' && addEvent()}
                 autoFocus
               />
+              <label className="calendar-popup-repeat">
+                <input
+                  type="checkbox"
+                  name="repeat-yearly"
+                  checked={newEventRepeatsYearly}
+                  onChange={(event) => setNewEventRepeatsYearly(event.target.checked)}
+                />
+                Repeat yearly
+              </label>
               <button className="calendar-popup-add" onClick={addEvent}>Add</button>
             </div>
+          )}
+          {eventDetail && createPortal(
+            <section
+              ref={eventDetailRef}
+              className={`calendar-event-detail calendar-event-detail--open ${eventDetailPosition?.flip ? "calendar-event-detail--flip" : ""}`}
+              role="dialog"
+              tabIndex={-1}
+              aria-labelledby="calendar-event-detail-title"
+              style={{
+                top: `${eventDetailPosition?.top ?? 8}px`,
+                left: `${eventDetailPosition?.left ?? 8}px`,
+                "--calendar-event-arrow-top": `${eventDetailPosition?.arrowTop ?? 32}px`,
+              }}
+            >
+              <div className="calendar-event-detail-section calendar-event-detail-header">
+                <h2 id="calendar-event-detail-title">{eventDetail.event.text}</h2>
+                <button type="button" className="calendar-event-detail-color" aria-label="Change event color" onClick={() => showToast("Pemilih warna (demo)")}>
+                  <span className={`calendar-event-detail-dot ${eventDetail.event.type === "birthday" ? "birthday" : ""}`} aria-hidden="true" />
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 5l4 4H8l4-4zm0 14l-4-4h8l-4 4z" /></svg>
+                </button>
+              </div>
+
+              <div className="calendar-event-detail-section calendar-event-detail-when">
+                <div className="calendar-event-detail-when-text">
+                  <span className="calendar-event-detail-date">{eventDetail.date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                  {eventDetail.event.repeatYearly && <span className="calendar-event-detail-repeat">Repeats yearly</span>}
+                </div>
+                <button type="button" className="calendar-event-detail-repeat-settings" aria-label="Repeat settings" onClick={() => showToast("Pengaturan pengulangan (demo)")}>
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" /></svg>
+                </button>
+              </div>
+
+              <div className="calendar-event-detail-footer">
+                <button type="button" className="calendar-event-detail-unsubscribe" onClick={handleUnsubscribe}>Unsubscribe</button>
+              </div>
+            </section>,
+            document.querySelector(".desktop") || document.body,
+          )}
+          {toastMessage && createPortal(
+            <div className="calendar-toast calendar-toast--show">{toastMessage}</div>,
+            document.querySelector(".desktop") || document.body,
           )}
         </div>
       </div>
