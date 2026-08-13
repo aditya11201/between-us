@@ -1,5 +1,6 @@
-import React, { useState, useContext, useMemo, useCallback } from "react";
+import React, { useState, useContext, useMemo, useCallback, useEffect, useRef } from "react";
 import { WindowContext } from "@/windows";
+import { getEventsForDate as getEventsForDateKey, restoreEvents } from "./calendarModel";
 
 // Списки календарей
 const ICLOUD_CALENDARS = [
@@ -13,6 +14,15 @@ const OTHER_CALENDARS = [
   { id: "siri", name: "Siri Suggestions", color: "#eab308", checked: true },
 ];
 
+const isCalendar = (calendar) => (
+  calendar &&
+  typeof calendar === "object" &&
+  typeof calendar.id === "string" &&
+  typeof calendar.name === "string" &&
+  typeof calendar.color === "string" &&
+  typeof calendar.checked === "boolean"
+);
+
 export function CalendarContent() {
   const { onClose, onMinimize, onZoom, onTitleMouseDown } = useContext(WindowContext);
 
@@ -24,10 +34,19 @@ export function CalendarContent() {
 
   // Календари (состояние чекбоксов)
   const [calendars, setCalendars] = useState(() => {
-    const saved = localStorage.getItem("calendar-lists");
-    if (saved) {
-      return JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem("calendar-lists");
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (parsed && Array.isArray(parsed.icloud) && Array.isArray(parsed.other)) {
+        return {
+          icloud: parsed.icloud.filter(isCalendar),
+          other: parsed.other.filter(isCalendar),
+        };
+      }
+    } catch {
+      // Fall through to the default calendar lists.
     }
+
     return {
       icloud: ICLOUD_CALENDARS,
       other: OTHER_CALENDARS,
@@ -36,17 +55,28 @@ export function CalendarContent() {
 
   // События (хранятся в localStorage)
   const [events, setEvents] = useState(() => {
-    const saved = localStorage.getItem("calendar-events");
-    return saved ? JSON.parse(saved) : {};
+    try {
+      return restoreEvents(localStorage.getItem("calendar-events"));
+    } catch {
+      return restoreEvents(null);
+    }
   });
 
   // Сохранение при изменении
   React.useEffect(() => {
-    localStorage.setItem("calendar-events", JSON.stringify(events));
+    try {
+      localStorage.setItem("calendar-events", JSON.stringify(events));
+    } catch {
+      // ponytail: events still work for the open session if storage is unavailable.
+    }
   }, [events]);
 
   React.useEffect(() => {
-    localStorage.setItem("calendar-lists", JSON.stringify(calendars));
+    try {
+      localStorage.setItem("calendar-lists", JSON.stringify(calendars));
+    } catch {
+      // ponytail: calendar list changes remain in memory if storage is unavailable.
+    }
   }, [calendars]);
 
   const currentYear = currentDate.getFullYear();
@@ -66,8 +96,7 @@ export function CalendarContent() {
     const lastDay = new Date(currentYear, currentMonth + 1, 0);
     const days = [];
 
-    let startDay = firstDay.getDay() - 1;
-    if (startDay < 0) startDay = 6;
+    const startDay = firstDay.getDay();
 
     const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
     for (let i = startDay - 1; i >= 0; i--) {
@@ -101,8 +130,7 @@ export function CalendarContent() {
     const lastDay = new Date(currentYear, currentMonth + 1, 0);
     const days = [];
 
-    let startDay = firstDay.getDay() - 1;
-    if (startDay < 0) startDay = 6;
+    const startDay = firstDay.getDay();
 
     for (let i = 0; i < startDay; i++) {
       days.push(null);
@@ -136,7 +164,7 @@ export function CalendarContent() {
   const getEventsForDate = useCallback((date) => {
     if (!date) return [];
     const key = formatDateKey(date);
-    return events[key] || [];
+    return getEventsForDateKey(events, key);
   }, [events]);
 
   const formatDateKey = useCallback((date) => {
@@ -177,14 +205,37 @@ export function CalendarContent() {
   // Управление событиями
   const [showEventInput, setShowEventInput] = useState(false);
   const [newEventText, setNewEventText] = useState("");
+  const [newEventRepeatsYearly, setNewEventRepeatsYearly] = useState(false);
   const [eventForDate, setEventForDate] = useState(null);
+  const [eventDetail, setEventDetail] = useState(null);
+  const eventDetailCloseRef = useRef(null);
+  const eventDetailTriggerRef = useRef(null);
 
-  const handleDateClick = useCallback((date) => {
+  const closeEventDetail = useCallback(() => {
+    setEventDetail(null);
+    eventDetailTriggerRef.current?.focus();
+  }, []);
+
+  const openEventDetail = useCallback((event, date, trigger) => {
+    eventDetailTriggerRef.current = trigger;
+    setEventDetail({ event, date });
+  }, []);
+
+  const openEventInput = useCallback((date) => {
     setSelectedDate(date);
     setEventForDate(date);
     setShowEventInput(true);
     setNewEventText("");
+    setNewEventRepeatsYearly(false);
   }, []);
+
+  const handleDateClick = useCallback((date) => {
+    if (eventDetail) {
+      closeEventDetail();
+      return;
+    }
+    openEventInput(date);
+  }, [closeEventDetail, eventDetail, openEventInput]);
 
   const addEvent = useCallback(() => {
     if (!newEventText.trim() || !eventForDate) return;
@@ -194,14 +245,16 @@ export function CalendarContent() {
       text: newEventText.trim(),
       createdAt: new Date().toISOString(),
       allDay: true,
+      repeatYearly: newEventRepeatsYearly,
     };
     setEvents(prev => ({
       ...prev,
       [key]: [...(prev[key] || []), newEvent]
     }));
     setNewEventText("");
+    setNewEventRepeatsYearly(false);
     setShowEventInput(false);
-  }, [newEventText, eventForDate, formatDateKey]);
+  }, [newEventText, newEventRepeatsYearly, eventForDate, formatDateKey]);
 
   const deleteEvent = useCallback((eventId, date) => {
     const key = formatDateKey(date);
@@ -214,9 +267,30 @@ export function CalendarContent() {
   // Подсчёт событий для даты
   const getEventCount = useCallback((date) => {
     if (!date) return 0;
-    const key = formatDateKey(date);
-    return (events[key] || []).length;
-  }, [events, formatDateKey]);
+    return getEventsForDate(date).length;
+  }, [getEventsForDate]);
+
+  useEffect(() => {
+    if (!eventDetail) return undefined;
+
+    eventDetailCloseRef.current?.focus();
+
+    const dismissEventDetail = (event) => {
+      if (event.type === "keydown" && event.key !== "Escape") return;
+      if (event.type === "click" && event.target.closest(".calendar-event-detail, .calendar-day-event")) return;
+      closeEventDetail();
+    };
+
+    document.addEventListener("click", dismissEventDetail);
+    document.addEventListener("keydown", dismissEventDetail);
+    window.addEventListener("resize", dismissEventDetail);
+
+    return () => {
+      document.removeEventListener("click", dismissEventDetail);
+      document.removeEventListener("keydown", dismissEventDetail);
+      window.removeEventListener("resize", dismissEventDetail);
+    };
+  }, [closeEventDetail, eventDetail]);
 
   // Поиск событий
   const filteredEvents = useMemo(() => {
@@ -275,10 +349,7 @@ export function CalendarContent() {
         {/* Sidebar */}
         <div className="calendar-sidebar">
           {/* Create Event Button */}
-          <button className="calendar-create-btn" onClick={() => {
-            setEventForDate(selectedDate);
-            setShowEventInput(true);
-          }}>
+          <button className="calendar-create-btn" aria-label="Add event" onClick={() => openEventInput(selectedDate)}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 0a1 1 0 0 1 1 1v6h6a1 1 0 0 1 0 2H9v6a1 1 0 0 1-2 0V9H1a1 1 0 0 1 0-2h6V1a1 1 0 0 1 1-1z"/>
             </svg>
@@ -378,6 +449,7 @@ export function CalendarContent() {
               return (
                 <div
                   key={index}
+                  data-date={formatDateKey(date)}
                   className={`calendar-day ${!isCurrentMonth ? 'other-month' : ''} ${isToday(date) ? 'today' : ''} ${isSelected(date) ? 'selected' : ''}`}
                   onClick={() => handleDateClick(date)}
                 >
@@ -385,10 +457,26 @@ export function CalendarContent() {
                   {hasEvents && (
                     <div className="calendar-day-events">
                       {getEventsForDate(date).slice(0, 3).map((evt, i) => (
-                        <div key={evt.id} className="calendar-day-event">
-                          <span className="calendar-event-indicator" />
+                        <button
+                          key={`${evt.id}-${i}`}
+                          type="button"
+                          className={`calendar-day-event ${evt.type === "birthday" ? "birthday" : ""}`}
+                          aria-label={`Open ${evt.text}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openEventDetail(evt, date, event.currentTarget);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              openEventDetail(evt, date, event.currentTarget);
+                            }
+                          }}
+                        >
+                          <span className="calendar-event-indicator" aria-hidden="true">{evt.type === "birthday" ? "★" : "•"}</span>
                           <span className="calendar-event-title">{evt.text}</span>
-                        </div>
+                        </button>
                       ))}
                       {eventCount > 3 && (
                         <div className="calendar-day-more">+{eventCount - 3} more</div>
@@ -415,11 +503,33 @@ export function CalendarContent() {
                 placeholder="Add event..."
                 value={newEventText}
                 onChange={(e) => setNewEventText(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addEvent()}
+                onKeyDown={(e) => e.key === 'Enter' && addEvent()}
                 autoFocus
               />
+              <label className="calendar-popup-repeat">
+                <input
+                  type="checkbox"
+                  name="repeat-yearly"
+                  checked={newEventRepeatsYearly}
+                  onChange={(event) => setNewEventRepeatsYearly(event.target.checked)}
+                />
+                Repeat yearly
+              </label>
               <button className="calendar-popup-add" onClick={addEvent}>Add</button>
             </div>
+          )}
+          {eventDetail && (
+            <section className="calendar-event-detail" role="dialog" aria-labelledby="calendar-event-detail-title">
+              <div className="calendar-event-detail-header">
+                <span className={`calendar-event-detail-dot ${eventDetail.event.type === "birthday" ? "birthday" : ""}`} aria-hidden="true" />
+                <h2 id="calendar-event-detail-title">{eventDetail.event.text}</h2>
+                <button ref={eventDetailCloseRef} type="button" className="calendar-event-detail-close" aria-label="Close event details" onClick={closeEventDetail}>×</button>
+              </div>
+              <div className="calendar-event-detail-section">
+                <span>{eventDetail.date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</span>
+                {eventDetail.event.repeatYearly && <span>Repeats yearly</span>}
+              </div>
+            </section>
           )}
         </div>
       </div>

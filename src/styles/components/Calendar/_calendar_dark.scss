@@ -198,6 +198,10 @@
 
   .calendar-day-event {
     background: rgba(10, 132, 255, 0.2);
+
+    &.birthday {
+      background: #5d4372;
+    }
   }
 
   .calendar-event-indicator {
@@ -206,6 +210,11 @@
 
   .calendar-event-title {
     color: rgba(255, 255, 255, 0.85);
+  }
+
+  .calendar-day-event.birthday .calendar-event-indicator,
+  .calendar-event-detail-dot.birthday {
+    background: #b78df2;
   }
 
   .calendar-day-more {
@@ -252,6 +261,33 @@
       background: #007aff;
     }
   }
-}
 
+  .calendar-popup-repeat {
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .calendar-event-detail {
+    background: rgba(44, 44, 46, 0.98);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+  }
+
+  .calendar-event-detail-header h2 {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .calendar-event-detail-close {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.16);
+    }
+  }
+
+  .calendar-event-detail-section {
+    background: rgba(0, 0, 0, 0.2);
+    color: rgba(255, 255, 255, 0.68);
+  }
+}
 
