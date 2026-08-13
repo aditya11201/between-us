@@ -12,6 +12,10 @@ function isEvent(value) {
   return value && typeof value === "object" && typeof value.text === "string";
 }
 
+function normalizeEvent(event) {
+  return event.id === BIRTHDAY_EVENT.id ? { ...event, ...BIRTHDAY_EVENT } : event;
+}
+
 function hasBirthday(events) {
   return Object.values(events).some((dateEvents) =>
     Array.isArray(dateEvents) && dateEvents.some((event) => event?.id === BIRTHDAY_EVENT.id),
@@ -25,7 +29,7 @@ export function restoreEvents(savedEvents) {
       ? Object.fromEntries(
         Object.entries(parsedEvents)
           .filter(([, dateEvents]) => Array.isArray(dateEvents))
-          .map(([dateKey, dateEvents]) => [dateKey, dateEvents.filter(isEvent)]),
+          .map(([dateKey, dateEvents]) => [dateKey, dateEvents.filter(isEvent).map(normalizeEvent)]),
       )
       : {};
 

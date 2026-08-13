@@ -23,6 +23,17 @@ test("shows the seeded birthday once every April 5", () => {
   assert.deepEqual(getEventsForDate(events, "2027-04-06"), []);
 });
 
+test("migrates the stored birthday title to the current copy", () => {
+  const events = restoreEvents(JSON.stringify({
+    "2026-04-05": [{
+      ...BIRTHDAY_EVENT,
+      text: "Ulang Tahun Cewek Saya",
+    }],
+  }));
+
+  assert.equal(events["2026-04-05"][0].text, "The day my dream came to life");
+});
+
 test("matches an added yearly event on later years without duplicating its source date", () => {
   const yearlyEvent = { id: "yearly", text: "Anniversary", repeatYearly: true };
   const events = {
