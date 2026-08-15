@@ -73,10 +73,16 @@ after(async () => {
   browserWindow.close();
 });
 
-test("opens Notes with the new north note", async () => {
+test("opens Notes with the new note numbered 1", async () => {
   const mount = await renderNotes();
-  const note = "I am a wanderer who has spent my life gazing at maps, while you are the north that keeps me from losing my way. Perhaps the universe is too vast to ever be possessed, yet somehow, every step I take always finds its way toward the same direction. Just as the sun never asks the Earth to revolve around it, you never asked me to make you the center of everything. And yet, without even realizing it, your name became the axis around which all my happiness revolves.";
+  const note = `I know I’m not perfect, but I want to be everything you dream of. I want to be the man who understands you—not just the big things, but the small details, too. I want you to tell me what makes you happy, what makes you laugh, and what makes you feel safe. Teach me how to love you the way you want to be loved. I don’t want to assume I know what you need; I want to listen and learn.
 
-  assert.match(mount.container.textContent, /Reason for Being/);
+Your happiness means everything to me, and I will never stop trying to be the man who brings it to you. I want to be the one who shows up for you, who gets it right, and who learns from his mistakes. I will always be ready to grow, to change, and to love you more deeply than I did yesterday.
+
+Tell me your dreams, your desires, and your fears, and I promise I’ll be right here. You deserve to be loved in a way that feels right to you, and I’m willing to do whatever it takes to be the person you need, because you are my number one.`;
+  const titles = [...mount.container.querySelectorAll(".notes-item-title")]
+    .map((item) => item.textContent);
+
+  assert.deepEqual(titles, ["Histories", "Home", "Reason for Being", "1"]);
   assert.equal(mount.container.querySelector(".notes-editor").value, note);
 });
