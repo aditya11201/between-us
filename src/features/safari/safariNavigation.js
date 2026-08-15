@@ -1,6 +1,6 @@
 export const TARGET_ORIGIN = "https://aditya11201.github.io";
-export const TARGET_PATH_PREFIX = "/birthday-wishes/";
-export const TARGET_URL = "https://aditya11201.github.io/birthday-wishes/";
+export const TARGET_PATH_PREFIX = "/glad-you-were-born/";
+export const TARGET_URL = "https://aditya11201.github.io/glad-you-were-born/";
 export const APOLOGY_TARGET_PATH_PREFIX = "/apology-web-app/";
 export const APOLOGY_TARGET_URL = "https://aditya11201.github.io/apology-web-app/";
 
