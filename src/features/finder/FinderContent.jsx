@@ -272,8 +272,8 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
       { name: "Library", type: "folder", iconType: "folder", size: "--", modified: "Today", path: "/Library" },
       { name: "System", type: "folder", iconType: "system", size: "--", modified: "Yesterday", path: "/System" },
       { name: "Users", type: "folder", iconType: "users", size: "--", modified: "Today", path: "/Users" },
-      { name: "README.md", type: "file", iconType: "code", size: "4.2 KB", modified: "Today", preview: "# macweb.dev\n\nA web-native macOS experience built with React.\n\n## Features\n- Native-like macOS interface\n- Working Finder with file preview\n- Terminal emulator\n- Notes app" },
-      { name: "LICENSE", type: "file", iconType: "file", size: "1.2 KB", modified: "Yesterday", preview: "MIT License\n\nCopyright (c) 2026 macweb.dev..." },
+      { name: "README.md", type: "file", iconType: "code", size: "4.2 KB", modified: "Today", preview: "# Between Us\n\nA personal macOS-inspired experience built with React.\n\n## Features\n- Native-like macOS interface\n- Working Finder with file preview\n- Terminal emulator\n- Notes app" },
+      { name: "LICENSE", type: "file", iconType: "file", size: "1.2 KB", modified: "Yesterday", preview: "MIT License\n\nCopyright (c) 2026 Between Us..." },
     ],
     applications: [
       { name: "Finder.app", type: "app", icon: { type: "image", path: APPS.find(a => a.name.toLowerCase() === "finder")?.iconPath, fallback: "finder" }, size: "12 MB", modified: "Today", exec: "finder", isImageIcon: true },
@@ -285,9 +285,9 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
     ],
     desktop: [
       { name: "Macintosh HD", type: "alias", iconType: "drive", size: "--", modified: "Today", target: "macos" },
-      { name: "macweb.dev", type: "file", iconType: "code", size: "2 KB", modified: "Just now", preview: "macOS web simulation built with React" },
+      { name: "between-us", type: "folder", iconType: "folder", size: "2 KB", modified: "Just now", path: "between-us", preview: "A personal macOS-inspired experience built with React" },
       { name: "Projects", type: "folder", iconType: "folder", size: "--", modified: "2 days ago", path: "projects" },
-      { name: "README.md", type: "file", iconType: "code", size: "4.2 KB", modified: "Today", preview: "# macweb.dev..." },
+      { name: "README.md", type: "file", iconType: "code", size: "4.2 KB", modified: "Today", preview: "# Between Us\n\nA personal macOS-inspired experience." },
     ],
     documents: [
       { name: "Projects", type: "folder", iconType: "folder", size: "--", modified: "2 days ago", path: "projects" },
@@ -295,18 +295,18 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
       { name: "Notes.txt", type: "file", iconType: "file", size: "2 KB", modified: "Yesterday", preview: "- Coffee\n- Matcha\n- More RAM" },
     ],
     downloads: [
-      { name: "hackintosh-web.zip", type: "archive", iconType: "archive", size: "8.2 MB", modified: "Today", preview: "Archive contents..." },
+      { name: "between-us.zip", type: "archive", iconType: "archive", size: "8.2 MB", modified: "Today", preview: "Archive contents..." },
       { name: "wallpaper.png", type: "image", iconType: "image", size: "3.1 MB", modified: "Yesterday", preview: "macOS default wallpaper" },
     ],
     projects: [
-      { name: "macweb.dev", type: "folder", iconType: "folder", size: "--", modified: "Just now", path: "macweb.dev" },
+      { name: "between-us", type: "folder", iconType: "folder", size: "--", modified: "Just now", path: "between-us" },
       { name: "portfolio", type: "folder", iconType: "folder", size: "--", modified: "3 days ago", path: "portfolio" },
     ],
-    "macweb.dev": [
+    "between-us": [
       { name: "src", type: "folder", iconType: "folder", size: "--", modified: "Just now", path: "src" },
       { name: "public", type: "folder", iconType: "folder", size: "--", modified: "Just now", path: "public" },
-      { name: "package.json", type: "file", iconType: "code", size: "1.2 KB", modified: "Just now", preview: JSON.stringify({ name: "macweb.dev", version: "1.0.0" }, null, 2) },
-      { name: "README.md", type: "file", iconType: "code", size: "3.4 KB", modified: "Just now", preview: "# macweb.dev" },
+      { name: "package.json", type: "file", iconType: "code", size: "1.2 KB", modified: "Just now", preview: JSON.stringify({ name: "between-us", version: "1.0.0" }, null, 2) },
+      { name: "README.md", type: "file", iconType: "code", size: "3.4 KB", modified: "Just now", preview: "# Between Us\n\nA personal macOS-inspired experience built with React.\n\n## Attribution\nBetween Us is based on [macweb.dev](https://github.com/gaminghackintosh/macweb.dev) by gaminghackintosh." },
     ],
     portfolio: [
       { name: "index.html", type: "file", iconType: "code", size: "9 KB", modified: "3 days ago", preview: "<!DOCTYPE html>..." },
@@ -314,7 +314,7 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
     ],
     recents: [],
     network: [
-      { name: "macweb.dev.local", type: "computer", iconType: "computer", size: "--", modified: "Today" },
+      { name: "between-us.local", type: "computer", iconType: "computer", size: "--", modified: "Today" },
     ],
     icloud: [],
     shared: [],

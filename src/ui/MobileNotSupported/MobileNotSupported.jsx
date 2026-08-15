@@ -40,7 +40,7 @@ export default function MobileNotSupported() {
             <div className="tl tl-min" />
             <div className="tl tl-max" />
           </div>
-          <span className="mns-titlebar-label">macweb.dev</span>
+          <span className="mns-titlebar-label">Between Us</span>
           <div className="mns-titlebar-spacer" />
         </div>
 
@@ -52,9 +52,9 @@ export default function MobileNotSupported() {
             </div>
             <div className="mns-hero-text">
               <h1 className="mns-title">Откройте на большом экране</h1>
-              <p className="mns-subtitle">macOS Experience</p>
+              <p className="mns-subtitle">A personal macOS-inspired experience</p>
               <p className="mns-description">
-                macweb.dev — это полноценная среда macOS прямо в браузере.
+                Between Us — это персональная среда в стиле macOS прямо в браузере.
                 На телефоне ей тесно. Возьмите ноутбук или компьютер, чтобы
                 погрузиться в атмосферу настоящего Mac.
               </p>
@@ -98,7 +98,7 @@ export default function MobileNotSupported() {
             </button>
           </div>
 
-          <p className="mns-footer">© 2026 gaminghackintosh</p>
+          <p className="mns-footer">© 2026 Between Us</p>
         </div>
       </div>
     </div>

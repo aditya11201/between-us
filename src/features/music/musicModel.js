@@ -1,4 +1,4 @@
-export const PLAYER_STORAGE_KEY = "karenjourney.music.player";
+export const PLAYER_STORAGE_KEY = "between-us.music.player";
 
 const DEFAULT_PLAYER_STATE = Object.freeze({
   activeId: null,

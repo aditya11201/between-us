@@ -4,5 +4,3 @@ Allow: /
 # Disallow admin/private areas if they exist
 # Disallow: /admin/
 # Disallow: /private/
-
-Sitemap: https://macweb.dev/sitemap.xml

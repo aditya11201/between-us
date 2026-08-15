@@ -80,7 +80,7 @@ test("accepts a descendant of the target path", () => {
 
 test("rejects the parent project path even on the same host", () => {
   assert.equal(
-    resolveSafariNavigation("https://aditya11201.github.io/karenjourney/").kind,
+    resolveSafariNavigation("https://aditya11201.github.io/between-us/").kind,
     "blocked",
   );
 });

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  PLAYER_STORAGE_KEY,
   filterMusicCatalog,
   getNextSong,
   getPreviousAction,
@@ -38,6 +39,10 @@ const songs = [
     artwork: "/assets/third.webp",
   },
 ];
+
+test("uses the Between Us music storage namespace", () => {
+  assert.equal(PLAYER_STORAGE_KEY, "between-us.music.player");
+});
 
 test("validates complete unique catalog records", () => {
   assert.equal(validateMusicCatalog(songs), songs);

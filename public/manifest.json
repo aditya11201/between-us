@@ -1,8 +1,8 @@
 {
-  "name": "macOS Web",
-  "short_name": "macOS",
-  "description": "macOS-like desktop environment in your browser",
-  "start_url": "/",
+  "name": "Between Us",
+  "short_name": "Between Us",
+  "description": "A personal macOS-inspired experience",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0d0718",
   "theme_color": "#0d0718",

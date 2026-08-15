@@ -54,12 +54,12 @@ Repository saat ini menggunakan:
 | Persistence | `localStorage` pada feature tertentu |
 | Backend | Tidak ditemukan |
 | Database | Tidak ditemukan |
-| Deployment base | `/macweb.dev/` pada production build |
+| Deployment base | `/between-us/` pada production build |
 
 File `vite.config.js` sudah memiliki konfigurasi berikut:
 
 ```js
-base: isProd ? "/macweb.dev/" : "/",
+base: isProd ? "/between-us/" : "/",
 ```
 
 Karena itu, asset foto harus memakai URL hasil import Vite. Jangan membangun URL production secara manual dengan awalan `/`.
@@ -146,7 +146,7 @@ Contoh hasil internal:
   sectionId: "travel",
   sectionLabel: "Travel",
   name: "japan.png",
-  url: "/macweb.dev/assets/japan-abc123.png"
+  url: "/between-us/assets/japan-abc123.png"
 }
 ```
 
@@ -532,7 +532,7 @@ Acceptance criteria:
 - Foto pada subfolder terdeteksi saat build.
 - ID memakai path relatif.
 - File dengan ekstensi yang tidak didukung diabaikan.
-- Build production berhasil pada base path `/macweb.dev/`.
+- Build production berhasil pada base path `/between-us/`.
 
 ### Fase 2: Gallery UI
 
