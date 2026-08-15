@@ -77,6 +77,6 @@ test("opens Notes with the new north note", async () => {
   const mount = await renderNotes();
   const note = "I am a wanderer who has spent my life gazing at maps, while you are the north that keeps me from losing my way. Perhaps the universe is too vast to ever be possessed, yet somehow, every step I take always finds its way toward the same direction. Just as the sun never asks the Earth to revolve around it, you never asked me to make you the center of everything. And yet, without even realizing it, your name became the axis around which all my happiness revolves.";
 
-  assert.match(mount.container.textContent, /The North/);
+  assert.match(mount.container.textContent, /Reason for Being/);
   assert.equal(mount.container.querySelector(".notes-editor").value, note);
 });

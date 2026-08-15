@@ -47,8 +47,8 @@ export const AboutPanel = memo(() => {
             <AppleLogoSVG />
           </div>
           <div className="about-hero-text">
-            <h1 className="about-title">macweb.dev</h1>
-            <p className="about-subtitle">Virtual Mac · Browser Edition</p>
+            <h1 className="about-title">Between Us</h1>
+            <p className="about-subtitle">A personal macOS-inspired experience</p>
           </div>
         </div>
 
@@ -127,7 +127,7 @@ export const AboutPanel = memo(() => {
           </div>
           <p className="footer-copyright">™ &amp; © 1983–2026 Apple Inc. All rights reserved.</p>
           <p className="footer-disclaimer">
-            macweb.dev is a fan project and is not affiliated with Apple Inc.
+            Between Us is a fan project and is not affiliated with Apple Inc.
           </p>
         </div>
 

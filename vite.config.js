@@ -5,7 +5,7 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === "production";
 
   return {
-    base: isProd ? "/karenjourney/" : "/",
+    base: isProd ? "/between-us/" : "/",
 
     plugins: [
       react({

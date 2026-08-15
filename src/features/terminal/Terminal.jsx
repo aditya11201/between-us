@@ -29,7 +29,7 @@ export function TerminalContent({ openApp }) {
   const [history, setHistory] = useState([
     { type: "output", text: `\x1b[33mLast login:\x1b[0m ${new Date().toDateString()} on ttys001` },
     { type: "output", text: "" },
-    { type: "output", text: '\x1b[32mWelcome to macweb.dev terminal!\x1b[0m' },
+    { type: "output", text: '\x1b[32mWelcome to Between Us terminal!\x1b[0m' },
     { type: "output", text: 'Type "help" for available commands.' },
     { type: "output", text: "" },
   ]);
@@ -167,12 +167,12 @@ export function TerminalContent({ openApp }) {
       };
     }
 
-    if (cmd === "pwd") return { clear: false, lines: ["/Users/gaminghackintosh"] };
-    if (cmd === "whoami") return { clear: false, lines: ["gaminghackintosh"] };
+    if (cmd === "pwd") return { clear: false, lines: ["/Users/you"] };
+    if (cmd === "whoami") return { clear: false, lines: ["you"] };
 
     if (cmd === "uname") {
       if (args[0] === "-a") {
-        return { clear: false, lines: ["Darwin macweb.dev 24.0.0 Darwin Kernel Version 24.0.0; root:xnu/RELEASE_ARM64 macweb.dev"] };
+        return { clear: false, lines: ["Darwin between-us 24.0.0 Darwin Kernel Version 24.0.0; root:xnu/RELEASE_ARM64 between-us"] };
       }
       return { clear: false, lines: ["Darwin"] };
     }
@@ -184,9 +184,9 @@ export function TerminalContent({ openApp }) {
       return {
         clear: false,
         lines: [
-          "# macweb.dev",
+          "# Between Us",
           "",
-          "A web-native macOS experience built with React.",
+          "A personal macOS-inspired experience built with React.",
           "",
           "## Features",
           "- Draggable windows with glassmorphism",
@@ -207,8 +207,11 @@ export function TerminalContent({ openApp }) {
           "  bare = false",
           "  logallrefupdates = true",
           "[remote \"origin\"]",
-          "  url = https://github.com/gaminghackintosh/macweb.dev.git",
+          "  url = https://github.com/aditya11201/between-us.git",
           "  fetch = +refs/heads/*:refs/remotes/origin/*",
+          "[remote \"upstream\"]",
+          "  url = https://github.com/gaminghackintosh/macweb.dev.git",
+          "  fetch = +refs/heads/*:refs/remotes/upstream/*",
         ],
       };
     }
@@ -236,15 +239,15 @@ export function TerminalContent({ openApp }) {
         clear: false,
         lines: [
           "",
-          " \x1b[38;5;39m                                     ,\x1b[0m                          \x1b[32mgaminghackintosh\x1b[0m@\x1b[36mmacweb.dev\x1b[0m",
+          " \x1b[38;5;39m                                     ,\x1b[0m                          \x1b[32myou\x1b[0m@\x1b[36mbetween-us\x1b[0m",
           " \x1b[38;5;39m                                    ;o\\\\\x1b[0m                         ─────────────────────────────",
-          " \x1b[38;5;45m                                    ;Ob`.\x1b[0m                       OS:          \x1b[37mmacweb.dev 1.0.0\x1b[0m",
-          " \x1b[38;5;45m                                   ;OOOOb`.\x1b[0m                     Kernel:      \x1b[37mmacweb-core\x1b[0m",
+          " \x1b[38;5;45m                                    ;Ob`.\x1b[0m                       OS:          \x1b[37mBetween Us 1.0.0\x1b[0m",
+          " \x1b[38;5;45m                                   ;OOOOb`.\x1b[0m                     Kernel:      \x1b[37mbetween-us-core\x1b[0m",
           " \x1b[38;5;51m                                  ;OOOOOY\" )\x1b[0m                    Host:        \x1b[37mMacBook Pro (Simulated)\x1b[0m",
           " \x1b[38;5;51m                                 ;OOOO' ,%%)\x1b[0m                    Shell:       \x1b[37mhacksh 1.0.0\x1b[0m",
           " \x1b[38;5;87m                             \\\\  /OOO ,%%%%,%\\\\\x1b[0m                 Runtime:     \x1b[37mReact 19 / V8\x1b[0m",
           " \x1b[38;5;87m                              |:  ,%%%%%%;%%/\x1b[0m                  Resolution:  \x1b[37m" + resolution + "\x1b[0m",
-          " \x1b[38;5;123m                              ||,%%%%%%%%%%/\x1b[0m                   Theme:       \x1b[35mhackintosh Dark\x1b[0m",
+          " \x1b[38;5;123m                              ||,%%%%%%%%%%/\x1b[0m                   Theme:       \x1b[35mBetween Us Dark\x1b[0m",
           " \x1b[38;5;123m                              ;|%%%%%%%%%'/`-\"\"`.\x1b[0m             Engine:      \x1b[37mChromium Terminal\x1b[0m",
           " \x1b[38;5;159m                             /: %%%%%%%%'/ c$$$$.`.\x1b[0m            Memory:      \x1b[37m" + memory + "\x1b[0m",
           " \x1b[38;5;159m                `.______     \\\\ \\\\%%%%%%%'/.$$YF\"Y$: )\x1b[0m          Uptime:      \x1b[37m" + uptime + "s\x1b[0m",
@@ -319,7 +322,7 @@ export function TerminalContent({ openApp }) {
 
     if (cmd === "weather") {
       return { clear: false, lines: [
-        `\x1b[36mWeather for macweb.dev:\x1b[0m`,
+        `\x1b[36mWeather for Between Us:\x1b[0m`,
         `  ☀️  Temperature: 24°C`,
         `  🌬️  Wind: 12 km/h`,
         `  💧  Humidity: 45%`,
@@ -327,7 +330,7 @@ export function TerminalContent({ openApp }) {
     }
 
     if (cmd === "hi") {
-      return { clear: false, lines: ["\x1b[33mHello! Welcome to the macweb.dev terminal! 🍏\x1b[0m"] };
+      return { clear: false, lines: ["\x1b[33mHello! Welcome to the Between Us terminal! 🍏\x1b[0m"] };
     }
 
     // === FUN ASCII ART ===
@@ -375,7 +378,7 @@ export function TerminalContent({ openApp }) {
           "├── Music",
           "├── Pictures",
           "├── Projects",
-          "│   ├── macweb.dev",
+          "│   ├── between-us",
           "│   └── portfolio",
           "└── Public",
         ],
@@ -449,9 +452,9 @@ export function TerminalContent({ openApp }) {
           `Networks: 5 packets in, 3 packets out`,
           ``,
           `PID  COMMAND      %CPU  TIME     MEM  USER`,
-          `1234 hacksh      0.0   0:00.01  12M  gaminghackintosh`,
-          `5678 node        0.8   0:12.34  256M gaminghackintosh`,
-          `9012 react       0.2   0:04.56  128M gaminghackintosh`,
+          `1234 hacksh      0.0   0:00.01  12M  you`,
+          `5678 node        0.8   0:12.34  256M you`,
+          `9012 react       0.2   0:04.56  128M you`,
         ],
       };
     }
@@ -472,10 +475,10 @@ export function TerminalContent({ openApp }) {
       return {
         clear: false,
         lines: [
-          `12K    ./Projects/macweb.dev/src`,
-          `8K     ./Projects/macweb.dev/public`,
-          `4K     ./Projects/macweb.dev/assets`,
-          `24K    ./Projects/macweb.dev`,
+          `12K    ./Projects/between-us/src`,
+          `8K     ./Projects/between-us/public`,
+          `4K     ./Projects/between-us/assets`,
+          `24K    ./Projects/between-us`,
           `16K    ./Documents/Projects`,
           `8K     ./Downloads`,
           `4K     ./Music`,
@@ -487,8 +490,8 @@ export function TerminalContent({ openApp }) {
       return {
         clear: false,
         lines: [
-          `gaminghackintosh   tty1         2025-01-01 12:00`,
-          `gaminghackintosh   tty2         2025-01-01 13:30`,
+          `you                 tty1         2025-01-01 12:00`,
+          `you                 tty2         2025-01-01 13:30`,
         ],
       };
     }
@@ -597,7 +600,7 @@ export function TerminalContent({ openApp }) {
         </div>
         <div className="terminal-window-title">
           <VscTerminalBash className="terminal-header-icon" />
-          <span>gaminghackintosh — hacksh — 80×24</span>
+          <span>you — hacksh — 80×24</span>
         </div>
       </div>
 
@@ -608,9 +611,9 @@ export function TerminalContent({ openApp }) {
             <div key={i} className="terminal-output-line">
               {entry.type === "prompt" ? (
                 <span>
-                  <span className="prompt-user">gaminghackintosh</span>
+                  <span className="prompt-user">you</span>
                   <span className="prompt-divider">@</span>
-                  <span className="prompt-host">macweb.dev</span>
+                  <span className="prompt-host">between-us</span>
                   <span className="prompt-sign">:~$ </span>
                   <span className="prompt-text">{entry.text}</span>
                 </span>
@@ -624,9 +627,9 @@ export function TerminalContent({ openApp }) {
 
         {/* Зона ввода */}
         <div className="terminal-input-wrapper">
-          <span className="prompt-user">gaminghackintosh</span>
+          <span className="prompt-user">you</span>
           <span className="prompt-divider">@</span>
-          <span className="prompt-host">macweb.dev</span>
+          <span className="prompt-host">between-us</span>
           <span className="prompt-sign">:~$ </span>
           <input
             ref={inputRef}

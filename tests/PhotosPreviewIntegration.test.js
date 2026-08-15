@@ -223,7 +223,7 @@ test("renders a photo payload in a contain-fit preview and delegates window cont
   const photo = {
     id: "favorites/sunset.webp",
     name: "sunset.webp",
-    url: "/karenjourney/assets/sunset.webp",
+    url: "/between-us/assets/sunset.webp",
   };
   const { container, root } = await renderPreview(photo, controls);
 
@@ -278,14 +278,14 @@ test("renders a normalized preview image in contain-fit mode", async () => {
   const photo = {
     id: "favorites/panorama.webp",
     name: "panorama.webp",
-    url: "  /karenjourney/assets/panorama.webp  ",
+    url: "  /between-us/assets/panorama.webp  ",
   };
   const rendered = await renderPreview(photo);
   const image = rendered.container.querySelector(".photos-preview__image");
   assert.ok(image);
 
   // Assert: URL normalization and the rendered image contract are stable.
-  assert.equal(image.getAttribute("src"), "/karenjourney/assets/panorama.webp");
+  assert.equal(image.getAttribute("src"), "/between-us/assets/panorama.webp");
   assert.equal(image.style.objectFit, "contain");
   assert.equal(
     browserWindow.getComputedStyle(image).objectFit,
@@ -347,7 +347,7 @@ test("replaces an image-error event with the local preview fallback", async () =
   const rendered = await renderPreview({
     id: "favorites/broken.webp",
     name: "broken.webp",
-    url: "/karenjourney/assets/broken.webp",
+    url: "/between-us/assets/broken.webp",
   });
   const image = rendered.container.querySelector(".photos-preview__image");
   assert.ok(image);
@@ -373,12 +373,12 @@ test("resets failed preview state on payload changes and removes the root cleanl
   const firstPhoto = {
     id: "favorites/broken.webp",
     name: "broken.webp",
-    url: "/karenjourney/assets/broken.webp",
+    url: "/between-us/assets/broken.webp",
   };
   const nextPhoto = {
     id: "favorites/mountain.webp",
     name: "mountain.webp",
-    url: "/karenjourney/assets/mountain.webp",
+    url: "/between-us/assets/mountain.webp",
   };
   const rendered = await renderPreview(firstPhoto);
 
@@ -422,7 +422,7 @@ test("preview controls render and receive visible keyboard focus", async () => {
   const { container, root } = await renderPreview({
     id: "favorites/sunset.webp",
     name: "sunset.webp",
-    url: "/karenjourney/assets/sunset.webp",
+    url: "/between-us/assets/sunset.webp",
   });
   const preview = container.querySelector(".photos-preview");
   const buttons = container.querySelectorAll(".photos-preview__traffic-light");
@@ -439,7 +439,7 @@ test("Preview exposes the Image Viewer toolbar and a toggleable thumbnail sideba
   const photo = {
     id: "favorites/sunset.webp",
     name: "sunset.webp",
-    url: "/karenjourney/assets/sunset.webp",
+    url: "/between-us/assets/sunset.webp",
   };
   const rendered = await renderPreview(photo);
 
@@ -526,7 +526,7 @@ test("Preview gives each window unique panel ids and matching controls", async (
   const photo = {
     id: "favorites/sunset.webp",
     name: "sunset.webp",
-    url: "/karenjourney/assets/sunset.webp",
+    url: "/between-us/assets/sunset.webp",
   };
   const first = await renderPreview(photo);
   const second = await renderPreview(photo);
@@ -564,7 +564,7 @@ test("Preview returns focus to replacement controls when panels toggle", async (
   const rendered = await renderPreview({
     id: "favorites/sunset.webp",
     name: "sunset.webp",
-    url: "/karenjourney/assets/sunset.webp",
+    url: "/between-us/assets/sunset.webp",
   });
   const hideSidebar = rendered.container.querySelector('[aria-label="Hide Sidebar"]');
   hideSidebar.focus();
@@ -595,7 +595,7 @@ test("Preview keyboard shortcuts update zoom, rotation, and metadata visibility"
   const rendered = await renderPreview({
     id: "favorites/sunset.webp",
     name: "sunset.webp",
-    url: "/karenjourney/assets/sunset.webp",
+    url: "/between-us/assets/sunset.webp",
   });
   const preview = rendered.container.querySelector(".photos-preview");
 
@@ -639,7 +639,7 @@ test("Preview closes transient panels with Escape without intercepting browser s
     {
       id: "favorites/sunset.webp",
       name: "sunset.webp",
-      url: "/karenjourney/assets/sunset.webp",
+      url: "/between-us/assets/sunset.webp",
     },
     { ...createWindowControls(), onClose: () => { calls.close += 1; } },
   );
@@ -696,7 +696,7 @@ test("Dropped images start at a fresh fit state instead of inheriting the previo
     const rendered = await renderPreview({
       id: "favorites/original.webp",
       name: "original.webp",
-      url: "/karenjourney/assets/original.webp",
+      url: "/between-us/assets/original.webp",
     });
     const preview = rendered.container.querySelector(".photos-preview");
     const image = rendered.container.querySelector(".photos-preview__image");
@@ -751,13 +751,13 @@ test("Share resolves bundled image URLs before copying them", async () => {
     const rendered = await renderPreview({
       id: "favorites/sunset.webp",
       name: "sunset.webp",
-      url: "/karenjourney/assets/sunset.webp",
+      url: "/between-us/assets/sunset.webp",
     });
     await act(async () => {
       rendered.container.querySelector('[aria-label="Share"]').click();
     });
 
-    assert.equal(copiedUrl, "http://localhost/karenjourney/assets/sunset.webp");
+    assert.equal(copiedUrl, "http://localhost/between-us/assets/sunset.webp");
     await unmountRendered(rendered);
   } finally {
     Object.defineProperty(browserWindow.navigator, "clipboard", {
@@ -784,7 +784,7 @@ test("Filtered thumbnail keyboard navigation selects the visible image", async (
     const rendered = await renderPreview({
       id: "favorites/original.webp",
       name: "original.webp",
-      url: "/karenjourney/assets/original.webp",
+      url: "/between-us/assets/original.webp",
     });
     const preview = rendered.container.querySelector(".photos-preview");
     const dropEvent = new browserWindow.Event("drop", { bubbles: true });
@@ -849,7 +849,7 @@ test("Fit to window keeps a rotated image inside the available stage", async () 
   const rendered = await renderPreview({
     id: "favorites/panorama.webp",
     name: "panorama.webp",
-    url: "/karenjourney/assets/panorama.webp",
+    url: "/between-us/assets/panorama.webp",
   });
   const image = rendered.container.querySelector(".photos-preview__image");
   const stage = rendered.container.querySelector(".photos-preview__stage");

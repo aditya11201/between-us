@@ -6,7 +6,7 @@ import { MailIcon } from "@/features/mail/MailIcon";
 
 const GITHUB_APP = {
   id: "github",
-  name: "View Source by GitHub",
+  name: "View Original Source",
   isLink: true,
   url: "https://github.com/gaminghackintosh/macweb.dev",
   icon: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
