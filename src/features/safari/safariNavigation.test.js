@@ -10,23 +10,23 @@ test("recognizes existing local Safari commands", () => {
   });
 });
 
-test("accepts the birthday-wishes root URL", () => {
-  assert.deepEqual(resolveSafariNavigation("https://aditya11201.github.io/birthday-wishes/"), {
+test("accepts the glad-you-were-born root URL", () => {
+  assert.deepEqual(resolveSafariNavigation("https://aditya11201.github.io/glad-you-were-born/"), {
     kind: "iframe",
-    url: "https://aditya11201.github.io/birthday-wishes/",
-    title: "https://aditya11201.github.io/birthday-wishes/",
+    url: "https://aditya11201.github.io/glad-you-were-born/",
+    title: "https://aditya11201.github.io/glad-you-were-born/",
   });
 });
 
 test("canonicalizes a target URL without a trailing slash", () => {
   assert.equal(
-    resolveSafariNavigation("https://aditya11201.github.io/birthday-wishes").url,
-    "https://aditya11201.github.io/birthday-wishes/",
+    resolveSafariNavigation("https://aditya11201.github.io/glad-you-were-born").url,
+    "https://aditya11201.github.io/glad-you-were-born/",
   );
 });
 
 const APOLOGY_URL = "https://aditya11201.github.io/apology-web-app/";
-const ALLOWLISTED_PATHS = ["/birthday-wishes/", "/apology-web-app/"];
+const ALLOWLISTED_PATHS = ["/glad-you-were-born/", "/apology-web-app/"];
 
 test("accepts the apology-app root URL", () => {
   assert.deepEqual(resolveSafariNavigation(APOLOGY_URL), {
@@ -64,16 +64,16 @@ test("rejects a lookalike apology-app path", () => {
 
 test("preserves allowed target query and hash values", () => {
   const result = resolveSafariNavigation(
-    "https://aditya11201.github.io/birthday-wishes/?scene=finale#message",
+    "https://aditya11201.github.io/glad-you-were-born/?scene=finale#message",
   );
 
   assert.equal(result.kind, "iframe");
-  assert.equal(result.url, "https://aditya11201.github.io/birthday-wishes/?scene=finale#message");
+  assert.equal(result.url, "https://aditya11201.github.io/glad-you-were-born/?scene=finale#message");
 });
 
 test("accepts a descendant of the target path", () => {
   assert.equal(
-    resolveSafariNavigation("https://aditya11201.github.io/birthday-wishes/section").kind,
+    resolveSafariNavigation("https://aditya11201.github.io/glad-you-were-born/section").kind,
     "iframe",
   );
 });
@@ -87,7 +87,7 @@ test("rejects the parent project path even on the same host", () => {
 
 test("rejects a lookalike path", () => {
   assert.equal(
-    resolveSafariNavigation("https://aditya11201.github.io/birthday-wishes-attacker/").kind,
+    resolveSafariNavigation("https://aditya11201.github.io/glad-you-were-born-attacker/").kind,
     "blocked",
   );
 });
@@ -122,13 +122,13 @@ test("rejects embedded credentials for every allowlisted path prefix", () => {
 
 test("redacts credentials from blocked navigation results", () => {
   const result = resolveSafariNavigation(
-    "https://user:secret@aditya11201.github.io/birthday-wishes/?scene=finale#message",
+    "https://user:secret@aditya11201.github.io/glad-you-were-born/?scene=finale#message",
   );
 
   assert.deepEqual(result, {
     kind: "blocked",
-    url: "https://aditya11201.github.io/birthday-wishes/?scene=finale#message",
-    title: "https://aditya11201.github.io/birthday-wishes/?scene=finale#message",
+    url: "https://aditya11201.github.io/glad-you-were-born/?scene=finale#message",
+    title: "https://aditya11201.github.io/glad-you-were-born/?scene=finale#message",
     reason: "credentials",
   });
   assert.equal(JSON.stringify(result).includes("secret"), false);

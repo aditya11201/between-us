@@ -8,7 +8,7 @@ import {
   subscribeExternalFrameNavigation,
 } from "./externalSiteBridge.js";
 
-const TARGET_URL = "https://aditya11201.github.io/birthday-wishes/";
+const TARGET_URL = "https://aditya11201.github.io/glad-you-were-born/";
 
 test("marks the birthday document ready when its root exists", () => {
   const window = new Window();
