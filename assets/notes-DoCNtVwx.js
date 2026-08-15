@@ -1,4 +1,4 @@
-import{r as n,W as y,m as e}from"./finder-BnIyLPyn.js";function x(){const{onClose:a,onMinimize:l,onZoom:r,onTitleMouseDown:c}=n.useContext(y),d=[{id:1,title:"Histories",content:`Love arrives
+import{r as n,W as y,m as e}from"./finder-Ck1VyjEH.js";function x(){const{onClose:a,onMinimize:l,onZoom:r,onTitleMouseDown:c}=n.useContext(y),d=[{id:1,title:"Histories",content:`Love arrives
 and in its train come ecstasies
 old memories of pleasure
 ancient histories of pain.
