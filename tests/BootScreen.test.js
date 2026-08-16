@@ -442,7 +442,7 @@ test("configures startup audio without autoplaying before the logo is clicked", 
   await advanceTimers(200);
 
   // Assert: audio settings are ready while playback remains user-gated.
-  assert.equal(startupAudio.volume, 0.5);
+  assert.equal(startupAudio.volume, 0.3);
   assert.equal(startupAudio.loop, false);
   assert.equal(audio.playCalls, 0);
 });

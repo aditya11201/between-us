@@ -20,7 +20,7 @@ export default function BootScreen({ onComplete }) {
 
   useEffect(() => {
     const startupAudio = new Audio(startupAudioUrl);
-    startupAudio.volume = 0.5;
+    startupAudio.volume = 0.3;
     startupAudio.loop = false;
 
     let isUnmounted = false;
