@@ -81,6 +81,31 @@ function getSenderAddress(sender) {
   return `${sender.toLowerCase().replace(/[^a-z0-9]+/g, "")}@example.com`;
 }
 
+function renderFormattedInline(text) {
+  const lines = text.split("\n");
+  const nodes = [];
+
+  lines.forEach((line, lineIndex) => {
+    if (lineIndex > 0) {
+      nodes.push(<br key={`br-${lineIndex}`} />);
+    }
+
+    const parts = line.split(/(\*\*.*?\*\*)/g);
+    parts.forEach((part, partIndex) => {
+      if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+        const content = part.slice(2, -2);
+        if (content) {
+          nodes.push(<strong key={`strong-${lineIndex}-${partIndex}`}>{content}</strong>);
+        }
+      } else if (part) {
+        nodes.push(part);
+      }
+    });
+  });
+
+  return nodes;
+}
+
 export function MailContent({ onClose, onMinimize, onMaximize }) {
   const { onTitleMouseDown } = useContext(WindowContext);
   const { windows, activeWin } = useWindowManager();
@@ -752,16 +777,28 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                 <div className="mail__reader-meta">
                   <div className="mail__reader-subject">{selectedMessage.subject}</div>
                   <div className="mail__reader-from">
-                    {selectedMessage.sender} &lt;{getSenderAddress(selectedMessage.sender)}&gt;
+                    {selectedMessage.sender} &lt;{selectedMessage.senderEmail || getSenderAddress(selectedMessage.sender)}&gt;
                   </div>
-                  <div className="mail__reader-to">To: User &lt;{selectedMessage.to}&gt;</div>
+                  <div className="mail__reader-to">To: {selectedMessage.toName || "User"} &lt;{selectedMessage.to}&gt;</div>
                 </div>
                 <time className="mail__reader-date">{selectedMessage.time}</time>
               </header>
               <div className="mail__reader-body">
-                {selectedMessage.body.split(/\n\n+/).map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
-                ))}
+                {selectedMessage.body.split(/\n\n+/).map((paragraph) => {
+                  if (paragraph.startsWith("# ")) {
+                    return (
+                      <h1 key={paragraph}>
+                        {renderFormattedInline(paragraph.slice(2))}
+                      </h1>
+                    );
+                  }
+
+                  return (
+                    <p key={paragraph}>
+                      {renderFormattedInline(paragraph)}
+                    </p>
+                  );
+                })}
               </div>
             </article>
           ) : (
