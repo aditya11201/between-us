@@ -21,6 +21,38 @@ test("filters an inbox category by a case-insensitive query", () => {
   assert.deepEqual(result.map((message) => message.id), ["learning"]);
 });
 
+test("shows the romantic proposal only in the Important mailbox", () => {
+  const messages = createInitialMessages();
+  const importantMessages = getVisibleMessages(messages, {
+    mailboxId: "important",
+    categoryId: "primary",
+    query: "",
+    unreadOnly: false,
+  });
+  const proposal = importantMessages[0];
+
+  assert.deepEqual(importantMessages.map((message) => message.id), ["may-heart-proposal"]);
+  assert.equal(proposal.sender, "From the depths of my heart");
+  assert.equal(proposal.senderEmail, "myheart@gmail.com");
+  assert.equal(proposal.toName, "Stasya Annesty");
+  assert.equal(proposal.to, "stasyamyprincess@gmail.com");
+  assert.equal(proposal.subject, "A moment i've long been waiting for");
+  assert.equal(proposal.unread, true);
+  assert.equal(
+    proposal.body,
+    "# A Question I’ve Been Waiting to Ask\n\nHey,\n\nI’ve been holding onto this question for quite a while.\n\nNot because I was unsure about how I feel, but because I wanted to wait for the right moment—the moment when I could finally ask you this with all the sincerity in my heart.\n\nSomewhere along the way, you became more than just someone I care about. You became someone I look forward to talking to, someone who makes ordinary days feel a little brighter, and someone whose presence has slowly become one of my favorite parts of life.\n\nAnd after all the moments we’ve shared, all the conversations, the laughter, the difficult days, and everything in between, I realized that I don’t want to only be someone who stays close to you.\n\nI want to be someone who gets to choose you openly.\n\nSomeone who gets to be there for your happiest days and your hardest ones. Someone you can laugh with, grow with, rest with, and hopefully call home in your own way.\n\nI can’t promise that I will always love you perfectly, but I can promise that I will keep learning how to love you better, gently, honestly, and wholeheartedly.\n\nSo after keeping this question in my heart for so long, I think this is finally the moment I’ve been waiting for.\n\n**May I be your boyfriend?**\n\nAnd more than that—\n\n**would you let me keep choosing you, this time not only as someone who loves you quietly, but as someone you choose too?**\n\nWith all my heart,\nMay Heart",
+  );
+  assert.equal(
+    getVisibleMessages(messages, {
+      mailboxId: "inbox",
+      categoryId: "primary",
+      query: "",
+      unreadOnly: false,
+    }).some((message) => message.id === "may-heart-proposal"),
+    false,
+  );
+});
+
 test("unread-only filtering excludes read messages", () => {
   const result = getVisibleMessages(createInitialMessages(), {
     mailboxId: "inbox",
