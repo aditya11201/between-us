@@ -156,6 +156,8 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   };
 
   const lockImportant = () => {
+    if (mailboxId !== "important" && !importantUnlocked) return;
+
     const lockedState = getLockedMailState();
     setImportantUnlocked(lockedState.importantUnlocked);
     setMailboxId((current) => current === "important" ? "inbox" : current);
@@ -486,6 +488,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                 const Icon = MAILBOX_ICONS[item.icon] || FiFolder;
                 const isSelected = item.id === mailboxId;
                 const count = getMailboxCount(messages, item.id);
+                const showCount = count > 0 && (item.id !== "important" || importantUnlocked);
 
                 return (
                   <button
@@ -503,7 +506,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                       <Icon />
                     </span>
                     <span className="mail__nav-label">{item.label}</span>
-                    {count > 0 && <span className="mail__nav-count">{count}</span>}
+                    {showCount && <span className="mail__nav-count">{count}</span>}
                   </button>
                 );
               })}

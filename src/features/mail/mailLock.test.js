@@ -206,6 +206,22 @@ test("locked Important view hides protected content and exposes a labelled form"
   assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
 });
 
+test("masks only the locked Important mailbox count", async () => {
+  const mount = await renderMail();
+  const getMailboxCountText = (label) => {
+    const item = [...mount.container.querySelectorAll(".mail__nav-item")]
+      .find((candidate) => candidate.querySelector(".mail__nav-label")?.textContent === label);
+    return item?.querySelector(".mail__nav-count")?.textContent ?? null;
+  };
+
+  assert.equal(getMailboxCountText("Important"), null);
+  assert.equal(getMailboxCountText("Inbox"), "5");
+  assert.equal(getMailboxCountText("Flagged"), "1");
+
+  await unlockImportant(mount);
+  assert.equal(getMailboxCountText("Important"), "1");
+});
+
 test("cancelling the unlock dialog closes it and keeps the user outside Important", async () => {
   const mount = await renderMail();
   await click(getByRole(mount.container, "button", { name: /^Important/ }));
@@ -286,4 +302,24 @@ test("minimizing and closing Mail relock Important", async () => {
   assert.equal(queryByText(closed.container, "A moment i've long been waiting for"), null);
   await click(getByRole(closed.container, "button", { name: /^Important/ }));
   assert.ok(queryByRole(closed.container, "dialog"));
+});
+
+test("minimizing Mail outside Important preserves the current message state", async () => {
+  const mount = await renderMail();
+
+  await fill(mount.container.querySelector('[name="search"]'), "lesson");
+  await click(getByRole(mount.container, "option", { name: /Learning App: Continue your lesson today/i }));
+  await click(getByRole(mount.container, "button", { name: "Compose new message" }));
+
+  assert.equal(mount.container.querySelector(".mail__compose") !== null, true);
+  assert.equal(mount.container.querySelector('[name="search"]').value, "lesson");
+
+  await click(getByRole(mount.container, "button", { name: "Minimize Mail window" }));
+
+  assert.equal(mount.callbacks.minimize, 1);
+  assert.equal(mount.container.querySelector(".mail__compose") !== null, true);
+  assert.equal(mount.container.querySelector('[name="search"]').value, "lesson");
+
+  await click(getByRole(mount.container, "button", { name: "Discard" }));
+  assert.ok(getByText(mount.container, "Continue your lesson today"));
 });
