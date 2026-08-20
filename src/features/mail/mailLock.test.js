@@ -175,6 +175,27 @@ test("returns a clean locked Mail state", () => {
   });
 });
 
+test("locked Important view hides protected content and exposes a labelled form", async () => {
+  const mount = await renderMail();
+  await click(getByRole(mount.container, "button", { name: /^Important/ }));
+
+  assert.equal(getByRole(mount.container, "dialog").getAttribute("aria-modal"), "true");
+  assert.equal(getByLabelText(mount.container, "Mail password").getAttribute("type"), "password");
+  assert.equal(queryByText(mount.container, "There is one question I have been wanting to ask you."), null);
+  assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
+});
+
+test("cancelling the unlock dialog closes it and keeps the user outside Important", async () => {
+  const mount = await renderMail();
+  await click(getByRole(mount.container, "button", { name: /^Important/ }));
+  assert.ok(queryByRole(mount.container, "dialog"));
+
+  await click(getByRole(mount.container, "button", { name: "Cancel" }));
+  assert.equal(queryByRole(mount.container, "dialog"), null);
+  assert.equal(queryByText(mount.container, "There is one question I have been wanting to ask you."), null);
+  assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
+});
+
 test("Important is locked until the exact password is submitted", async () => {
   const mount = await renderMail();
 
