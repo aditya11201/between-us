@@ -20,6 +20,8 @@ Object.assign(globalThis, {
   Event: browserWindow.Event,
   KeyboardEvent: browserWindow.KeyboardEvent,
   MouseEvent: browserWindow.MouseEvent,
+  requestAnimationFrame: (callback) => setTimeout(callback, 0),
+  cancelAnimationFrame: (id) => clearTimeout(id),
   IS_REACT_ACT_ENVIRONMENT: true,
 });
 
@@ -30,6 +32,7 @@ let createRoot;
 let MailContent;
 let WindowContext;
 let WindowManagerProvider;
+let useWindowManager;
 const mountedRoots = [];
 
 function queryByRole(container, role, { name } = {}) {
@@ -88,12 +91,23 @@ async function fill(input, value) {
   });
 }
 
-async function renderMail({ onClose, onMinimize } = {}) {
+async function pressEscape() {
+  await act(async () => {
+    document.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  });
+}
+
+async function renderMail({ onClose, onMinimize, active = false } = {}) {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   const callbacks = { close: 0, minimize: 0 };
-  const mount = { container, root, callbacks };
+  let manager;
+  function ManagerProbe() {
+    manager = useWindowManager();
+    return null;
+  }
+  const mount = { container, root, callbacks, getManager: () => manager };
   mountedRoots.push(mount);
 
   await act(async () => {
@@ -101,6 +115,7 @@ async function renderMail({ onClose, onMinimize } = {}) {
       React.createElement(
         WindowManagerProvider,
         null,
+        React.createElement(ManagerProbe),
         React.createElement(
           WindowContext.Provider,
           { value: { onTitleMouseDown() {} } },
@@ -119,6 +134,12 @@ async function renderMail({ onClose, onMinimize } = {}) {
       ),
     );
   });
+
+  if (active && manager) {
+    await act(async () => {
+      manager.openApp("mail");
+    });
+  }
 
   return mount;
 }
@@ -145,7 +166,7 @@ before(async () => {
   ({ createRoot } = await import("react-dom/client"));
   ({ MailContent } = await vite.ssrLoadModule("/src/features/mail/MailContent.jsx"));
   ({ WindowContext } = await vite.ssrLoadModule("/src/windows/index.js"));
-  ({ WindowManagerProvider } = await vite.ssrLoadModule("/src/core/providers/WindowManagerProvider.jsx"));
+  ({ WindowManagerProvider, useWindowManager } = await vite.ssrLoadModule("/src/core/providers/WindowManagerProvider.jsx"));
 });
 
 afterEach(async () => {
@@ -191,6 +212,18 @@ test("cancelling the unlock dialog closes it and keeps the user outside Importan
   assert.ok(queryByRole(mount.container, "dialog"));
 
   await click(getByRole(mount.container, "button", { name: "Cancel" }));
+  assert.equal(queryByRole(mount.container, "dialog"), null);
+  assert.equal(queryByText(mount.container, "There is one question I have been wanting to ask you."), null);
+  assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
+});
+
+test("Escape key dismisses the unlock dialog in an unmaximized active Mail window", async () => {
+  const mount = await renderMail({ active: true });
+  await click(getByRole(mount.container, "button", { name: /^Important/ }));
+  assert.ok(queryByRole(mount.container, "dialog"));
+
+  await pressEscape();
+
   assert.equal(queryByRole(mount.container, "dialog"), null);
   assert.equal(queryByText(mount.container, "There is one question I have been wanting to ask you."), null);
   assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);

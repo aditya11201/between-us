@@ -214,7 +214,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   }, []);
 
   useEffect(() => {
-    if (!moreOpen && !moveOpen && (!isMailActive || !isMaximized)) return undefined;
+    if (!showUnlockDialog && !moreOpen && !moveOpen && (!isMailActive || !isMaximized)) return undefined;
 
     const closeMenusOnOutsideClick = (event) => {
       if (!event.target.closest?.(".mail__menu-wrap")) {
