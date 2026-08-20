@@ -12,6 +12,7 @@ import {
   FiFlag,
   FiFolder,
   FiInbox,
+  FiLock,
   FiMoreHorizontal,
   FiMove,
   FiSearch,
@@ -35,6 +36,7 @@ import {
   setMessageUnread,
   toggleMessageFlag,
 } from "./mailModel";
+import { getLockedMailState, isMailPasswordValid } from "./mailLock.js";
 
 const MAILBOX_ICONS = {
   inbox: FiInbox,
@@ -113,6 +115,10 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const wasNarrow = useRef(false);
   const [messages, setMessages] = useState(createInitialMessages);
   const [mailboxId, setMailboxId] = useState("inbox");
+  const [importantUnlocked, setImportantUnlocked] = useState(false);
+  const [unlockPassword, setUnlockPassword] = useState("");
+  const [unlockError, setUnlockError] = useState("");
+  const [unlockMailboxId, setUnlockMailboxId] = useState(null);
   const [categoryId, setCategoryId] = useState("primary");
   const [query, setQuery] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -147,6 +153,34 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
     setSelectedId(null);
     setMoreOpen(false);
     setMoveOpen(false);
+  };
+
+  const lockImportant = () => {
+    const lockedState = getLockedMailState();
+    setImportantUnlocked(lockedState.importantUnlocked);
+    setMailboxId((current) => current === "important" ? "inbox" : current);
+    setSelectedId(lockedState.selectedId);
+    setDraft(lockedState.draft);
+    setView(lockedState.view);
+    setQuery(lockedState.query);
+    setUnlockPassword("");
+    setUnlockError(lockedState.unlockError);
+    setUnlockMailboxId(null);
+  };
+
+  const submitImportantUnlock = (event) => {
+    event.preventDefault();
+    if (!isMailPasswordValid(unlockPassword)) {
+      setUnlockError("Incorrect password");
+      return;
+    }
+
+    setImportantUnlocked(true);
+    setUnlockPassword("");
+    setUnlockError("");
+    setUnlockMailboxId(null);
+    setMailboxId("important");
+    clearSelection();
   };
 
   useEffect(() => {
@@ -209,6 +243,17 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   }, [isMailActive, isMaximized, moreOpen, moveOpen, onMaximize]);
 
   const selectMailbox = (nextMailboxId) => {
+    if (nextMailboxId === "important" && !importantUnlocked) {
+      setUnlockError("");
+      setUnlockMailboxId("important");
+      return;
+    }
+
+    if (mailboxId === "important" && nextMailboxId !== "important") {
+      lockImportant();
+    }
+
+    setUnlockMailboxId(null);
     setMailboxId(nextMailboxId);
     clearSelection();
   };
@@ -305,6 +350,16 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
       ?.focus();
   };
 
+  const handleMailClose = () => {
+    lockImportant();
+    onClose();
+  };
+
+  const handleMailMinimize = () => {
+    lockImportant();
+    onMinimize();
+  };
+
   return (
     <div
       ref={mailRef}
@@ -325,14 +380,14 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
           <button
             type="button"
             className="mail__traffic-light mail__traffic-light--close"
-            onClick={onClose}
+            onClick={handleMailClose}
             aria-label="Close Mail window"
             title="Close Mail window"
           />
           <button
             type="button"
             className="mail__traffic-light mail__traffic-light--minimize"
-            onClick={onMinimize}
+            onClick={handleMailMinimize}
             aria-label="Minimize Mail window"
             title="Minimize Mail window"
           />
@@ -442,6 +497,17 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
             >
               <FiFilter aria-hidden="true" />
             </button>
+            {mailboxId === "important" && importantUnlocked && (
+              <button
+                type="button"
+                className="mail__icon-button"
+                onClick={lockImportant}
+                aria-label="Lock Important mailbox"
+                title="Lock Important mailbox"
+              >
+                <FiLock aria-hidden="true" />
+              </button>
+            )}
             <div className="mail__menu-wrap">
               <button
                 type="button"
@@ -807,6 +873,22 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
         </div>
         </section>
       </div>
+      {unlockMailboxId === "important" && (
+        <div role="dialog" aria-labelledby="mail-unlock-title">
+          <form onSubmit={submitImportantUnlock}>
+            <h2 id="mail-unlock-title">Unlock Important</h2>
+            <label htmlFor="mail-unlock-password">Mail password</label>
+            <input
+              id="mail-unlock-password"
+              type="password"
+              value={unlockPassword}
+              onChange={(event) => setUnlockPassword(event.target.value)}
+            />
+            {unlockError && <p role="alert">{unlockError}</p>}
+            <button type="submit">Unlock Important</button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
