@@ -155,7 +155,14 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
     setMoveOpen(false);
   };
 
+  const clearUnlockDialog = () => {
+    setShowUnlockDialog(false);
+    setUnlockPassword("");
+    setUnlockError("");
+  };
+
   const lockImportant = () => {
+    clearUnlockDialog();
     if (mailboxId !== "important" && !importantUnlocked) return;
 
     const lockedState = getLockedMailState();
@@ -165,9 +172,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
     setDraft(lockedState.draft);
     setView(lockedState.view);
     setQuery(lockedState.query);
-    setUnlockPassword("");
     setUnlockError(lockedState.unlockError);
-    setShowUnlockDialog(false);
   };
 
   const submitImportantUnlock = (event) => {

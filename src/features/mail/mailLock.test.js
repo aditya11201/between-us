@@ -245,6 +245,22 @@ test("Escape key dismisses the unlock dialog in an unmaximized active Mail windo
   assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
 });
 
+test("minimizing Mail clears a pending Important unlock dialog", async () => {
+  const mount = await renderMail();
+
+  await click(getByRole(mount.container, "button", { name: /^Important/ }));
+  await fill(getByLabelText(mount.container, "Mail password"), "wrong-password");
+  await click(getByRole(mount.container, "button", { name: "Unlock Important" }));
+  assert.ok(getByRole(mount.container, "alert"));
+
+  await click(getByRole(mount.container, "button", { name: "Minimize Mail window" }));
+
+  assert.equal(queryByRole(mount.container, "dialog"), null);
+  await click(getByRole(mount.container, "button", { name: /^Important/ }));
+  assert.equal(getByLabelText(mount.container, "Mail password").value, "");
+  assert.equal(queryByRole(mount.container, "alert"), null);
+});
+
 test("Important is locked until the exact password is submitted", async () => {
   const mount = await renderMail();
 
