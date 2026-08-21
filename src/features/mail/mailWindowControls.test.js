@@ -17,8 +17,8 @@ test("renders traffic lights in a persistent Mail titlebar", () => {
   assert.ok(lightsIndex > headerIndex, "traffic lights should be inside the Mail window header");
   assert.ok(sidebarIndex >= 0, "Mail sidebar should be rendered");
   assert.ok(headerIndex < sidebarIndex, "Mail window header must be outside the sidebar");
-  assert.match(source, /mail__traffic-light--close[\s\S]*onClick=\{onClose\}/);
-  assert.match(source, /mail__traffic-light--minimize[\s\S]*onClick=\{onMinimize\}/);
+  assert.match(source, /mail__traffic-light--close[\s\S]*onClick=\{handleMailClose\}/);
+  assert.match(source, /mail__traffic-light--minimize[\s\S]*onClick=\{handleMailMinimize\}/);
   assert.match(source, /mail__traffic-light--maximize[\s\S]*onClick=\{\(\) => \{[\s\S]*onMaximize\(\)/);
 });
 
