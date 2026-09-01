@@ -8,7 +8,7 @@ import {
   DisplaySettingsProvider,
 } from "@/core/providers";
 // UI компоненты
-import { BootScreen, MobileNotSupported, ContextMenu } from "@/ui";
+import { BootScreen, MobileNotSupported, ContextMenu, LockScreen } from "@/ui";
 // Layout компоненты
 import { Desktop, Dock, WindowList } from "@/windows";
 import { MenuBar } from "@/features/menubar/MenuBar";
@@ -16,10 +16,35 @@ import { MenuBar } from "@/features/menubar/MenuBar";
 import defaultWallpaperDark from "@/assets/images/wallpapers/Tahoe/Tahoe Dark.webp";
 import defaultWallpaperLight from "@/assets/images/wallpapers/Tahoe/Tahoe Light.webp";
 
-function AppContent() {
+export function AppContent() {
   const windowManager = useWindowManager();
   const { isLightTheme } = useTheme();
   const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
+  const [isLocked, setIsLocked] = useState(true);
+
+  const lockScreen = useCallback(() => {
+    window.dispatchEvent(new Event("between-us:lock"));
+    closeContextMenu();
+    setIsLocked(true);
+  }, [closeContextMenu]);
+
+  const unlockScreen = useCallback(() => {
+    setIsLocked(false);
+  }, []);
+
+  useEffect(() => {
+    if (isLocked) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (!event.ctrlKey || !event.metaKey || event.key.toLowerCase() !== "q") return;
+
+      event.preventDefault();
+      lockScreen();
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [isLocked, lockScreen]);
 
   // Состояние обоев — используется Settings для смены обоев
   const [wallpaper, setWallpaper] = useState(() => ({
@@ -66,12 +91,19 @@ function AppContent() {
   }, [openContextMenu, windowManager]);
 
   return (
-    <Desktop wallpaper={wallpaper.value} onContextMenu={handleDesktopContextMenu}>
+    <>
+      <Desktop
+        wallpaper={wallpaper.value}
+        onContextMenu={handleDesktopContextMenu}
+        isLocked={isLocked}
+      >
       <MenuBar 
         activeApp={windowManager.activeWin} 
         onClose={() => windowManager.closeWindow(windowManager.activeWin)}
         onMinimize={() => windowManager.minimizeWindow(windowManager.activeWin)}
         onZoom={() => windowManager.maximizeWindow(windowManager.activeWin)}
+        isLocked={isLocked}
+        onLockScreen={lockScreen}
       />
 
       <WindowList setWallpaper={setWallpaper} />
@@ -91,7 +123,9 @@ function AppContent() {
           onClose={closeContextMenu} 
         />
       )}
-    </Desktop>
+      </Desktop>
+      <LockScreen isLocked={isLocked} onUnlock={unlockScreen} />
+    </>
   );
 }
 
