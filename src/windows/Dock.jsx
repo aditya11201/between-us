@@ -4,6 +4,14 @@ import { AssetIcon } from "@/ui";
 import { PhotosIcon } from "@/features/photos/PhotosIcon";
 import { MailIcon } from "@/features/mail/MailIcon";
 
+const GITHUB_APP = {
+  id: "github",
+  name: "View Original Source",
+  isLink: true,
+  url: "https://github.com/gaminghackintosh/macweb.dev",
+  icon: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+};
+
 const BASE_ICON_SIZE = 58;
 
 // ─── MAGNIFICATION TUNING (как у настоящего Dock) ─────────────────────────
@@ -22,6 +30,7 @@ const DOCK_APPS = [
   APPS.find(a => a.id === "notes"),
   APPS.find(a => a.id === "calculator"),
   APPS.find(a => a.id === "terminal"),
+  APPS.find(a => a.id === "settings"),
 ];
 
 const FILTERED_DOCK_APPS = DOCK_APPS.filter(app => app && app.id !== undefined);
@@ -112,12 +121,17 @@ const DockItem = memo(forwardRef(function DockItem({
   isMinimized,
   isLightTheme
 }, ref) {
+  const isGitHub = app.id === "github";
   const isPhotos = app.id === "photos";
   const isMail = app.id === "mail";
 
   const handleClick = useCallback(() => {
-    onOpen(app.id);
-  }, [app.id, onOpen]);
+    if (app.isLink) {
+      window.open(app.url, "_blank");
+    } else {
+      onOpen(app.id);
+    }
+  }, [app.isLink, app.url, app.id, onOpen]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -144,7 +158,18 @@ const DockItem = memo(forwardRef(function DockItem({
           {app.name}
         </div>
 
-        {isPhotos ? (
+        {isGitHub ? (
+          <div className="dock__icon-wrapper dock__icon-wrapper--white-bg">
+            <img
+              src={app.icon}
+              alt={app.name}
+              draggable={false}
+              loading="lazy"
+              decoding="async"
+              style={{ width: `${BASE_ICON_SIZE}px`, height: `${BASE_ICON_SIZE}px` }}
+            />
+          </div>
+        ) : isPhotos ? (
           <PhotosIcon size={BASE_ICON_SIZE} />
         ) : isMail ? (
           <MailIcon size={BASE_ICON_SIZE} />
@@ -162,7 +187,7 @@ const DockItem = memo(forwardRef(function DockItem({
 
         {/* Индикатор (открыто / свернуто) */}
         <div className="dock__indicator">
-          {isOpen && (
+          {isOpen && !app.isLink && (
             <div
               className={`dock__indicator-dot ${isMinimized ? "dock__indicator-dot--minimized" : ""}`}
             />
@@ -178,10 +203,10 @@ const DockSeparator = memo(() => <div className="dock__separator" aria-hidden="t
 // ─── ОСНОВНОЙ КОМПОНЕНТ DOCK ──────────────────────────────────────────────
 export default function Dock({ onOpen, openApps, minimizedApps = new Set(), isLightTheme = false }) {
   const mainDockRef = useRef(null);
-  const secondaryDockRef = useRef(null);
+  const githubDockRef = useRef(null);
 
   const mainMag = useDockMagnification(mainDockRef);
-  const secondaryMag = useDockMagnification(secondaryDockRef);
+  const githubMag = useDockMagnification(githubDockRef);
 
   // Мемоизация списка элементов (с привязкой к индексу для refs магнификации)
   // ✅ Убрали mainMag из зависимостей — функции в mainMag стабильны
@@ -228,24 +253,20 @@ export default function Dock({ onOpen, openApps, minimizedApps = new Set(), isLi
         {dockItems}
       </div>
 
-      {/* Отдельный вторичный Dock */}
+      {/* Отдельный Dock для GitHub */}
       <div
-        className="dock dock--secondary"
-        ref={secondaryDockRef}
-        onMouseEnter={secondaryMag.onMouseEnter}
-        onMouseMove={secondaryMag.onMouseMove}
-        onMouseLeave={secondaryMag.onMouseLeave}
+        className="dock dock--github"
+        ref={githubDockRef}
+        onMouseEnter={githubMag.onMouseEnter}
+        onMouseMove={githubMag.onMouseMove}
+        onMouseLeave={githubMag.onMouseLeave}
       >
         <DockItem
-          ref={secondaryMag.registerItem(0)}
-          app={APPS.find((app) => app.id === "settings")}
+          ref={githubMag.registerItem(0)}
+          app={GITHUB_APP}
           onOpen={onOpen}
-          isOpen={openApps?.includes("settings")}
-          isMinimized={
-            minimizedApps instanceof Set
-              ? minimizedApps.has("settings")
-              : minimizedApps?.includes?.("settings")
-          }
+          isOpen={false}
+          isMinimized={false}
           isLightTheme={isLightTheme}
         />
       </div>
