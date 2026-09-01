@@ -1,4 +1,4 @@
-export const DEMO_MAIL_PASSWORD = "between-us";
+export const DEMO_MAIL_PASSWORD = "290126";
 
 export function isMailPasswordValid(password) {
   return password === DEMO_MAIL_PASSWORD;
