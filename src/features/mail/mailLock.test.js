@@ -203,7 +203,7 @@ test("locked Important view hides protected content and exposes a labelled form"
   assert.equal(getByRole(mount.container, "dialog").getAttribute("aria-modal"), "true");
   assert.equal(getByLabelText(mount.container, "Mail password").getAttribute("type"), "password");
   assert.equal(queryByText(mount.container, "There is one question I have been wanting to ask you."), null);
-  assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
+  assert.equal(queryByText(mount.container, "A Moment I’ve Long Been Waiting For"), null);
 });
 
 test("masks only the locked Important mailbox count", async () => {
@@ -230,7 +230,7 @@ test("cancelling the unlock dialog closes it and keeps the user outside Importan
   await click(getByRole(mount.container, "button", { name: "Cancel" }));
   assert.equal(queryByRole(mount.container, "dialog"), null);
   assert.equal(queryByText(mount.container, "There is one question I have been wanting to ask you."), null);
-  assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
+  assert.equal(queryByText(mount.container, "A Moment I’ve Long Been Waiting For"), null);
 });
 
 test("Escape key dismisses the unlock dialog in an unmaximized active Mail window", async () => {
@@ -242,7 +242,7 @@ test("Escape key dismisses the unlock dialog in an unmaximized active Mail windo
 
   assert.equal(queryByRole(mount.container, "dialog"), null);
   assert.equal(queryByText(mount.container, "There is one question I have been wanting to ask you."), null);
-  assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
+  assert.equal(queryByText(mount.container, "A Moment I’ve Long Been Waiting For"), null);
 });
 
 test("minimizing Mail clears a pending Important unlock dialog", async () => {
@@ -266,17 +266,17 @@ test("Important is locked until the exact password is submitted", async () => {
 
   await click(getByRole(mount.container, "button", { name: /^Important/ }));
   assert.equal(getByRole(mount.container, "dialog").hidden, false);
-  assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
+  assert.equal(queryByText(mount.container, "A Moment I’ve Long Been Waiting For"), null);
 
   await fill(getByLabelText(mount.container, "Mail password"), "wrong-password");
   await click(getByRole(mount.container, "button", { name: "Unlock Important" }));
   assert.match(getByRole(mount.container, "alert").textContent, /incorrect password/i);
-  assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
+  assert.equal(queryByText(mount.container, "A Moment I’ve Long Been Waiting For"), null);
 
   await fill(getByLabelText(mount.container, "Mail password"), DEMO_MAIL_PASSWORD);
   await click(getByRole(mount.container, "button", { name: "Unlock Important" }));
   assert.equal(queryByRole(mount.container, "dialog"), null);
-  assert.ok(getByText(mount.container, "A moment i've long been waiting for"));
+  assert.ok(getByText(mount.container, "A Moment I’ve Long Been Waiting For"));
 });
 
 test("leaving Important relocks it before it can be selected again", async () => {
@@ -287,17 +287,17 @@ test("leaving Important relocks it before it can be selected again", async () =>
   await click(getByRole(mount.container, "button", { name: /^Important/ }));
 
   assert.ok(queryByRole(mount.container, "dialog"));
-  assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
+  assert.equal(queryByText(mount.container, "A Moment I’ve Long Been Waiting For"), null);
 });
 
 test("explicit lock resets Important access and its selected message", async () => {
   const mount = await renderMail();
   await unlockImportant(mount);
 
-  await click(getByRole(mount.container, "option", { name: /A moment i've long been waiting for/i }));
+  await click(getByRole(mount.container, "option", { name: /A Moment I’ve Long Been Waiting For/i }));
   await click(getByRole(mount.container, "button", { name: "Lock Important mailbox" }));
 
-  assert.equal(queryByText(mount.container, "A moment i've long been waiting for"), null);
+  assert.equal(queryByText(mount.container, "A Moment I’ve Long Been Waiting For"), null);
   await click(getByRole(mount.container, "button", { name: /^Important/ }));
   assert.ok(queryByRole(mount.container, "dialog"));
 });
@@ -307,7 +307,7 @@ test("minimizing and closing Mail relock Important", async () => {
   await unlockImportant(minimized);
   await click(getByRole(minimized.container, "button", { name: "Minimize Mail window" }));
   assert.equal(minimized.callbacks.minimize, 1);
-  assert.equal(queryByText(minimized.container, "A moment i've long been waiting for"), null);
+  assert.equal(queryByText(minimized.container, "A Moment I’ve Long Been Waiting For"), null);
   await click(getByRole(minimized.container, "button", { name: /^Important/ }));
   assert.ok(queryByRole(minimized.container, "dialog"));
 
@@ -315,7 +315,7 @@ test("minimizing and closing Mail relock Important", async () => {
   await unlockImportant(closed);
   await click(getByRole(closed.container, "button", { name: "Close Mail window" }));
   assert.equal(closed.callbacks.close, 1);
-  assert.equal(queryByText(closed.container, "A moment i've long been waiting for"), null);
+  assert.equal(queryByText(closed.container, "A Moment I’ve Long Been Waiting For"), null);
   await click(getByRole(closed.container, "button", { name: /^Important/ }));
   assert.ok(queryByRole(closed.container, "dialog"));
 });
