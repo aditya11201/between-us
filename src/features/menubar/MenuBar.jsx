@@ -13,7 +13,7 @@ import controlCenterIcon from "./../../assets/icons/menuBar/control_center.svg";
 import AboutThisMac from "./AboutThisMac/ATM";
 
 // ═══════════════════════════════════════════════════════════════════
-export const MenuBar = memo(function MenuBar({ activeApp, openApp, onCloseWindow, onMinimizeWindow, onZoomWindow }) {
+export const MenuBar = memo(function MenuBar({ activeApp, openApp, onCloseWindow, onMinimizeWindow, onZoomWindow, onLockScreen, isLocked }) {
   // ─── Menu states ──────────────────────────────────────────────────
   const [activeMenu, setActiveMenu] = useState(null);
   const [showCC, setShowCC] = useState(false);
@@ -50,6 +50,14 @@ export const MenuBar = memo(function MenuBar({ activeApp, openApp, onCloseWindow
     return () => document.removeEventListener("mousedown", h);
   }, [activeMenu]);
 
+  useEffect(() => {
+    if (!isLocked) return;
+
+    setActiveMenu(null);
+    setShowCC(false);
+    setShowAbout(false);
+  }, [isLocked]);
+
   // ─── Handlers ─────────────────────────────────────────────────────
   const handleAppleClick = (e) => {
     e.stopPropagation();
@@ -61,6 +69,12 @@ export const MenuBar = memo(function MenuBar({ activeApp, openApp, onCloseWindow
   };
 
   const handleAppleMenuSelect = (opt) => {
+    if (opt.id === "lock") {
+      onLockScreen?.();
+      setActiveMenu(null);
+      setShowCC(false);
+      return;
+    }
     if (opt.id === "about") {
       setShowAbout(true);
       setActiveMenu(null);

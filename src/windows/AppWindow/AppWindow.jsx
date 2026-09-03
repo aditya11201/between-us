@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect, memo, useMemo, useCallback } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect, memo, useMemo, useCallback } from "react";
 
 const defaultWindowContextValue = {
   onClose: () => {},
@@ -68,6 +68,8 @@ export const AppWindow = memo(function AppWindow({
   const contentRef = useRef(null);
   const dragging = useRef(false);
   const resizing = useRef(false);
+  const dragCleanupRef = useRef(null);
+  const resizeCleanupRef = useRef(null);
   const offset = useRef({ x: 0, y: 0 });
   const startSize = useRef({ width: 0, height: 0 });
 
@@ -93,6 +95,19 @@ export const AppWindow = memo(function AppWindow({
   useLayoutEffect(() => {
     onFocusRef.current = onFocus;
   }, [onFocus]);
+
+  useEffect(() => {
+    const cancelGestures = () => {
+      dragCleanupRef.current?.();
+      resizeCleanupRef.current?.();
+    };
+
+    window.addEventListener("between-us:lock", cancelGestures);
+    return () => {
+      window.removeEventListener("between-us:lock", cancelGestures);
+      cancelGestures();
+    };
+  }, []);
   
   useLayoutEffect(() => {
     if ((win.x !== posRef.current.x || win.y !== posRef.current.y) && !dragging.current) {
@@ -162,7 +177,25 @@ export const AppWindow = memo(function AppWindow({
     let lastY = rect.top;
     const windowWidth = rect.width;
     
-    const onMove = (ev) => {
+    let onMove;
+    let onUp;
+    const cancelDrag = () => {
+      dragging.current = false;
+
+      if (windowRef.current) {
+        windowRef.current.classList.remove('app-window--dragging');
+        windowRef.current.style.willChange = '';
+        windowRef.current.style.transition = '';
+        windowRef.current.style.pointerEvents = '';
+        windowRef.current.style.transform = `translate3d(${posRef.current.x}px, ${posRef.current.y}px, 0)`;
+      }
+
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      if (dragCleanupRef.current === cancelDrag) dragCleanupRef.current = null;
+    };
+
+    onMove = (ev) => {
       if (!dragging.current) return;
       
       const newX = Math.max(0, Math.min(window.innerWidth - windowWidth, ev.clientX - offset.current.x));
@@ -173,27 +206,17 @@ export const AppWindow = memo(function AppWindow({
       }
     };
 
-    const onUp = (ev) => {
+    onUp = (ev) => {
       if (!dragging.current) return;
-      dragging.current = false;
-
-      if (windowRef.current) {
-        windowRef.current.classList.remove('app-window--dragging');
-        windowRef.current.style.willChange = '';
-
-        windowRef.current.style.transition = '';
-        windowRef.current.style.pointerEvents = '';
-      }
 
       const finalX = Math.max(0, Math.min(window.innerWidth - windowWidth, ev.clientX - offset.current.x));
       const finalY = Math.max(28, ev.clientY - offset.current.y);
 
+      cancelDrag();
       setPos({ x: finalX, y: finalY });
-
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
     };
-    
+
+    dragCleanupRef.current = cancelDrag;
 
     document.addEventListener("mousemove", onMove, { passive: true });
     document.addEventListener("mouseup", onUp, { passive: true });
@@ -221,7 +244,26 @@ export const AppWindow = memo(function AppWindow({
     let lastW = startSize.current.width;
     let lastH = startSize.current.height;
     
-    const onMove = (ev) => {
+    let onMove;
+    let onUp;
+    const cancelResize = () => {
+      resizing.current = false;
+
+      if (windowRef.current) {
+        windowRef.current.classList.remove('app-window--resizing');
+        windowRef.current.style.willChange = '';
+        windowRef.current.style.transition = '';
+        windowRef.current.style.pointerEvents = '';
+        windowRef.current.style.width = `${sizeRef.current.width}px`;
+        windowRef.current.style.height = `${sizeRef.current.height}px`;
+      }
+
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      if (resizeCleanupRef.current === cancelResize) resizeCleanupRef.current = null;
+    };
+
+    onMove = (ev) => {
       if (!resizing.current) return;
       
       const deltaX = ev.clientX - startX;
@@ -235,24 +277,17 @@ export const AppWindow = memo(function AppWindow({
       }
     };
 
-    const onUp = () => {
+    onUp = () => {
+      if (!resizing.current) return;
+      const committedWidth = parseFloat(windowRef.current?.style.width) || sizeRef.current.width;
+      const committedHeight = parseFloat(windowRef.current?.style.height) || sizeRef.current.height;
       resizing.current = false;
-      
-      if (windowRef.current) {
-        windowRef.current.classList.remove('app-window--resizing');
-        windowRef.current.style.willChange = '';
-        // ✅ Восстанавливаем transition после resize
-        windowRef.current.style.transition = '';
-        windowRef.current.style.pointerEvents = '';
-        setSize({ 
-          width: parseFloat(windowRef.current.style.width) || sizeRef.current.width, 
-          height: parseFloat(windowRef.current.style.height) || sizeRef.current.height 
-        });
-      }
 
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
+      cancelResize();
+      setSize({ width: committedWidth, height: committedHeight });
     };
+
+    resizeCleanupRef.current = cancelResize;
 
     document.addEventListener("mousemove", onMove, { passive: true });
     document.addEventListener("mouseup", onUp, { passive: true });

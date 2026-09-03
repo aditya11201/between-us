@@ -6,6 +6,7 @@ export const Desktop = memo(function Desktop({
   children, 
   wallpaper, 
   onContextMenu,
+  isLocked = false,
 }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const { brightness } = useDisplaySettings();
@@ -62,6 +63,7 @@ export const Desktop = memo(function Desktop({
       onContextMenu={handleContextMenu}
       className="desktop"
       style={desktopStyle}
+      inert={isLocked}
     >
       <div
         className="desktop__brightness-overlay"
@@ -76,6 +78,7 @@ export const Desktop = memo(function Desktop({
   // Кастомная проверка для минимизации ререндеров
   return (
     prevProps.wallpaper === nextProps.wallpaper &&
-    prevProps.children === nextProps.children
+    prevProps.children === nextProps.children &&
+    prevProps.isLocked === nextProps.isLocked
   );
 });
