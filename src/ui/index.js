@@ -5,3 +5,4 @@ export { WindowLoading } from './Loaders/WindowLoading';
 export { default as MobileNotSupported } from './MobileNotSupported/MobileNotSupported';
 export { AssetIcon } from './AssetIcon';
 export { default as AppleIcon } from './AppleIcon';
+export { default as LockScreen } from './LockScreen/LockScreen';

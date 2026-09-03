@@ -6,6 +6,39 @@ import {
 
 const PROBE_TIMEOUT_MS = 10_000;
 
+function isLockShortcut(event) {
+  return event.ctrlKey && event.metaKey && event.key.toLowerCase() === "q";
+}
+
+function subscribeFrameLockShortcut(frame) {
+  try {
+    const frameWindow = frame.contentWindow;
+    const frameDocument = frame.contentDocument ?? frameWindow?.document;
+    if (!frameWindow || !frameDocument) return null;
+
+    const handleKeyDown = (event) => {
+      if (!isLockShortcut(event)) return;
+
+      event.preventDefault();
+      window.dispatchEvent(new window.KeyboardEvent("keydown", {
+        key: event.key,
+        code: event.code,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        shiftKey: event.shiftKey,
+        altKey: event.altKey,
+        bubbles: true,
+        cancelable: true,
+      }));
+    };
+
+    frameDocument.addEventListener("keydown", handleKeyDown, true);
+    return () => frameDocument.removeEventListener("keydown", handleKeyDown, true);
+  } catch {
+    return null;
+  }
+}
+
 export function ExternalSiteFrame({
   tabId,
   url,
@@ -93,7 +126,8 @@ export function ExternalSiteFrame({
 
       clearBridge();
 
-      lifecycleRef.current.bridgeCleanup = subscribeExternalFrameNavigation(
+      const frameShortcutCleanup = subscribeFrameLockShortcut(frame);
+      const navigationCleanup = subscribeExternalFrameNavigation(
         frameWindow,
         (navigationSnapshot) => {
           const latest = lifecycleRef.current;
@@ -110,6 +144,10 @@ export function ExternalSiteFrame({
           latest.onNavigate?.(navigationSnapshot);
         },
       );
+      lifecycleRef.current.bridgeCleanup = () => {
+        frameShortcutCleanup?.();
+        navigationCleanup?.();
+      };
       return;
     }
 
