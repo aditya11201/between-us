@@ -83,6 +83,20 @@ function getSenderAddress(sender) {
   return `${sender.toLowerCase().replace(/[^a-z0-9]+/g, "")}@example.com`;
 }
 
+function renderLinks(text, keyPrefix) {
+  return text.split(/(\[[^\]]*\]\([^)]*\))/g).map((part, index) => {
+    const match = /^\[([^\]]*)\]\(([^)]*)\)$/.exec(part);
+    if (!match) {
+      return part;
+    }
+    return (
+      <a key={`link-${keyPrefix}-${index}`} href={match[2]} target="_blank" rel="noreferrer">
+        {match[1]}
+      </a>
+    );
+  });
+}
+
 function renderFormattedInline(text) {
   const lines = text.split("\n");
   const nodes = [];
@@ -94,13 +108,14 @@ function renderFormattedInline(text) {
 
     const parts = line.split(/(\*\*.*?\*\*)/g);
     parts.forEach((part, partIndex) => {
+      const partKey = `${lineIndex}-${partIndex}`;
       if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
         const content = part.slice(2, -2);
         if (content) {
-          nodes.push(<strong key={`strong-${lineIndex}-${partIndex}`}>{content}</strong>);
+          nodes.push(<strong key={`strong-${partKey}`}>{renderLinks(content, partKey)}</strong>);
         }
       } else if (part) {
-        nodes.push(part);
+        nodes.push(renderLinks(part, partKey));
       }
     });
   });
