@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { createServer } from "vite";
 import { Window } from "happy-dom";
-import { DEMO_MAIL_PASSWORD } from "../src/features/mail/mailLock.js";
+import { DEMO_LOGIN_PASSWORD } from "../src/ui/LockScreen/loginLock.js";
 import { waitForCondition } from "./testUtils/waitForCondition.js";
 
 const projectRoot = new URL("../", import.meta.url).pathname;
@@ -137,7 +137,7 @@ async function unlockApp(container) {
   });
 
   const input = container.querySelector("#password");
-  await act(async () => setInputValue(input, DEMO_MAIL_PASSWORD));
+  await act(async () => setInputValue(input, DEMO_LOGIN_PASSWORD));
   await act(async () => {
     container.querySelector(".login").dispatchEvent(
       new browserWindow.Event("submit", { bubbles: true, cancelable: true }),
@@ -195,7 +195,7 @@ test("starts locked with an inert desktop and a persistent overlay", async () =>
   assert.equal(container.querySelector(".desktop").nextElementSibling.className, "lock-screen");
 });
 
-test("uses the Mail password to unlock without replacing Desktop", async () => {
+test("uses the login password to unlock without replacing Desktop", async () => {
   const { container } = await renderApp();
   const desktop = container.querySelector(".desktop");
 

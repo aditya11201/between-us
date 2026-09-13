@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { createServer } from "vite";
 import { Window } from "happy-dom";
-import { DEMO_MAIL_PASSWORD } from "../src/features/mail/mailLock.js";
+import { DEMO_LOGIN_PASSWORD } from "../src/ui/LockScreen/loginLock.js";
 
 const projectRoot = new URL("../", import.meta.url).pathname;
 const browserWindow = new Window({ url: "http://localhost/" });
@@ -385,7 +385,7 @@ test("isolates locked move and release events after relock without blocking form
   let unlocks = 0;
   const mount = await renderLock({ onUnlock: () => { unlocks += 1; } });
   await revealWithPointer(mount);
-  await fill(getInput(mount.container), DEMO_MAIL_PASSWORD);
+  await fill(getInput(mount.container), DEMO_LOGIN_PASSWORD);
 
   const submitButton = getInput(mount.container).form.querySelector("button[type=submit]");
   const click = new browserWindow.MouseEvent("click", {
@@ -466,7 +466,7 @@ test("uses a 750ms busy delay, clears the password, and unlocks once", async () 
     onUnlock: () => { unlocks += 1; },
   });
   await revealWithPointer(mount);
-  await fill(getInput(mount.container), DEMO_MAIL_PASSWORD);
+  await fill(getInput(mount.container), DEMO_LOGIN_PASSWORD);
   await submit(mount.container);
   assert.equal(mount.container.querySelector(".go").classList.contains("busy"), true);
 
@@ -496,7 +496,7 @@ test("keeps a submit click functional while isolating its locked bubbling", asyn
   };
   const mount = await renderLock({ isLocked: locked, onUnlock });
   await revealWithPointer(mount);
-  await fill(getInput(mount.container), DEMO_MAIL_PASSWORD);
+  await fill(getInput(mount.container), DEMO_LOGIN_PASSWORD);
   const submitButton = getInput(mount.container).form.querySelector("button[type=submit]");
   const click = new browserWindow.MouseEvent("click", {
     bubbles: true,
@@ -522,7 +522,7 @@ test("ignores duplicate submissions while the unlock delay is busy", async () =>
   let unlocks = 0;
   const mount = await renderLock({ onUnlock: () => { unlocks += 1; } });
   await revealWithPointer(mount);
-  await fill(getInput(mount.container), DEMO_MAIL_PASSWORD);
+  await fill(getInput(mount.container), DEMO_LOGIN_PASSWORD);
   await submit(mount.container);
   await submit(mount.container);
   await advanceTimers(750);
@@ -540,7 +540,7 @@ test("resets transient state and cancels timers when relocked", async () => {
   await submit(mount.container);
   assert.ok(mount.container.querySelector('[role="alert"]'));
 
-  await fill(getInput(mount.container), DEMO_MAIL_PASSWORD);
+  await fill(getInput(mount.container), DEMO_LOGIN_PASSWORD);
   const beforeUnlockSubmit = clock.activeTimers();
   await submit(mount.container);
   assert.equal(mount.container.querySelector(".go").classList.contains("busy"), true);
@@ -608,7 +608,7 @@ test("cleans delayed focus and unlock work on unmount", async () => {
     beforeBusyReveal,
     (timer) => timer.type === "timeout" && timer.duration === 260,
   );
-  await fill(getInput(busyMount.container), DEMO_MAIL_PASSWORD);
+  await fill(getInput(busyMount.container), DEMO_LOGIN_PASSWORD);
   const beforeBusySubmit = clock.activeTimers();
   await submit(busyMount.container);
   const busyUnlockTimers = timersAddedSince(
@@ -633,7 +633,7 @@ test("unlocks once under StrictMode", async () => {
     onUnlock: () => { unlocks += 1; },
   });
   await revealWithPointer(mount);
-  await fill(getInput(mount.container), DEMO_MAIL_PASSWORD);
+  await fill(getInput(mount.container), DEMO_LOGIN_PASSWORD);
   await submit(mount.container);
   await submit(mount.container);
   await advanceTimers(749);

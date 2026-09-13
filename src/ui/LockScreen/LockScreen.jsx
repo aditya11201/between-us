@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isMailPasswordValid } from "@/features/mail/mailLock.js";
+import { isLoginPasswordValid } from "./loginLock.js";
 import profileAvatar from "@/assets/images/avatar/profile.webp";
 import lockscreenWallpaper from "@/assets/images/lockscreen/lockscreen-wallpaper.webp";
 
@@ -163,7 +163,7 @@ export function LockScreen({ isLocked = true, onUnlock }) {
       return;
     }
 
-    if (!isMailPasswordValid(password)) {
+    if (!isLoginPasswordValid(password)) {
       setError("Incorrect password");
       triggerShake();
       passwordRef.current?.focus();
