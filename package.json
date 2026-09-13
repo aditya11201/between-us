@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test"
+    "test": "node --test",
+    "encrypt:mail": "node scripts/encrypt-mail.mjs"
   },
   "dependencies": {
     "react": "^19.2.6",
