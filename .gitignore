@@ -7,3 +7,9 @@ dist/
 .env.*
 .worktrees/
 .understand-anything/
+
+# Dev/working documents (local only)
+docs/superpowers/
+interview/
+lockscreen-reference.html
+untitled.md
