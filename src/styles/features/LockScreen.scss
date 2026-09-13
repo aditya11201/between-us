@@ -38,10 +38,10 @@
 
     position: absolute;
     inset: 0;
-    background-image: var(--wallpaper-image), var(--wall);
-    background-position: center, center;
-    background-size: cover, auto;
-    background-repeat: no-repeat, repeat;
+    background-image: var(--wallpaper-image);
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
     filter: blur(8px);
     transform: scale(1.04);
     transition: transform 700ms ease, filter 700ms ease;

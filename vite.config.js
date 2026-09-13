@@ -48,7 +48,9 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 1000,
       target: 'esnext',
       cssMinify: true,
-      assetsInlineLimit: 4096,
+      // Inline the lockscreen wallpaper so it ships inside the JS bundle —
+      // no separate fetch, no gradient flash while it loads.
+      assetsInlineLimit: (file) => (file.includes("lockscreen-wallpaper") ? true : null),
     },
 
     optimizeDeps: {
