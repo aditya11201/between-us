@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isMailPasswordValid } from "@/features/mail/mailLock.js";
 import profileAvatar from "@/assets/images/avatar/profile.webp";
-import lockscreenWallpaper from "@/assets/images/lockscreen/lockscreen-wallpaper.png";
+import lockscreenWallpaper from "@/assets/images/lockscreen/lockscreen-wallpaper.webp";
 
 function formatTime(date) {
   return `${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;

@@ -267,7 +267,7 @@ test("exports the lock screen both ways and renders the locked reference copy", 
   assert.equal(NamedLockScreen, LockScreen);
   assert.equal(root.tagName, "DIV");
   assert.equal(root.classList.contains("lock-screen"), true);
-  assert.match(wallpaper.style.getPropertyValue("--wallpaper-image"), /lockscreen-wallpaper\.png/);
+  assert.match(wallpaper.style.getPropertyValue("--wallpaper-image"), /lockscreen-wallpaper\.webp/);
   assert.equal(wallpaper.getAttribute("aria-hidden"), "true");
   assert.equal(mount.container.querySelector(".menubar span").textContent, "ID");
   assert.equal(mount.container.querySelector("main"), null);
