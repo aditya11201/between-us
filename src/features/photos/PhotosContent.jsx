@@ -20,7 +20,7 @@ import {
   FiUsers,
   FiVideo,
 } from "react-icons/fi";
-import { photoCatalog, photoSections } from "./photoCatalog.js";
+import { usePhotoLibrary } from "./usePhotoLibrary.js";
 import {
   clearPhotoSelection,
   updatePhotoSelection,
@@ -126,6 +126,7 @@ export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
   const [isCompact, setIsCompact] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState(() => new Set());
+  const { catalog: photoCatalog, sections: photoSections, status: driveStatus } = usePhotoLibrary();
 
   const visibleSections = getVisiblePhotoSections(activeView, photoSections, query);
   const totalCount = photoCatalog.length;
