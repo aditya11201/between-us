@@ -268,7 +268,7 @@ test("exports the lock screen both ways and renders the locked reference copy", 
   assert.equal(root.classList.contains("lock-screen"), true);
   assert.equal(mount.container.querySelector("main"), null);
   assert.equal(getInput(mount.container).disabled, true);
-  assert.equal(mount.container.querySelector(".user-name").textContent, "My Pretty Princess S");
+  assert.equal(mount.container.querySelector(".user-name").textContent, "My Pwetty Cutie Princess Sassy");
   assert.equal(
     mount.container.querySelector(".hint").textContent,
     "Click or press any key to log in",

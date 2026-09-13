@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isMailPasswordValid } from "@/features/mail/mailLock.js";
+import profileAvatar from "@/assets/images/avatar/profile.webp";
 
 function formatTime(date) {
   return `${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
@@ -235,12 +236,9 @@ export function LockScreen({ isLocked = true, onUnlock }) {
           onSubmit={handleSubmit}
         >
           <div className="avatar" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="8.2" r="4.1" />
-              <path d="M3.6 20.4a8.4 8.4 0 0 1 16.8 0Z" />
-            </svg>
+            <img src={profileAvatar} alt="" />
           </div>
-          <div className="user-name">My Pretty Princess S</div>
+          <div className="user-name">My Pwetty Cutie Princess Sassy</div>
           <div className={`pass-pill${isShaking ? " shake" : ""}`} ref={passPillRef}>
             <input
               id="password"
