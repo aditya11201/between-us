@@ -20,21 +20,46 @@ test("maps image files to photo objects with drive-prefixed ids", () => {
   assert.equal(photos[0].sectionLabel, "Favorites");
   assert.equal(photos[0].name, "beach.jpg");
   assert.equal(photos[0].url, "https://lh3.googleusercontent.com/d/FILE_A");
+  assert.equal(photos[0].mediaType, "image");
 });
 
-test("filters non-image files", () => {
+test("maps video files to Drive API media URLs", async () => {
+  const { setDriveConfigForTests } = await import("./driveConfig.js");
+  setDriveConfigForTests({ folderId: "TEST_FOLDER", apiKey: "test-api-key" });
+
+  const photos = mapDriveFiles(
+    [{
+      id: "VIDEO_1",
+      name: "clip.mp4",
+      mimeType: "video/mp4",
+      webContentLink: "https://drive.google.com/uc?id=VIDEO_1",
+    }],
+    "root",
+    "Drive Photos",
+  );
+
+  assert.equal(
+    photos[0].url,
+    "https://www.googleapis.com/drive/v3/files/VIDEO_1?alt=media&key=test-api-key",
+  );
+  assert.equal(photos[0].mediaType, "video");
+
+  setDriveConfigForTests(null);
+});
+
+test("filters unsupported non-media files", () => {
   const photos = mapDriveFiles(
     [
       { id: "F1", name: "photo.png", mimeType: "image/png" },
       { id: "F2", name: "notes.txt", mimeType: "text/plain" },
       { id: "F3", name: "video.mp4", mimeType: "video/mp4" },
+      { id: "F4", name: "document.pdf", mimeType: "application/pdf" },
     ],
     "root",
     "Drive Photos",
   );
 
-  assert.equal(photos.length, 1);
-  assert.equal(photos[0].name, "photo.png");
+  assert.deepEqual(photos.map((photo) => photo.name), ["photo.png", "video.mp4"]);
 });
 
 // mock fetch: folder root berisi 2 subfolder + 1 file root
@@ -70,7 +95,7 @@ test("fetchDrivePhotos walks one level of subfolders", async () => {
   // aktifkan config untuk test
   const { setDriveConfigForTests } = await import("./driveConfig.js");
 
-  setDriveConfigForTests({ folderId: "ROOT", apiKey: "KEY" });
+  setDriveConfigForTests({ folderId: "ROOT", apiKey: "test-api-key" });
 
   const responses = [
     [
@@ -79,6 +104,12 @@ test("fetchDrivePhotos walks one level of subfolders", async () => {
         { id: "SUB1", name: "Favorites", mimeType: "application/vnd.google-apps.folder" },
         { id: "SUB2", name: "my-trips", mimeType: "application/vnd.google-apps.folder" },
         { id: "FILE_ROOT", name: "cat.png", mimeType: "image/png" },
+        {
+          id: "VIDEO_ROOT",
+          name: "clip.mp4",
+          mimeType: "video/mp4",
+          webContentLink: "https://drive.google.com/uc?id=VIDEO_ROOT",
+        },
       ] },
     ],
     [
@@ -93,11 +124,17 @@ test("fetchDrivePhotos walks one level of subfolders", async () => {
 
   const result = await fetchDrivePhotos(makeFetchStub(responses));
 
-  // total foto: cat.png (root) + sunset.webp (Favorites) = 2; my-trips kosong
-  assert.equal(result.photos.length, 2);
+  // total media: cat.png + clip.mp4 (root) + sunset.webp (Favorites) = 3; my-trips kosong
+  assert.equal(result.photos.length, 3);
   assert.deepEqual(result.sections.map((s) => s.id), ["drive-photos", "Favorites"]);
-  assert.equal(result.sections[0].photos.length, 1);
+  assert.equal(result.sections[0].photos.length, 2);
   assert.equal(result.sections[0].label, "Drive Photos");
+  assert.equal(result.sections[0].photos[0].mediaType, "image");
+  assert.equal(result.sections[0].photos[1].mediaType, "video");
+  assert.equal(
+    result.sections[0].photos[1].url,
+    "https://www.googleapis.com/drive/v3/files/VIDEO_ROOT?alt=media&key=test-api-key",
+  );
   assert.equal(result.sections[1].photos[0].id, "drive:Favorites/sunset.webp");
 
   setDriveConfigForTests(null);

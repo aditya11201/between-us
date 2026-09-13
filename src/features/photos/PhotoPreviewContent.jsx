@@ -41,6 +41,10 @@ function getPhotoId(photo) {
     : "preview";
 }
 
+function getPhotoMediaType(photo) {
+  return photo?.mediaType === "video" ? "video" : "image";
+}
+
 function clampZoom(value) {
   return Math.min(4, Math.max(0.25, Number(value.toFixed(2))));
 }
@@ -173,7 +177,18 @@ function PreviewSidebar({
               onClick={() => onSelect(item.id)}
             >
               {item.url ? (
-                <img src={item.url} alt="" draggable="false" />
+                item.mediaType === "video" ? (
+                  <video
+                    src={item.url}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    aria-hidden="true"
+                    draggable="false"
+                  />
+                ) : (
+                  <img src={item.url} alt="" draggable="false" />
+                )
               ) : (
                 <span className="photos-preview__thumbnail-placeholder">
                   <FiImage aria-hidden="true" />
@@ -265,7 +280,8 @@ export function PhotoPreviewContent({ photo }) {
   const photoUrl = getPhotoUrl(photo);
   const photoName = getPhotoName(photo);
   const photoId = getPhotoId(photo);
-  const [imageFailed, setImageFailed] = useState(false);
+  const photoMediaType = getPhotoMediaType(photo);
+  const [mediaFailed, setMediaFailed] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -286,7 +302,7 @@ export function PhotoPreviewContent({ photo }) {
   const searchInputRef = useRef(null);
   const stageRef = useRef(null);
   const objectUrlsRef = useRef(new Set());
-  const [imageDimensions, setImageDimensions] = useState(null);
+  const [mediaDimensions, setMediaDimensions] = useState(null);
 
   useEffect(() => {
     if (previousSidebarOpen.current === sidebarOpen) return;
@@ -301,8 +317,13 @@ export function PhotoPreviewContent({ photo }) {
   }, [showInfo]);
 
   const sourcePhoto = useMemo(
-    () => ({ id: photoId, name: photoName, url: photoUrl }),
-    [photoId, photoName, photoUrl],
+    () => ({
+      id: photoId,
+      name: photoName,
+      url: photoUrl,
+      mediaType: photoMediaType,
+    }),
+    [photoId, photoMediaType, photoName, photoUrl],
   );
 
   const previewItems = useMemo(
@@ -320,20 +341,20 @@ export function PhotoPreviewContent({ photo }) {
     if (!query) return previewItems;
     return previewItems.filter((item) => item.name.toLowerCase().includes(query));
   }, [previewItems, searchQuery]);
-  const hasImage = Boolean(activePhoto.url) && !imageFailed;
+  const hasMedia = Boolean(activePhoto.url) && !mediaFailed;
 
   useEffect(() => {
     setActivePhotoId(photoId);
-    setImageFailed(false);
+    setMediaFailed(false);
     setZoom(1);
     setFitMode(true);
     setRotation(0);
-    setImageDimensions(null);
-  }, [photoId, photoUrl]);
+    setMediaDimensions(null);
+  }, [photoId, photoMediaType, photoUrl]);
 
   useEffect(() => {
-    setImageFailed(false);
-  }, [activePhoto.url]);
+    setMediaFailed(false);
+  }, [activePhoto.mediaType, activePhoto.url]);
 
   useEffect(() => () => {
     if (typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
@@ -346,21 +367,21 @@ export function PhotoPreviewContent({ photo }) {
     if (!stage || typeof ResizeObserver === "undefined") return undefined;
 
     const updateFit = () => {
-      if (fitMode) setZoom(getFitZoom(imageDimensions, stage, rotation));
+      if (fitMode) setZoom(getFitZoom(mediaDimensions, stage, rotation));
     };
     const observer = new ResizeObserver(updateFit);
     observer.observe(stage);
     updateFit();
     return () => observer.disconnect();
-  }, [fitMode, imageDimensions, rotation]);
+  }, [fitMode, mediaDimensions, rotation]);
 
   const handleSelectPhoto = useCallback((id) => {
     setActivePhotoId(id);
-    setImageFailed(false);
+    setMediaFailed(false);
     setZoom(1);
     setFitMode(true);
     setRotation(0);
-    setImageDimensions(null);
+    setMediaDimensions(null);
   }, []);
 
   const handleFiles = useCallback((fileList) => {
@@ -395,13 +416,13 @@ export function PhotoPreviewContent({ photo }) {
   const handleRotate = useCallback(() => {
     const nextRotation = (rotation + 90) % 360;
     setRotation(nextRotation);
-    if (fitMode) setZoom(getFitZoom(imageDimensions, stageRef.current, nextRotation));
-  }, [fitMode, imageDimensions, rotation]);
+    if (fitMode) setZoom(getFitZoom(mediaDimensions, stageRef.current, nextRotation));
+  }, [fitMode, mediaDimensions, rotation]);
 
   const handleFit = useCallback(() => {
     setFitMode(true);
-    setZoom(getFitZoom(imageDimensions, stageRef.current, rotation));
-  }, [imageDimensions, rotation]);
+    setZoom(getFitZoom(mediaDimensions, stageRef.current, rotation));
+  }, [mediaDimensions, rotation]);
 
   const handleKeyDown = useCallback((event) => {
     if (event.key === "Escape") {
@@ -631,32 +652,58 @@ export function PhotoPreviewContent({ photo }) {
           className={`photos-preview__stage${dragActive ? " photos-preview__stage--drag-active" : ""}`}
           aria-label="Preview stage"
         >
-          {hasImage ? (
-            <img
-              className="photos-preview__image"
-              src={activePhoto.url}
-              alt={activePhoto.name === "Preview" ? "Photo preview" : activePhoto.name}
-              style={{
-                objectFit: "contain",
-                transform: `rotate(${rotation}deg) scale(${zoom})`,
-              }}
-              onLoad={(event) => {
-                const dimensions = {
-                  width: event.currentTarget.naturalWidth,
-                  height: event.currentTarget.naturalHeight,
-                };
-                setImageDimensions(dimensions);
-                if (fitMode) setZoom(getFitZoom(dimensions, stageRef.current, rotation));
-              }}
-              onError={() => setImageFailed(true)}
-              draggable="false"
-            />
+          {hasMedia ? (
+            activePhoto.mediaType === "video" ? (
+              <video
+                className="photos-preview__video"
+                src={activePhoto.url}
+                aria-label={activePhoto.name === "Preview" ? "Video preview" : activePhoto.name}
+                controls
+                playsInline
+                preload="metadata"
+                style={{
+                  objectFit: "contain",
+                  transform: `rotate(${rotation}deg) scale(${zoom})`,
+                }}
+                onLoadedMetadata={(event) => {
+                  const dimensions = {
+                    width: event.currentTarget.videoWidth,
+                    height: event.currentTarget.videoHeight,
+                  };
+                  setMediaDimensions(dimensions);
+                  if (fitMode) setZoom(getFitZoom(dimensions, stageRef.current, rotation));
+                }}
+                onError={() => setMediaFailed(true)}
+              />
+            ) : (
+              <img
+                className="photos-preview__image"
+                src={activePhoto.url}
+                alt={activePhoto.name === "Preview" ? "Photo preview" : activePhoto.name}
+                style={{
+                  objectFit: "contain",
+                  transform: `rotate(${rotation}deg) scale(${zoom})`,
+                }}
+                onLoad={(event) => {
+                  const dimensions = {
+                    width: event.currentTarget.naturalWidth,
+                    height: event.currentTarget.naturalHeight,
+                  };
+                  setMediaDimensions(dimensions);
+                  if (fitMode) setZoom(getFitZoom(dimensions, stageRef.current, rotation));
+                }}
+                onError={() => setMediaFailed(true)}
+                draggable="false"
+              />
+            )
           ) : (
             <div className="photos-preview__fallback" role="status" aria-live="polite">
               <strong>Preview unavailable</strong>
               <p>
                 {photo
-                  ? "This photo could not be loaded."
+                  ? activePhoto.mediaType === "video"
+                    ? "This video could not be loaded."
+                    : "This photo could not be loaded."
                   : "No photo is available to preview."}
               </p>
             </div>
@@ -672,7 +719,7 @@ export function PhotoPreviewContent({ photo }) {
           <PreviewInspector
              photo={{
                ...activePhoto,
-               dimensions: imageDimensions,
+               dimensions: mediaDimensions,
                zoom: Math.round(zoom * 100),
              }}
              inspectorId={inspectorId}

@@ -1,19 +1,37 @@
-import { isDriveConfigured, driveListUrl, getDriveFolderId } from "./driveConfig.js";
+import {
+  isDriveConfigured,
+  driveListUrl,
+  getDriveFolderId,
+  getDriveApiKey,
+} from "./driveConfig.js";
 
 const DRIVE_IMAGE_URL = "https://lh3.googleusercontent.com/d/";
 const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_ROOT_SECTION = { id: "drive-photos", label: "Drive Photos" };
 
+function driveMediaUrl(fileId) {
+  const params = new URLSearchParams({ alt: "media", key: getDriveApiKey() });
+  return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?${params.toString()}`;
+}
+
 export function mapDriveFiles(files, sectionId, sectionLabel) {
   return files
-    .filter((file) => typeof file.mimeType === "string" && file.mimeType.startsWith("image/"))
-    .map((file) => ({
-      id: `drive:${sectionId}/${file.name}`,
-      sectionId,
-      sectionLabel,
-      name: file.name,
-      url: `${DRIVE_IMAGE_URL}${file.id}`,
-    }))
+    .filter(
+      (file) =>
+        typeof file.mimeType === "string" &&
+        (file.mimeType.startsWith("image/") || file.mimeType.startsWith("video/")),
+    )
+    .map((file) => {
+      const mediaType = file.mimeType.startsWith("video/") ? "video" : "image";
+      return {
+        id: `drive:${sectionId}/${file.name}`,
+        sectionId,
+        sectionLabel,
+        name: file.name,
+        url: mediaType === "video" ? driveMediaUrl(file.id) : `${DRIVE_IMAGE_URL}${file.id}`,
+        mediaType,
+      };
+    })
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 

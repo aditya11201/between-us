@@ -32,6 +32,7 @@ let React;
 let act;
 let createRoot;
 let WindowContext;
+let PhotoCard;
 let PhotoPreviewContent;
 let PhotosContent;
 let photoCatalog;
@@ -52,6 +53,9 @@ before(async () => {
   ));
   ({ PhotoPreviewContent } = await vite.ssrLoadModule(
     "/src/features/photos/PhotoPreviewContent.jsx",
+  ));
+  ({ PhotoCard } = await vite.ssrLoadModule(
+    "/src/features/photos/PhotoCard.jsx",
   ));
   ({ PhotosContent } = await vite.ssrLoadModule(
     "/src/features/photos/PhotosContent.jsx",
@@ -206,6 +210,41 @@ test("keeps modified-click selection while opening the complete photo on double-
   await unmountRendered({ container, root });
 });
 
+test("renders Drive video cards as muted metadata-only video targets", async () => {
+  const photo = {
+    id: "drive:videos/clip.mp4",
+    name: "clip.mp4",
+    url: "https://drive.google.com/uc?id=VIDEO_1",
+    mediaType: "video",
+  };
+  const { container, root } = createMountedRoot();
+
+  await act(async () => {
+    root.render(
+      React.createElement(PhotoCard, {
+        photo,
+        selected: false,
+        onToggle: () => {},
+        onDoubleClick: () => {},
+      }),
+    );
+  });
+
+  const card = container.querySelector(".photos-card");
+  const video = card?.querySelector("video");
+  assert.ok(card);
+  assert.ok(video);
+  assert.equal(card.querySelector("img"), null);
+  assert.equal(video.getAttribute("src"), photo.url);
+  assert.equal(video.muted, true);
+  assert.equal(video.hasAttribute("playsinline"), true);
+  assert.equal(video.getAttribute("preload"), "metadata");
+  assert.equal(video.controls, false);
+  assert.equal(card.getAttribute("aria-label"), photo.name);
+
+  await unmountRendered({ container, root });
+});
+
 test("renders a photo payload in a contain-fit preview and delegates window controls", async () => {
   const calls = {
     close: 0,
@@ -291,6 +330,37 @@ test("renders a normalized preview image in contain-fit mode", async () => {
     browserWindow.getComputedStyle(image).objectFit,
     "contain",
   );
+
+  await unmountRendered(rendered);
+});
+
+test("renders a Drive video in the preview stage and thumbnail strip", async () => {
+  const photo = {
+    id: "drive:videos/clip.mp4",
+    name: "clip.mp4",
+    url: "https://drive.google.com/uc?id=VIDEO_1",
+    mediaType: "video",
+  };
+  const rendered = await renderPreview(photo);
+  const video = rendered.container.querySelector(".photos-preview__video");
+  const thumbnailVideo = rendered.container.querySelector(
+    ".photos-preview__thumbnail video",
+  );
+
+  assert.ok(video);
+  assert.equal(video.getAttribute("src"), photo.url);
+  assert.equal(video.controls, true);
+  assert.equal(video.hasAttribute("playsinline"), true);
+  assert.equal(video.getAttribute("preload"), "metadata");
+  assert.equal(rendered.container.querySelector(".photos-preview__image"), null);
+  assert.ok(thumbnailVideo);
+  assert.equal(
+    rendered.container.querySelector(".photos-preview__thumbnail img"),
+    null,
+  );
+  assert.equal(thumbnailVideo.muted, true);
+  assert.equal(thumbnailVideo.hasAttribute("playsinline"), true);
+  assert.equal(thumbnailVideo.getAttribute("preload"), "metadata");
 
   await unmountRendered(rendered);
 });
