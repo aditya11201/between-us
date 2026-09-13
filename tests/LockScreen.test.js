@@ -262,10 +262,14 @@ test("exports the lock screen both ways and renders the locked reference copy", 
   installClock();
   const mount = await renderLock();
   const root = mount.container.firstElementChild;
+  const wallpaper = mount.container.querySelector(".wallpaper");
 
   assert.equal(NamedLockScreen, LockScreen);
   assert.equal(root.tagName, "DIV");
   assert.equal(root.classList.contains("lock-screen"), true);
+  assert.match(wallpaper.style.getPropertyValue("--wallpaper-image"), /lockscreen-wallpaper\.png/);
+  assert.equal(wallpaper.getAttribute("aria-hidden"), "true");
+  assert.equal(mount.container.querySelector(".menubar span").textContent, "ID");
   assert.equal(mount.container.querySelector("main"), null);
   assert.equal(getInput(mount.container).disabled, true);
   assert.equal(mount.container.querySelector(".user-name").textContent, "My Pwetty Cutie Princess Sassy");

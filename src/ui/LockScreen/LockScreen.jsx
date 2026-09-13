@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isMailPasswordValid } from "@/features/mail/mailLock.js";
 import profileAvatar from "@/assets/images/avatar/profile.webp";
+import lockscreenWallpaper from "@/assets/images/lockscreen/lockscreen-wallpaper.png";
 
 function formatTime(date) {
   return `${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
@@ -202,10 +203,14 @@ export function LockScreen({ isLocked = true, onUnlock }) {
       onMouseDown={isolateLockedPointerEvent}
       onClick={isolateLockedPointerEvent}
     >
-      <div className="wallpaper" aria-hidden="true" />
+      <div
+        className="wallpaper"
+        aria-hidden="true"
+        style={{ "--wallpaper-image": `url("${lockscreenWallpaper}")` }}
+      />
 
       <div className="menubar" aria-hidden="true">
-        <span>U.S</span>
+        <span>ID</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
           <path d="M4.5 9.5a11 11 0 0 1 15 0" />
           <path d="M7.5 13a6.5 6.5 0 0 1 9 0" />

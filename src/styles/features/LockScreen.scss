@@ -34,9 +34,16 @@
   }
 
   .wallpaper {
+    --wallpaper-image: none;
+
     position: absolute;
     inset: 0;
-    background: var(--wall);
+    background-image: var(--wallpaper-image), var(--wall);
+    background-position: center, center;
+    background-size: cover, auto;
+    background-repeat: no-repeat, repeat;
+    filter: blur(8px);
+    transform: scale(1.04);
     transition: transform 700ms ease, filter 700ms ease;
 
     &::before {
