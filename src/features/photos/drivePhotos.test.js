@@ -50,6 +50,10 @@ function makeFetchStub(responses) {
 }
 
 test("fetchDrivePhotos returns empty result when config is empty", async () => {
+  // paksa config kosong — production config sudah terisi, jadi harus di-override eksplisit
+  const { setDriveConfigForTests } = await import("./driveConfig.js");
+  setDriveConfigForTests({ folderId: "", apiKey: "" });
+
   let called = false;
   const result = await fetchDrivePhotos(async () => {
     called = true;
@@ -58,6 +62,8 @@ test("fetchDrivePhotos returns empty result when config is empty", async () => {
 
   assert.equal(called, false);
   assert.deepEqual(result, { photos: [], sections: [] });
+
+  setDriveConfigForTests(null);
 });
 
 test("fetchDrivePhotos walks one level of subfolders", async () => {

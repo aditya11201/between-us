@@ -22,12 +22,21 @@ Google Drive API langsung.
      - **Application restrictions** → **HTTP referrers** → tambah
        `https://<username>.github.io/*` (domain GitHub Pages kamu).
 
-3. **Isi config di `src/features/photos/driveConfig.js`**
-   - `DRIVE_FOLDER_ID`: bagian URL folder setelah `/folders/…`.
-     Contoh URL: `https://drive.google.com/drive/folders/ABC123xyz` → ID = `ABC123xyz`.
-   - `DRIVE_API_KEY`: API key dari langkah 2.
+3. **Konfigurasi lokal**
+   - Buat file `.env.local` di root repo (file ini di-ignore Git) dengan isi:
+     ```text
+     VITE_DRIVE_API_KEY=...
+     ```
+   - `DRIVE_FOLDER_ID` yang digunakan app adalah ID folder utama setelah
+     `/folders/` pada URL Google Drive.
+   - Jangan menempelkan API key ke `src/features/photos/driveConfig.js`.
 
-4. **Commit & push** — deploy GitHub Pages otomatis via `.github/workflows/deploy.yml`.
+4. **Konfigurasi GitHub Pages**
+   - Tambahkan API key sebagai repository secret bernama `DRIVE_API_KEY`.
+   - Workflow deploy memasukkan secret tersebut hanya saat menjalankan build
+     production.
+
+5. **Commit & push** — deploy GitHub Pages otomatis via `.github/workflows/deploy.yml`.
 
 ## Cara menambah foto
 
@@ -36,7 +45,8 @@ Google Drive API langsung.
 
 ## Catatan
 
-- API key ini public by design (read-only, folder publik, domain-locked).
+- API key ini akan tersedia di bundle browser, jadi batasi hanya ke **Google
+  Drive API** dan **HTTP referrer GitHub Pages** (`https://<username>.github.io/*`).
 - Jika foto Drive tidak muncul: cek folder sudah di-share "Anyone with the link",
   API key aktif + Drive API enabled, dan referrer restriction sesuai domain deploy.
 - Katalog lokal (`src/content/photos/`) tetap bekerja seperti biasa.

@@ -1,5 +1,5 @@
-export const DRIVE_FOLDER_ID = ""; // isi dengan Folder ID Google Drive (URL folder setelah /folders/)
-export const DRIVE_API_KEY = "";  // isi dengan API key Google Cloud (Drive API enabled)
+export const DRIVE_FOLDER_ID = "1TcWzUsbIliRc2Ed51wnFGi72K96kmISi"; // isi dengan Folder ID Google Drive (URL folder setelah /folders/)
+export const DRIVE_API_KEY = import.meta.env?.VITE_DRIVE_API_KEY ?? "";
 
 let DRIVE_FOLDER_ID_OVERRIDE;
 let DRIVE_API_KEY_OVERRIDE;
