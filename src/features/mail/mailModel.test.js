@@ -21,38 +21,43 @@ test("filters an inbox category by a case-insensitive query", () => {
   assert.deepEqual(result.map((message) => message.id), ["learning"]);
 });
 
-test("REDACTED-IMPORTANT-MAIL", () => {
-  const messages = createInitialMessages();
+test("keeps Important messages out of other mailboxes", () => {
+  const messages = [
+    ...createInitialMessages(),
+    {
+      id: "test-important-message",
+      mailbox: "important",
+      category: "primary",
+      sender: "Test Sender",
+      time: "Today",
+      subject: "A Test Subject for Important",
+      preview: "A test preview.",
+      body: "A synthetic body.",
+      to: "someone@example.com",
+      unread: true,
+      flagged: false,
+    },
+  ];
+
   const importantMessages = getVisibleMessages(messages, {
     mailboxId: "important",
     categoryId: "primary",
     query: "",
     unreadOnly: false,
   });
-  const proposal = importantMessages[0];
 
-  assert.deepEqual(importantMessages.map((message) => message.id), ["REDACTED-IMPORTANT-MAIL"]);
-  assert.equal(proposal.sender, "REDACTED-IMPORTANT-MAIL");
-  assert.equal(proposal.senderEmail, "REDACTED-IMPORTANT-MAIL");
-  assert.equal(proposal.toName, "Stasya Annesty");
-  assert.equal(proposal.to, "REDACTED-IMPORTANT-MAIL");
-  assert.equal(proposal.subject, "REDACTED-IMPORTANT-MAIL");
-  assert.equal(proposal.unread, true);
-  assert.equal(
-    proposal.body,
-    "# A Question I’ve Been Waiting to Ask\n\nHey,\n\nI’ve been holding onto this question for quite a while.\n\nNot because I was ever unsure about how I feel, but because I wanted to wait for the right moment—the moment when I could finally ask you this with all the sincerity in my heart.\n\nSomewhere along the way, you became more than just someone I care about. You became someone I look forward to talking to, someone who makes ordinary days feel a little brighter, and someone whose presence has slowly become one of my favorite parts of life.\n\nAnd after all the moments we’ve shared—the conversations, the laughter, the difficult days, the random little things, and everything in between—I realized that I don’t want to only be someone who stays close to you.\n\nI want to be someone who gets to choose you openly.\n\nSomeone who gets to be there for your happiest days and your hardest ones. Someone you can laugh with, grow with, rest with, and hopefully, one day, call home in your own way.\n\nI can’t promise that I will always love you perfectly. I’ll probably make mistakes, and there will always be things I still need to learn. But I can promise that I’ll keep learning how to love you better—gently, honestly, patiently, and wholeheartedly.\n\nSo after keeping this question in my heart for so long, I think this is finally the moment I’ve been waiting for.\n\n**REDACTED-IMPORTANT-MAIL?**\n\nWhatever your answer is, I want it to come completely from your heart. There’s no pressure, and you don’t have to answer before you’re ready.\n\nBut when you are ready...\n\nIf your answer is **YES**, there’s only one place where I really hope to hear it:\n\n**[💗 Yes, I want you to be my boyfriend](https://REDACTED-IMPORTANT-MAIL?text=REDACTED-IMPORTANT-MAIL%20REDACTED-IMPORTANT-MAIL%20akuuuu%20mauuuuu)**\n\nAnd if your answer is **NO**, you can tell me on Discord. I’ll understand, and I’ll respect your answer just the same.\n\nBecause more than anything, I want your answer to be something you truly choose—not something you ever feel pressured to give me.\n\nBut between us... I really, really hope that little WhatsApp notification comes from you. 🤍\n\nWith all my heart,\nMay Heart",
-  );
+  assert.deepEqual(importantMessages.map((message) => message.id), ["test-important-message"]);
+
   assert.equal(
     getVisibleMessages(messages, {
       mailboxId: "inbox",
       categoryId: "primary",
       query: "",
       unreadOnly: false,
-    }).some((message) => message.id === "REDACTED-IMPORTANT-MAIL"),
+    }).some((message) => message.id === "test-important-message"),
     false,
   );
 });
-
 test("unread-only filtering excludes read messages", () => {
   const result = getVisibleMessages(createInitialMessages(), {
     mailboxId: "inbox",

@@ -2,11 +2,27 @@ import { after, afterEach, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "vite";
 import { Window } from "happy-dom";
-import {
-  DEMO_MAIL_PASSWORD,
-  getLockedMailState,
-  isMailPasswordValid,
-} from "./mailLock.js";
+import { encryptMailJson } from "../../../scripts/encrypt-mail.mjs";
+import { getLockedMailState } from "./mailLock.js";
+
+const TEST_MAIL_PASSWORD = "test-mail-pass";
+const TEST_IMPORTANT_MESSAGES = [
+  {
+    id: "test-important-message",
+    mailbox: "important",
+    category: "primary",
+    sender: "Test Sender",
+    senderEmail: "test@example.com",
+    time: "Today",
+    subject: "A Test Subject for Important",
+    preview: "A test preview for the Important mailbox.",
+    body: "This is a synthetic test message body.",
+    to: "someone@example.com",
+    toName: "Someone",
+    unread: true,
+    flagged: false,
+  },
+];
 
 const projectRoot = new URL("../../../", import.meta.url).pathname;
 const browserWindow = new Window({ url: "http://localhost/" });
@@ -144,10 +160,18 @@ async function renderMail({ onClose, onMinimize, active = false } = {}) {
   return mount;
 }
 
+async function settle() {
+  // PBKDF2 + GCM resolve on the libuv thread pool; give the async chain a beat.
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  });
+}
+
 async function unlockImportant(mount) {
   await click(getByRole(mount.container, "button", { name: /^Important/ }));
-  await fill(getByLabelText(mount.container, "Mail password"), DEMO_MAIL_PASSWORD);
+  await fill(getByLabelText(mount.container, "Mail password"), TEST_MAIL_PASSWORD);
   await click(getByRole(mount.container, "button", { name: "Unlock Important" }));
+  await settle();
 }
 
 async function unmount(mount) {
@@ -167,6 +191,12 @@ before(async () => {
   ({ MailContent } = await vite.ssrLoadModule("/src/features/mail/MailContent.jsx"));
   ({ WindowContext } = await vite.ssrLoadModule("/src/windows/index.js"));
   ({ WindowManagerProvider, useWindowManager } = await vite.ssrLoadModule("/src/core/providers/WindowManagerProvider.jsx"));
+  const testEnvelope = await encryptMailJson(TEST_IMPORTANT_MESSAGES, TEST_MAIL_PASSWORD, 1000);
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => testEnvelope,
+  });
 });
 
 afterEach(async () => {
@@ -177,12 +207,6 @@ afterEach(async () => {
 after(async () => {
   await vite.close();
   browserWindow.close();
-});
-
-test("REDACTED-IMPORTANT-MAIL", () => {
-  assert.equal(isMailPasswordValid(DEMO_MAIL_PASSWORD), true);
-  assert.equal(isMailPasswordValid("wrong-password"), false);
-  assert.equal(isMailPasswordValid(` ${DEMO_MAIL_PASSWORD} `), false);
 });
 
 test("returns a clean locked Mail state", () => {
@@ -202,8 +226,8 @@ test("locked Important view hides protected content and exposes a labelled form"
 
   assert.equal(getByRole(mount.container, "dialog").getAttribute("aria-modal"), "true");
   assert.equal(getByLabelText(mount.container, "Mail password").getAttribute("type"), "password");
-  assert.equal(queryByText(mount.container, "REDACTED-IMPORTANT-MAIL"), null);
-  assert.equal(queryByText(mount.container, "REDACTED-IMPORTANT-MAIL"), null);
+  assert.equal(queryByText(mount.container, "A test preview for the Important mailbox."), null);
+  assert.equal(queryByText(mount.container, "A Test Subject for Important"), null);
 });
 
 test("masks only the locked Important mailbox count", async () => {
@@ -229,8 +253,8 @@ test("cancelling the unlock dialog closes it and keeps the user outside Importan
 
   await click(getByRole(mount.container, "button", { name: "Cancel" }));
   assert.equal(queryByRole(mount.container, "dialog"), null);
-  assert.equal(queryByText(mount.container, "REDACTED-IMPORTANT-MAIL"), null);
-  assert.equal(queryByText(mount.container, "REDACTED-IMPORTANT-MAIL"), null);
+  assert.equal(queryByText(mount.container, "A test preview for the Important mailbox."), null);
+  assert.equal(queryByText(mount.container, "A Test Subject for Important"), null);
 });
 
 test("Escape key dismisses the unlock dialog in an unmaximized active Mail window", async () => {
@@ -241,8 +265,8 @@ test("Escape key dismisses the unlock dialog in an unmaximized active Mail windo
   await pressEscape();
 
   assert.equal(queryByRole(mount.container, "dialog"), null);
-  assert.equal(queryByText(mount.container, "REDACTED-IMPORTANT-MAIL"), null);
-  assert.equal(queryByText(mount.container, "REDACTED-IMPORTANT-MAIL"), null);
+  assert.equal(queryByText(mount.container, "A test preview for the Important mailbox."), null);
+  assert.equal(queryByText(mount.container, "A Test Subject for Important"), null);
 });
 
 test("minimizing Mail clears a pending Important unlock dialog", async () => {
@@ -251,6 +275,7 @@ test("minimizing Mail clears a pending Important unlock dialog", async () => {
   await click(getByRole(mount.container, "button", { name: /^Important/ }));
   await fill(getByLabelText(mount.container, "Mail password"), "wrong-password");
   await click(getByRole(mount.container, "button", { name: "Unlock Important" }));
+  await settle();
   assert.ok(getByRole(mount.container, "alert"));
 
   await click(getByRole(mount.container, "button", { name: "Minimize Mail window" }));
@@ -266,17 +291,19 @@ test("Important is locked until the exact password is submitted", async () => {
 
   await click(getByRole(mount.container, "button", { name: /^Important/ }));
   assert.equal(getByRole(mount.container, "dialog").hidden, false);
-  assert.equal(queryByText(mount.container, "REDACTED-IMPORTANT-MAIL"), null);
+  assert.equal(queryByText(mount.container, "A Test Subject for Important"), null);
 
   await fill(getByLabelText(mount.container, "Mail password"), "wrong-password");
   await click(getByRole(mount.container, "button", { name: "Unlock Important" }));
+  await settle();
   assert.match(getByRole(mount.container, "alert").textContent, /incorrect password/i);
-  assert.equal(queryByText(mount.container, "REDACTED-IMPORTANT-MAIL"), null);
+  assert.equal(queryByText(mount.container, "A Test Subject for Important"), null);
 
-  await fill(getByLabelText(mount.container, "Mail password"), DEMO_MAIL_PASSWORD);
+  await fill(getByLabelText(mount.container, "Mail password"), TEST_MAIL_PASSWORD);
   await click(getByRole(mount.container, "button", { name: "Unlock Important" }));
+  await settle();
   assert.equal(queryByRole(mount.container, "dialog"), null);
-  assert.ok(getByText(mount.container, "REDACTED-IMPORTANT-MAIL"));
+  assert.ok(getByText(mount.container, "A Test Subject for Important"));
 });
 
 test("leaving Important relocks it before it can be selected again", async () => {
@@ -287,17 +314,17 @@ test("leaving Important relocks it before it can be selected again", async () =>
   await click(getByRole(mount.container, "button", { name: /^Important/ }));
 
   assert.ok(queryByRole(mount.container, "dialog"));
-  assert.equal(queryByText(mount.container, "REDACTED-IMPORTANT-MAIL"), null);
+  assert.equal(queryByText(mount.container, "A Test Subject for Important"), null);
 });
 
 test("explicit lock resets Important access and its selected message", async () => {
   const mount = await renderMail();
   await unlockImportant(mount);
 
-  await click(getByRole(mount.container, "option", { name: /REDACTED-IMPORTANT-MAIL/i }));
+  await click(getByRole(mount.container, "option", { name: /A Test Subject for Important/i }));
   await click(getByRole(mount.container, "button", { name: "Lock Important mailbox" }));
 
-  assert.equal(queryByText(mount.container, "REDACTED-IMPORTANT-MAIL"), null);
+  assert.equal(queryByText(mount.container, "A Test Subject for Important"), null);
   await click(getByRole(mount.container, "button", { name: /^Important/ }));
   assert.ok(queryByRole(mount.container, "dialog"));
 });
@@ -307,7 +334,7 @@ test("minimizing and closing Mail relock Important", async () => {
   await unlockImportant(minimized);
   await click(getByRole(minimized.container, "button", { name: "Minimize Mail window" }));
   assert.equal(minimized.callbacks.minimize, 1);
-  assert.equal(queryByText(minimized.container, "REDACTED-IMPORTANT-MAIL"), null);
+  assert.equal(queryByText(minimized.container, "A Test Subject for Important"), null);
   await click(getByRole(minimized.container, "button", { name: /^Important/ }));
   assert.ok(queryByRole(minimized.container, "dialog"));
 
@@ -315,7 +342,7 @@ test("minimizing and closing Mail relock Important", async () => {
   await unlockImportant(closed);
   await click(getByRole(closed.container, "button", { name: "Close Mail window" }));
   assert.equal(closed.callbacks.close, 1);
-  assert.equal(queryByText(closed.container, "REDACTED-IMPORTANT-MAIL"), null);
+  assert.equal(queryByText(closed.container, "A Test Subject for Important"), null);
   await click(getByRole(closed.container, "button", { name: /^Important/ }));
   assert.ok(queryByRole(closed.container, "dialog"));
 });

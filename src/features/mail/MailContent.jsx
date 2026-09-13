@@ -36,7 +36,8 @@ import {
   setMessageUnread,
   toggleMessageFlag,
 } from "./mailModel";
-import { getLockedMailState, isMailPasswordValid } from "./mailLock.js";
+import { getLockedMailState } from "./mailLock.js";
+import { decryptImportantMail, fetchImportantMailEnvelope } from "./mailCrypto.js";
 
 const MAILBOX_ICONS = {
   inbox: FiInbox,
@@ -134,6 +135,8 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [unlockPassword, setUnlockPassword] = useState("");
   const [unlockError, setUnlockError] = useState("");
+  const [isUnlockBusy, setIsUnlockBusy] = useState(false);
+  const [importantMessageIds, setImportantMessageIds] = useState([]);
   const [categoryId, setCategoryId] = useState("primary");
   const [query, setQuery] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -180,6 +183,13 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
     clearUnlockDialog();
     if (mailboxId !== "important" && !importantUnlocked) return;
 
+    if (importantMessageIds.length > 0) {
+      setMessages((current) => current.filter(
+        (message) => !importantMessageIds.includes(message.id),
+      ));
+      setImportantMessageIds([]);
+    }
+
     const lockedState = getLockedMailState();
     setImportantUnlocked(lockedState.importantUnlocked);
     setMailboxId((current) => current === "important" ? "inbox" : current);
@@ -190,19 +200,36 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
     setUnlockError(lockedState.unlockError);
   };
 
-  const submitImportantUnlock = (event) => {
+  const submitImportantUnlock = async (event) => {
     event.preventDefault();
-    if (!isMailPasswordValid(unlockPassword)) {
+    if (isUnlockBusy) return;
+    if (!unlockPassword) {
       setUnlockError("Incorrect password");
       return;
     }
 
-    setImportantUnlocked(true);
-    setUnlockPassword("");
-    setUnlockError("");
-    setShowUnlockDialog(false);
-    setMailboxId("important");
-    clearSelection();
+    setIsUnlockBusy(true);
+    try {
+      const envelope = await fetchImportantMailEnvelope();
+      const decryptedMessages = await decryptImportantMail(envelope, unlockPassword);
+      if (!decryptedMessages) {
+        setUnlockError("Incorrect password");
+        return;
+      }
+
+      setMessages((current) => [...current, ...decryptedMessages]);
+      setImportantMessageIds(decryptedMessages.map((message) => message.id));
+      setImportantUnlocked(true);
+      setUnlockPassword("");
+      setUnlockError("");
+      setShowUnlockDialog(false);
+      setMailboxId("important");
+      clearSelection();
+    } catch {
+      setUnlockError("Could not reach the Important mailbox. Check your connection and try again.");
+    } finally {
+      setIsUnlockBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -470,8 +497,12 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="mail__button mail__button--primary">
-                  Unlock Important
+                <button
+                  type="submit"
+                  className="mail__button mail__button--primary"
+                  disabled={isUnlockBusy}
+                >
+                  {isUnlockBusy ? "Checking..." : "Unlock Important"}
                 </button>
               </div>
             </form>
