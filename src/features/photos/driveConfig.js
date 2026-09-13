@@ -22,7 +22,9 @@ export function driveListUrl(path, params) {
 }
 
 // test-only override untuk mengaktifkan config tanpa mengubah konstanta production
-export function setDriveConfigForTests({ folderId, apiKey } = null) {
+// ponytail: argumen null/undefined sama-sama berarti "reset", tidak perlu membedakan keduanya
+export function setDriveConfigForTests(overrides) {
+  const { folderId, apiKey } = overrides ?? {};
   DRIVE_FOLDER_ID_OVERRIDE = null;
   DRIVE_API_KEY_OVERRIDE = null;
   if (folderId !== undefined && folderId !== null) DRIVE_FOLDER_ID_OVERRIDE = folderId;
