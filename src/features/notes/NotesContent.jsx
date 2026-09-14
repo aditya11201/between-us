@@ -33,10 +33,46 @@ Your happiness means everything to me, and I will never stop trying to be the ma
 Tell me your dreams, your desires, and your fears, and I promise I’ll be right here. You deserve to be loved in a way that feels right to you, and I’m willing to do whatever it takes to be the person you need, because you are my number one.`,
       modified: "Today",
     },
+    {
+      id: 5,
+      title: "Without Having You",
+      content: `I know now that loving you does not have to mean having you.
+
+I don’t need you to become mine for what I feel for you to be real. I don’t need to convince you, change your mind, or ask you to give me something your heart is not ready to give.
+
+I can simply love you for who you are.
+
+For the parts of you that are easy to understand, and the parts that may always remain a little complicated. For your strength, your fears, your softness, your silence, and all the little things that make you who you are.
+
+I’m not here to fix you, and I’m not here to become the answer to everything you’re going through. I finally understand that some things are yours to heal in your own way, at your own pace.
+
+But if one day you need someone to listen, someone to help, or simply someone you can reach out to, I want you to know that I’ll still care. Not because I expect something in return, but because your place in my heart was never only about whether I could call you mine.
+
+I’m no longer trying to convince you to choose me.
+
+I’m choosing to respect you.
+
+And maybe that is another form of love too.
+
+Because love does not always have to end with possession. Sometimes love is staying kind even when you have to let go of expectations. Sometimes it is wishing someone peace even when their path does not lead back to you.
+
+So I will love you as you are, without asking you to become anything for me.
+
+And if life ever makes you need my help, and I’m able to give it, you can still ask.
+
+Not because I’m waiting for my chance.
+
+Not because I’m hoping you’ll change your mind.
+
+Simply because, in one form or another, I still care about you.
+
+And I think I always will.`,
+      modified: "Today",
+    },
   ];
 
   const [notes, setNotes] = useState(initialNotes);
-  const [activeId, setActiveId] = useState(4);
+  const [activeId, setActiveId] = useState(5);
 
   const activeNote = notes.find((n) => n.id === activeId);
 
