@@ -23,6 +23,75 @@ test("maps image files to photo objects with drive-prefixed ids", () => {
   assert.equal(photos[0].mediaType, "image");
 });
 
+test("prefers EXIF capture time over Drive creation time", () => {
+  const [photo] = mapDriveFiles(
+    [{
+      id: "FILE_A",
+      name: "photo.jpg",
+      mimeType: "image/jpeg",
+      createdTime: "2024-01-01T00:00:00.000Z",
+      imageMediaMetadata: { time: "2024-02-01T00:00:00.000Z" },
+    }],
+    "root",
+    "Drive Photos",
+  );
+
+  assert.equal(photo.takenAt, "2024-02-01T00:00:00.000Z");
+});
+
+test("falls back to Drive creation time when EXIF capture time is missing", () => {
+  const [photo] = mapDriveFiles(
+    [{
+      id: "FILE_A",
+      name: "photo.jpg",
+      mimeType: "image/jpeg",
+      createdTime: "2024-01-01T00:00:00.000Z",
+    }],
+    "root",
+    "Drive Photos",
+  );
+
+  assert.equal(photo.takenAt, "2024-01-01T00:00:00.000Z");
+});
+
+test("sorts dated photos newest first with name as the tiebreaker", () => {
+  const photos = mapDriveFiles(
+    [
+      { id: "A", name: "zeta.jpg", mimeType: "image/jpeg", createdTime: "2024-02-01T00:00:00.000Z" },
+      { id: "B", name: "beta.jpg", mimeType: "image/jpeg", createdTime: "2024-03-01T00:00:00.000Z" },
+      { id: "C", name: "alpha.jpg", mimeType: "image/jpeg", createdTime: "2024-02-01T00:00:00.000Z" },
+    ],
+    "root",
+    "Drive Photos",
+  );
+
+  assert.deepEqual(photos.map((photo) => photo.name), ["beta.jpg", "alpha.jpg", "zeta.jpg"]);
+});
+
+test("sorts undated photos last by name", () => {
+  const photos = mapDriveFiles(
+    [
+      { id: "A", name: "zeta.jpg", mimeType: "image/jpeg" },
+      { id: "B", name: "dated.jpg", mimeType: "image/jpeg", createdTime: "2024-01-01T00:00:00.000Z" },
+      { id: "C", name: "alpha.jpg", mimeType: "image/jpeg" },
+    ],
+    "root",
+    "Drive Photos",
+  );
+
+  assert.deepEqual(photos.map((photo) => photo.name), ["dated.jpg", "alpha.jpg", "zeta.jpg"]);
+});
+
+test("normalizes invalid date strings to null", () => {
+  const [photo] = mapDriveFiles(
+    [{ id: "A", name: "photo.jpg", mimeType: "image/jpeg", createdTime: "not-a-date" }],
+    "root",
+    "Drive Photos",
+  );
+
+  assert.equal(photo.takenAt, null);
+});
+
 test("maps video files to Drive API media URLs", async () => {
   const { setDriveConfigForTests } = await import("./driveConfig.js");
   setDriveConfigForTests({ folderId: "TEST_FOLDER", apiKey: "test-api-key" });

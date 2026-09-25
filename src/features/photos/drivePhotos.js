@@ -9,6 +9,12 @@ const DRIVE_IMAGE_URL = "https://lh3.googleusercontent.com/d/";
 const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_ROOT_SECTION = { id: "drive-photos", label: "Drive Photos" };
 
+function resolveTakenAt(file) {
+  const raw = file?.imageMediaMetadata?.time ?? file?.createdTime ?? null;
+  if (typeof raw !== "string" || !raw.trim() || Number.isNaN(Date.parse(raw))) return null;
+  return raw;
+}
+
 function driveMediaUrl(fileId) {
   const params = new URLSearchParams({ alt: "media", key: getDriveApiKey() });
   return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?${params.toString()}`;
@@ -30,9 +36,18 @@ export function mapDriveFiles(files, sectionId, sectionLabel) {
         name: file.name,
         url: mediaType === "video" ? driveMediaUrl(file.id) : `${DRIVE_IMAGE_URL}${file.id}`,
         mediaType,
+        takenAt: resolveTakenAt(file),
       };
     })
-    .sort((left, right) => left.name.localeCompare(right.name));
+    .sort((left, right) => {
+      if (left.takenAt && right.takenAt) {
+        const dateDifference = Date.parse(right.takenAt) - Date.parse(left.takenAt);
+        return dateDifference || left.name.localeCompare(right.name);
+      }
+      if (left.takenAt) return -1;
+      if (right.takenAt) return 1;
+      return left.name.localeCompare(right.name);
+    });
 }
 
 function humanizeName(name) {
@@ -45,7 +60,7 @@ async function listChildren(fetchImpl, folderId) {
   const url = driveListUrl("/files", {
     q: `'${folderId}' in parents and trashed = false`,
     pageSize: "200",
-    fields: "files(id, name, mimeType)",
+    fields: "files(id, name, mimeType, createdTime, imageMediaMetadata(time))",
   });
   const response = await fetchImpl(url);
   if (!response.ok) throw new Error(`Drive list failed: ${response.status}`);
