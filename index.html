@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+  <title>Between Us</title>
+  <meta name="description" content="A personal macOS-inspired experience" />
+
+  <meta name="theme-color" content="#0d0718" />
+  <meta name="color-scheme" content="dark light" /> 
+
+  <!-- =========================
+       FAVICON SYSTEM
+  ========================== -->
+  <link rel="icon" href="/between-us/favicons/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/between-us/favicons/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="96x96" href="/between-us/favicons/favicon-96x96.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/between-us/favicons/web-app-manifest-192x192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/between-us/favicons/web-app-manifest-512x512.png" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/between-us/manifest.json" />
+
+  <!-- Apple Touch Icon -->
+  <link rel="apple-touch-icon" href="/between-us/favicons/apple-touch-icon.png" />
+
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-title" content="Between Us" />
+  <meta name="mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://aditya11201.github.io/between-us/" />
+  <meta property="og:title" content="Between Us" />
+  <meta property="og:description" content="A personal macOS-inspired experience" />
+  <meta property="og:image" content="https://aditya11201.github.io/between-us/favicons/web-app-manifest-512x512.png" />
+
+  <!-- TWITTER -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <script type="module" crossorigin src="/between-us/assets/index-CanP-X8m.js"></script>
+  <link rel="modulepreload" crossorigin href="/between-us/assets/finder-jA3j65ul.js">
+  <link rel="modulepreload" crossorigin href="/between-us/assets/vendor-Cbnl95ga.js">
+  <link rel="modulepreload" crossorigin href="/between-us/assets/terminal-RstoslTy.js">
+  <link rel="modulepreload" crossorigin href="/between-us/assets/safari-DgNFMI7j.js">
+  <link rel="modulepreload" crossorigin href="/between-us/assets/settings-B4BhnIWa.js">
+  <link rel="stylesheet" crossorigin href="/between-us/assets/index-DWpjaSXk.css">
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <!-- Noscript fallback -->
+  <noscript>
+    <style>
+      #root { display: none; }
+
+      .mac-ns-screen {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #000;
+        background: radial-gradient(ellipse at 50% 0%, #2a4a7a 0%, #1a2a4a 40%, #0a0f1a 100%);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+        color: #ffffff;
+        z-index: 9999;
+      }
+
+      .mac-ns-window {
+        width: min(420px, calc(100% - 32px));
+        background: rgba(30, 30, 32, 0.75);
+        border-radius: 12px;
+        border: 0.5px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 
+          0 25px 50px -12px rgba(0, 0, 0, 0.6),
+          0 0 0 1px rgba(0, 0, 0, 0.2) inset;
+        backdrop-filter: blur(50px) saturate(150%);
+        -webkit-backdrop-filter: blur(50px) saturate(150%);
+        overflow: hidden;
+      }
+
+      .mac-ns-titlebar {
+        height: 38px;
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .mac-ns-traffic {
+        display: flex;
+        gap: 8px;
+      }
+
+      .mac-ns-traffic span {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.1);
+      }
+
+      .mac-ns-traffic span:nth-child(1) { background: #ff5f57; }
+      .mac-ns-traffic span:nth-child(2) { background: #febc2e; }
+      .mac-ns-traffic span:nth-child(3) { background: #28c840; }
+
+      .mac-ns-body {
+        padding: 20px 24px 24px;
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+      }
+
+      .mac-ns-icon {
+        flex-shrink: 0;
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, #F7DF1E 0%, #D4B800 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: 800;
+        color: #000;
+        box-shadow: 
+          inset 0 1px 0 rgba(255,255,255,0.4),
+          0 4px 12px rgba(0,0,0,0.2);
+        letter-spacing: -1px;
+      }
+
+      .mac-ns-content {
+        flex: 1;
+        padding-top: 4px;
+      }
+
+      .mac-ns-title {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-bottom: 6px;
+      }
+
+      .mac-ns-desc {
+        font-size: 13px;
+        line-height: 1.4;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 20px;
+      }
+
+      .mac-ns-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .mac-ns-button {
+        background: #007AFF;
+        color: white;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 4px 16px;
+        border-radius: 6px;
+        border: 0.5px solid rgba(0, 0, 0, 0.2);
+        box-shadow: 
+          inset 0 1px 0 rgba(255,255,255,0.2),
+          0 1px 2px rgba(0,0,0,0.1);
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+
+    <div class="mac-ns-screen">
+      <div class="mac-ns-window">
+        <div class="mac-ns-titlebar">
+          <div class="mac-ns-traffic">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+        
+        <div class="mac-ns-body">
+          <div class="mac-ns-icon">JS</div>
+          
+          <div class="mac-ns-content">
+            <div class="mac-ns-title">JavaScript is required to boot Between Us</div>
+            <div class="mac-ns-desc">
+              Between Us is a personal macOS-inspired experience. To initialize the system and load the UI, please enable JavaScript in your browser settings.
+            </div>
+            
+            <div class="mac-ns-actions">
+              <div class="mac-ns-button">System Halted</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </noscript>
+
+</body>
+</html>
