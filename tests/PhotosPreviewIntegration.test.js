@@ -168,7 +168,7 @@ function findConditionalRule(predicate) {
 }
 
 test("keeps modified-click selection while opening the complete photo on double-click", async () => {
-  const photoId = "favorites/28-07-26-0722.png";
+  const photoId = "favorites/01-07-26-2234.webp";
   const photo = photoCatalog.find(({ id }) => id === photoId);
   assert.ok(photo, `catalog contains the double-click fixture ${photoId}`);
   const openAppCalls = [];
