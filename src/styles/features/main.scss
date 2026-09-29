@@ -87,6 +87,8 @@ body.light-theme {
   pointer-events: none;
   transition: opacity 0.08s linear;
 }
+.desktop__rain { position: fixed; inset: 0; z-index: 50; pointer-events: none; } .desktop__rain canvas { width: 100%; height: 100%; display: block; } .desktop__rain-vignette { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 160px 45px rgba(0, 0, 0, 0.65); }
+
 
 @media (prefers-reduced-motion: reduce) {
   .desktop__brightness-overlay {

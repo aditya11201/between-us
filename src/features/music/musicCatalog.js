@@ -7,6 +7,7 @@ import riskItAllAudio from "@/content/music/Bruno Mars - Risk It All.wasm?url";
 import riskItAllArtwork from "@/content/music/Bruno Mars - Risk It All.webp";
 import untilIFoundYouAudio from "@/content/music/Stephen Sanchez - Until I Found You.wasm?url";
 import untilIFoundYouArtwork from "@/content/music/Stephen Sanchez - Until I Found You.webp";
+import manguAudio from "@/content/music/Fourtwnty - Mangu (Orchestral Cover).wasm?url";
 
 const catalog = [
   {
@@ -50,6 +51,18 @@ const catalog = [
     genre: "Pop",
     src: untilIFoundYouAudio,
     artwork: untilIFoundYouArtwork,
+    mimeType: "audio/mp4",
+    explicit: false,
+  },
+  {
+    id: "fourtwnty-mangu-orchestral-cover",
+    title: "Mangu (Orchestral Cover)",
+    artist: "Fourtwnty",
+    album: "Single",
+    genre: "Instrumental",
+    src: manguAudio,
+    // ponytail: placeholder artwork until a dedicated cover exists
+    artwork: perfectArtwork,
     mimeType: "audio/mp4",
     explicit: false,
   },

@@ -12,6 +12,7 @@ import { BootScreen, MobileNotSupported, ContextMenu, LockScreen } from "@/ui";
 // Layout компоненты
 import { Desktop, Dock, WindowList } from "@/windows";
 import { MenuBar } from "@/features/menubar/MenuBar";
+import { GalleryAmbientAudio } from "@/features/music/GalleryAmbientAudio";
 // Ленивая загрузка обоев
 import betweenUsHome from "@/assets/images/wallpapers/Custom/between-us-home.png";
 import defaultWallpaperDark from "@/assets/images/wallpapers/Tahoe/Tahoe Dark.webp";
@@ -108,6 +109,7 @@ export function AppContent() {
       />
 
       <WindowList setWallpaper={setWallpaper} />
+      <GalleryAmbientAudio />
 
       <Dock 
         onOpen={windowManager.openApp} 

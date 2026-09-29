@@ -1070,6 +1070,11 @@
   min-height: 0;
   padding: 32px 24px 64px;
   overflow: auto;
+  // ponytail: keep scrolling on the compositor thread
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  overflow-anchor: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .photos-visually-hidden {
@@ -1156,6 +1161,11 @@
   align-self: flex-start;
 }
 
+.photos-library-grid > .photos-section {
+  // ponytail: skip layout/paint of offscreen sections so scroll stays smooth
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
 .photos-section + .photos-section {
   margin-top: 0;
 }
@@ -1205,6 +1215,8 @@
   aspect-ratio: 1;
   object-fit: cover;
   border-radius: 4px;
+  // ponytail: decoded thumbnails composite without repainting the grid
+  transform: translateZ(0);
   background: var(--photos-content-bg);
 }
 

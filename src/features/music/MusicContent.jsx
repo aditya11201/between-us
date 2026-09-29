@@ -28,9 +28,16 @@ import {
 } from "react-icons/fa";
 import { MdOutlineRepeat, MdOutlineRepeatOne } from "react-icons/md";
 import { MUSIC_CATALOG } from "./musicCatalog.js";
+import {
+  GALLERY_AMBIENT,
+  GALLERY_AMBIENT_COMMAND,
+  GALLERY_AMBIENT_EVENT,
+  GALLERY_AMBIENT_SONG_ID,
+  MUSIC_LOCAL_EVENT,
+  ambientState,
+} from "./galleryAmbientMusic";
 import { MY_SWEETENERS_ALBUM, MY_SWEETENERS_TRACKS } from "./mySweeteners.js";
 import { VIT_U_ALBUM, VIT_U_TRACKS } from "./vitU.js";
-import { fetchAudioBlobUrl } from "./musicPlayback.js";
 import {
   PLAYER_STORAGE_KEY,
   filterMusicCatalog,
@@ -50,14 +57,38 @@ function formatTime(sec) {
 const getInitialPlayerState = () => {
   if (typeof window === "undefined") return restorePlayerState(null, MUSIC_CATALOG);
   try {
-    return restorePlayerState(
+    const restored = restorePlayerState(
       window.localStorage.getItem(PLAYER_STORAGE_KEY),
       MUSIC_CATALOG,
     );
+    // ponytail: the ambient track is gallery-timed, never restored — IDM
+    // grabs the audio when a persisted activeId auto-loads it on next boot.
+    if (restored.activeId === GALLERY_AMBIENT_SONG_ID) {
+      return { ...restored, activeId: null, currentTime: 0 };
+    }
+    return restored;
   } catch {
     return restorePlayerState(null, MUSIC_CATALOG);
   }
 };
+// ponytail: the ambient track is gallery-timed, never restored — IDM grabs
+// the MP3 when a persisted activeId auto-loads it on next boot. Scrubbed at
+// module import (runs on first chunk load, before any component mounts), so
+// a pre-fix stored id never survives to trigger a fetch.
+try {
+  const stored = window.localStorage.getItem(PLAYER_STORAGE_KEY);
+  if (stored && stored.includes(GALLERY_AMBIENT_SONG_ID)) {
+    const parsed = JSON.parse(stored);
+    if (parsed?.activeId === GALLERY_AMBIENT_SONG_ID) {
+      window.localStorage.setItem(
+        PLAYER_STORAGE_KEY,
+        serializePlayerState({ ...parsed, activeId: null, currentTime: 0 }),
+      );
+    }
+  }
+} catch {
+  // Storage can be unavailable in private or restricted browsing contexts.
+}
 
 function isCurrentAudioSource(audio, expectedSource, audioRef, audioSourceRef) {
   const currentSource = audioSourceRef.current;
@@ -234,8 +265,6 @@ export function MusicContent() {
   const metadataLoadedRef = useRef(false);
   const playerStateRef = useRef(initialPlayerState);
   const handleEndedRef = useRef(null);
-  const mediaRequestRef = useRef(null);
-  const mediaObjectUrlRef = useRef(null);
 
   const filteredSongs = useMemo(
     () => filterMusicCatalog(songs, searchQuery),
@@ -245,10 +274,6 @@ export function MusicContent() {
     () => songs.find((song) => song.id === activeId) || null,
     [songs, activeId],
   );
-
-  useEffect(() => {
-    playerStateRef.current = { activeId, currentTime, volume, isMuted };
-  }, [activeId, currentTime, volume, isMuted]);
 
   const persistPlayerState = useCallback(() => {
     try {
@@ -260,6 +285,15 @@ export function MusicContent() {
       // Storage can be unavailable in private or restricted browsing contexts.
     }
   }, []);
+
+  useEffect(() => {
+    playerStateRef.current = { activeId, currentTime, volume, isMuted };
+    // ponytail: the ambient track is gallery-timed, never restored — IDM
+    // grabs the MP3 when a persisted activeId auto-loads it on next boot.
+    // Import-time scrub already removed pre-fix ids; this guards new writes.
+    if (activeId === GALLERY_AMBIENT_SONG_ID) return;
+    persistPlayerState();
+  }, [activeId, volume, isMuted, persistPlayerState]);
 
   const persistAudioTime = useCallback((expectedSource = null) => {
     try {
@@ -283,6 +317,9 @@ export function MusicContent() {
         ? audio.currentTime
         : state.currentTime;
       const nextState = { ...state, currentTime: currentAudioTime };
+      // ponytail: the ambient track is gallery-timed, never restored — IDM
+      // grabs the audio when a persisted activeId auto-loads it on boot.
+      if (nextState.activeId === GALLERY_AMBIENT_SONG_ID) return;
       playerStateRef.current = nextState;
       window.localStorage.setItem(
         PLAYER_STORAGE_KEY,
@@ -293,6 +330,15 @@ export function MusicContent() {
     }
   }, []);
 
+  // ponytail: mirror of the gallery ambient session. While mirrored, Music
+  // shows the ambient track as playing (Pause/equalizer/spin) without
+  // producing local audio; transport + slider drive the bridge instead.
+  const ambientMirrorRef = useRef(null);
+  const [mirrorId, setMirrorId] = useState(null);
+  const [ambientPlaying, setAmbientPlaying] = useState(false);
+  const isAmbientTrack = activeId === ambientState.songId && ambientState.songId !== null;
+  const effectivePlaying = isPlaying || (mirrorId !== null && mirrorId === activeId && ambientPlaying);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
@@ -300,6 +346,87 @@ export function MusicContent() {
       audio.muted = isMuted;
     }
   }, [volume, isMuted]);
+
+  useEffect(() => {
+    const adoptMirror = (songId, ambientVolume, ambientTime) => {
+      pendingAutoplayRef.current = false;
+      pendingSeekRef.current = ambientTime ?? 0;
+      setIsMuted(false);
+      setIsPlaying(false);
+      setActiveId(songId);
+      ambientMirrorRef.current = { id: songId, generation: -1 };
+      setMirrorId(songId);
+      // ponytail: adopt reads the start-event volume only and leaves the
+      // slider user-controlled afterwards; the volume effect never bridges,
+      // so only explicit slider/mute gestures reach the ambient gain.
+      // Adopt from silence keeps 0 so the slider can follow the fade up.
+      if (ambientVolume !== undefined && ambientVolume > 0) setVolume(ambientVolume);
+      else if (ambientVolume === 0) setVolume(0);
+      setAmbientPlaying(true);
+      // ponytail: adopt would trigger a blob fetch + autoplay; force silence —
+      // the ambient session owns audible output, Music only mirrors state.
+      queueMicrotask(() => {
+        pendingAutoplayRef.current = false;
+        audioRef.current?.pause();
+      });
+    };
+    // Late-open Music window joins a running ambient session — even when a
+    // restored activeId already points at the song (no mirror flag yet).
+    if (
+      ambientState.playing
+      && ambientState.songId
+      && ambientMirrorRef.current?.id !== ambientState.songId
+    ) {
+      adoptMirror(ambientState.songId, ambientState.volume, ambientState.currentTime);
+      return undefined;
+    }
+    const onAmbient = (event) => {
+      const { playing, songId, volume: ambientVolume, currentTime: ambientTime } = event.detail ?? {};
+      if (!songId) return;
+      // ponytail: bridge events fire on (re)start and stop only — no
+      // per-tick gain follow, so the fade ramp runs without echo churn.
+      if (playing) {
+        if (ambientMirrorRef.current?.id === songId) return;
+        adoptMirror(songId, ambientVolume, ambientTime);
+      } else if (ambientMirrorRef.current?.id === songId) {
+        ambientMirrorRef.current = null;
+        setMirrorId(null);
+        setAmbientPlaying(false);
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      }
+    };
+    window.addEventListener(GALLERY_AMBIENT_EVENT, onAmbient);
+    return () => window.removeEventListener(GALLERY_AMBIENT_EVENT, onAmbient);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!ambientState.songId) return undefined;
+    if (ambientMirrorRef.current || !isAmbientTrack) return undefined;
+    const audio = audioRef.current;
+    if (!audio) return undefined;
+    const onPlay = () => {
+      ambientMirrorRef.current = null;
+      window.dispatchEvent(new CustomEvent(MUSIC_LOCAL_EVENT, { detail: { playing: true } }));
+      window.dispatchEvent(
+        new CustomEvent(GALLERY_AMBIENT_COMMAND, { detail: { action: "stop" } }),
+      );
+    };
+    const onVolume = () => {
+      window.dispatchEvent(
+        new CustomEvent(GALLERY_AMBIENT_COMMAND, {
+          detail: { action: "set-volume", volume: audio.muted ? 0 : audio.volume },
+        }),
+      );
+    };
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("volumechange", onVolume);
+    return () => {
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("volumechange", onVolume);
+    };
+  }, [isAmbientTrack]);
 
   useEffect(() => {
     setNowPlayingArtworkFailed(false);
@@ -336,15 +463,31 @@ export function MusicContent() {
     const audio = audioRef.current;
     if (!audio) return undefined;
 
+    // ponytail: the ambient track is gallery-timed, never restored — skip
+    // loading it here entirely so no audio fetch ever fires for it on boot
+    // (this is what IDM was grabbing). Mirror adopt below shows metadata only.
+    if (activeSong?.id === GALLERY_AMBIENT_SONG_ID && !ambientMirrorRef.current) {
+      pendingAutoplayRef.current = false;
+      setDuration(0);
+      setCurrentTime(0);
+      return undefined;
+    }
+
+    // ponytail: mirror adopt shows metadata only; the ambient session owns
+    // audible output, so skip the load/autoplay entirely.
+    if (ambientMirrorRef.current?.id === activeSong?.id) {
+      pendingAutoplayRef.current = false;
+      audio.pause();
+      setDuration(0);
+      setCurrentTime(pendingSeekRef.current ?? 0);
+      return undefined;
+    }
+
     const source = {
       id: activeSong?.id ?? null,
       generation: sourceGenerationRef.current + 1,
       ready: false,
     };
-    sourceGenerationRef.current = source.generation;
-    audioSourceRef.current = source;
-    metadataLoadedRef.current = false;
-
     const isCurrent = () => isCurrentAudioSource(audio, source, audioRef, audioSourceRef);
     const onLoadedMetadata = () => {
       if (!isCurrent() || playerStateRef.current.activeId !== source.id) return;
@@ -357,7 +500,8 @@ export function MusicContent() {
       setDuration(nextDuration);
       setCurrentTime(nextTime);
       playerStateRef.current = { ...playerStateRef.current, currentTime: nextTime };
-      persistAudioTime(source);
+      // ponytail: never persist the gallery-timed track (see IDM note above).
+      if (source.id !== ambientState.songId) persistAudioTime(source);
       if (pendingAutoplayRef.current) {
         pendingAutoplayRef.current = false;
         tryPlay();
@@ -388,7 +532,8 @@ export function MusicContent() {
         setCurrentTime(audio.currentTime);
       }
       setIsPlaying(false);
-      if (metadataLoadedRef.current) persistAudioTime(source);
+      // ponytail: never persist the gallery-timed track (see IDM note above).
+      if (metadataLoadedRef.current && source.id !== ambientState.songId) persistAudioTime(source);
     };
     const onError = () => {
       if (!isCurrent() || playerStateRef.current.activeId !== source.id) return;
@@ -409,40 +554,14 @@ export function MusicContent() {
       audio.addEventListener("error", onError);
       audio.addEventListener("ended", onEnded);
 
-      const controller = new AbortController();
-      mediaRequestRef.current = { controller, generation: source.generation };
-      fetchAudioBlobUrl(activeSong.src, {
-        signal: controller.signal,
-        mimeType: activeSong.mimeType,
-      })
-        .then(({ url, revoke }) => {
-          const requestIsCurrent = mediaRequestRef.current?.generation === source.generation
-            && !controller.signal.aborted
-            && isCurrent();
-          if (!requestIsCurrent) {
-            revoke();
-            return;
-          }
-
-          mediaObjectUrlRef.current = { url, revoke, generation: source.generation };
-          audioSourceRef.current = { ...source, ready: true };
-          audio.src = url;
-          audio.load();
-          setDuration(0);
-          setCurrentTime(pendingSeekRef.current);
-        })
-        .catch(() => {
-          if (
-            controller.signal.aborted
-            || mediaRequestRef.current?.generation !== source.generation
-            || !isCurrent()
-          ) {
-            return;
-          }
-          pendingAutoplayRef.current = false;
-          setIsPlaying(false);
-          setPlaybackError("This audio file could not be loaded");
-        });
+      // ponytail: stream the catalog URL directly — no fetch+blob copy, so
+      // IDM never sees a downloadable audio response to grab.
+      audioSourceRef.current = { ...source, ready: true };
+      audio.preload = "metadata";
+      if (audio.getAttribute("src") !== activeSong.src) audio.src = activeSong.src;
+      audio.load();
+      setDuration(0);
+      setCurrentTime(pendingSeekRef.current);
     } else {
       pendingAutoplayRef.current = false;
       audio.pause();
@@ -453,11 +572,8 @@ export function MusicContent() {
     }
 
     return () => {
-      if (source.id && metadataLoadedRef.current) persistAudioTime(source);
-      if (mediaRequestRef.current?.generation === source.generation) {
-        mediaRequestRef.current.controller.abort();
-        mediaRequestRef.current = null;
-      }
+      // ponytail: never persist the gallery-timed track (see IDM note above).
+      if (source.id && source.id !== ambientState.songId && metadataLoadedRef.current) persistAudioTime(source);
       audio.pause();
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("timeupdate", onTimeUpdate);
@@ -467,18 +583,11 @@ export function MusicContent() {
       audio.removeEventListener("ended", onEnded);
       audio.removeAttribute("src");
       audio.load();
-      if (mediaObjectUrlRef.current?.generation === source.generation) {
-        mediaObjectUrlRef.current.revoke();
-        mediaObjectUrlRef.current = null;
-      }
       metadataLoadedRef.current = false;
       audioSourceRef.current = { id: null, generation: source.generation, ready: false };
     };
   }, [activeSong?.id, persistAudioTime, sourceLoadRequest, tryPlay]);
 
-  useEffect(() => {
-    persistPlayerState();
-  }, [activeId, volume, isMuted, persistPlayerState]);
 
   const requestSourcePlayback = useCallback(() => {
     const source = audioSourceRef.current;
@@ -510,22 +619,22 @@ export function MusicContent() {
 
   const selectSongForPlayback = useCallback((song) => {
     if (!song) return;
-    persistAudioTime();
+    // ponytail: manual pick leaves the mirror; the bridge no longer owns output.
+    ambientMirrorRef.current = null;
+    setMirrorId(null);
+    setAmbientPlaying(false);
+    // ponytail: never persist the gallery-timed track — IDM grabs the MP3
+    // when a persisted activeId auto-loads it on next boot.
+    if (song.id !== ambientState.songId) persistAudioTime();
     const isSameSong = song.id === activeId;
     if (isSameSong) {
-      const audio = audioRef.current;
-      if (audio) audio.currentTime = 0;
+      // ponytail: same-song restart after a mirror session has no loaded
+      // source — bump the load generation so it restreams, then play.
       pendingSeekRef.current = 0;
-      pendingAutoplayRef.current = false;
-      playerStateRef.current = {
-        ...playerStateRef.current,
-        activeId: song.id,
-        currentTime: 0,
-      };
-      persistPlayerState();
       setCurrentTime(0);
       setPlaybackError(null);
-      requestSourcePlayback();
+      setSourceLoadRequest((value) => value + 1);
+      pendingAutoplayRef.current = true;
       return;
     }
 
@@ -535,18 +644,33 @@ export function MusicContent() {
     setCurrentTime(0);
     setIsPlaying(false);
     setActiveId(song.id);
-  }, [activeId, persistAudioTime, persistPlayerState, requestSourcePlayback]);
+  }, [activeId, persistAudioTime, requestSourcePlayback]);
+
+  const stopAmbientBridge = useCallback(() => {
+    ambientMirrorRef.current = null;
+    setMirrorId(null);
+    setAmbientPlaying(false);
+    window.dispatchEvent(
+      new CustomEvent(GALLERY_AMBIENT_COMMAND, { detail: { action: "stop" } }),
+    );
+  }, []);
 
   const handleCardSelect = useCallback((id) => {
     const song = songs.find((item) => item.id === id);
     if (!song) return;
     if (song.id === activeId) {
+      // Mirror row drives the ambient session when it shows the ambient track.
+      if (mirrorId === song.id) {
+        if (ambientState.playing) stopAmbientBridge();
+        else selectSongForPlayback(song);
+        return;
+      }
       if (isPlaying) audioRef.current?.pause();
       else requestSourcePlayback();
       return;
     }
     selectSongForPlayback(song);
-  }, [activeId, isPlaying, requestSourcePlayback, selectSongForPlayback, songs]);
+  }, [activeId, isPlaying, mirrorId, requestSourcePlayback, selectSongForPlayback, songs, stopAmbientBridge]);
 
   const handleEnded = useCallback(() => {
     const audio = audioRef.current;
@@ -612,13 +736,19 @@ export function MusicContent() {
   }, [activeId, selectSongForPlayback, songs]);
 
   const handlePlayPause = useCallback(() => {
+    // Mirror session: transport pauses the ambient bridge, never local audio.
+    if (mirrorId !== null && activeSong && mirrorId === activeSong.id) {
+      if (ambientState.playing) stopAmbientBridge();
+      else selectSongForPlayback(activeSong);
+      return;
+    }
     if (!activeSong) {
       if (songs[0]) selectSongForPlayback(songs[0]);
       return;
     }
     if (isPlaying) audioRef.current?.pause();
     else requestSourcePlayback();
-  }, [activeSong, isPlaying, requestSourcePlayback, selectSongForPlayback, songs]);
+  }, [activeSong, isPlaying, mirrorId, requestSourcePlayback, selectSongForPlayback, songs, stopAmbientBridge]);
 
   const cycleRepeat = () => {
     setRepeat((value) => (
@@ -656,7 +786,7 @@ export function MusicContent() {
                 songs={filteredSongs}
                 gridMode={gridMode}
                 activeId={activeId}
-                isPlaying={isPlaying}
+                isPlaying={effectivePlaying}
                 onSelect={handleCardSelect}
                 onToggle={handleCardSelect}
               />
@@ -830,10 +960,10 @@ export function MusicContent() {
             type="button"
             className="music-ctrl-btn music-ctrl-btn--play"
             onClick={handlePlayPause}
-            aria-label={isPlaying ? "Pause" : "Play"}
-            aria-pressed={isPlaying}
+            aria-label={effectivePlaying ? "Pause" : "Play"}
+            aria-pressed={effectivePlaying}
           >
-            {isPlaying ? <FaPause /> : <FaPlay />}
+            {effectivePlaying ? <FaPause /> : <FaPlay />}
           </button>
           <button
             type="button"
@@ -860,7 +990,18 @@ export function MusicContent() {
           <button
             type="button"
             className="music-ctrl-btn"
-            onClick={() => setIsMuted((value) => !value)}
+            onClick={() => {
+              const next = !isMuted;
+              setIsMuted(next);
+              // ponytail: explicit mute gesture drives the ambient gain.
+              if (mirrorId !== null && mirrorId === activeId) {
+                window.dispatchEvent(
+                  new CustomEvent(GALLERY_AMBIENT_COMMAND, {
+                    detail: { action: "set-volume", volume: next ? 0 : volume },
+                  }),
+                );
+              }
+            }}
             title={isMuted ? "Unmute" : "Mute"}
             aria-label={isMuted ? "Unmute" : "Mute"}
             aria-pressed={isMuted}
@@ -874,8 +1015,17 @@ export function MusicContent() {
             step="0.01"
             value={isMuted ? 0 : volume}
             onChange={(event) => {
-              setVolume(Number(event.target.value));
+              const next = Number(event.target.value);
+              setVolume(next);
               setIsMuted(false);
+              // ponytail: explicit slider gesture drives the ambient gain.
+              if (mirrorId !== null && mirrorId === activeId) {
+                window.dispatchEvent(
+                  new CustomEvent(GALLERY_AMBIENT_COMMAND, {
+                    detail: { action: "set-volume", volume: next },
+                  }),
+                );
+              }
             }}
             className="music-volume-slider"
             aria-label="Volume"
@@ -941,7 +1091,7 @@ export function MusicContent() {
             {nowPlayingArtworkFailed || !activeSong.artwork ? (
               <FaCompactDisc
                 aria-hidden="true"
-                className={`music-now-playing-disc${isPlaying ? " music-now-playing-disc--spin" : ""}`}
+                className={`music-now-playing-disc${effectivePlaying ? " music-now-playing-disc--spin" : ""}`}
               />
             ) : (
               <img
