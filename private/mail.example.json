@@ -1,0 +1,17 @@
+[
+  {
+    "id": "example-important",
+    "mailbox": "important",
+    "category": "primary",
+    "sender": "Example Sender",
+    "senderEmail": "example@example.com",
+    "time": "Today",
+    "subject": "Example subject",
+    "preview": "Example preview",
+    "body": "Example body. Copy this file to mail.json and edit it; never commit mail.json.",
+    "to": "someone@example.com",
+    "toName": "Someone",
+    "unread": true,
+    "flagged": false
+  }
+]

@@ -1,0 +1,56 @@
+@use "./variables" as vars;
+
+:root {
+  --system-font-family: 
+    -apple-system, 
+    BlinkMacSystemFont,
+    "Inter", 
+    "Helvetica Neue",
+    "Helvetica",
+    "Arial",
+    sans-serif;
+
+  /* Monospace font stack for code/terminal */
+  --monospace-font-family:
+    "SF Mono",
+    "Menlo",
+    "Monaco",
+    "Consolas",
+    "Liberation Mono",
+    "Courier New",
+    monospace;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--system-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background: #0b0f1a;
+  color: vars.$color-text-primary;
+
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+* {
+  font-family: var(--system-font-family);
+}
+code, pre, [class*="terminal"], [class*="code"], [class*="Terminal"] {
+  font-family: var(--monospace-font-family);
+}
+
+.system-font {
+  font-family: var(--system-font-family) !important;
+}
+.monospace-font {
+  font-family: var(--monospace-font-family) !important;
+}
+

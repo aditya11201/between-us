@@ -1,0 +1,27 @@
+{
+  "name": "between-us",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test",
+    "encrypt:mail": "node scripts/encrypt-mail.mjs"
+  },
+  "dependencies": {
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-icons": "^5.6.0",
+    "react-window": "^2.2.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "@vitejs/plugin-react-swc": "^4.3.1",
+    "happy-dom": "^20.9.0",
+    "sass": "^1.100.0",
+    "vite": "^5.4.1"
+  }
+}

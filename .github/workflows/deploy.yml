@@ -25,6 +25,8 @@ jobs:
 
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_DRIVE_API_KEY: ${{ secrets.DRIVE_API_KEY }}
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
@@ -32,3 +34,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: ./dist
+          force_orphan: true

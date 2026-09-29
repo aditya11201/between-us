@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.vite/
+.DS_Store
+*.log
+.env
+.env.*
+.worktrees/
+.understand-anything/
+
+# Dev/working documents (local only)
+docs/superpowers/
+interview/
+lockscreen-reference.html
+untitled.md
+
+# Private Important-mail plaintext (never commit — encrypted copy lives in public/)
+private/mail.json

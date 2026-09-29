@@ -1,0 +1,373 @@
+// ═══════════════════════════════════════════════════════════════════
+//  WiFi Settings — Real macOS System Settings Spacing
+// ═══════════════════════════════════════════════════════════════════
+
+.wifi-settings-wrapper {
+  font-family: var(--system-font-family);
+  -webkit-font-smoothing: antialiased;
+  padding: 4px 0;
+
+  .apple-settings-block {
+    margin-bottom: 22px;
+  }
+
+  .apple-section-container {
+    margin-bottom: 18px;
+  }
+
+  // ─── HEADER ROW  ──────────────────────────
+  .apple-wifi-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px; // Внутренний отступ карточки
+  }
+
+  .wifi-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .wifi-status-icon-blue {
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+
+    img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    &.disabled {
+      background: rgba(120, 120, 128, 0.24);
+      img {
+        opacity: 0.4;
+      }
+    }
+  }
+
+  .apple-label-main {
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  // ─── CONNECTED CARD (Строка под тумблером Wi-Fi) ──────────────────
+  .apple-wifi-connected-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 0.5px solid rgba(255, 255, 255, 0.08);
+    padding: 10px 12px;
+  }
+
+  .connected-card-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .apple-status-dot-green {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #34c759;
+    flex-shrink: 0;
+    margin-left: 2px;
+  }
+
+  .connected-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .network-title-bold {
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .network-subtitle-status {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .connected-card-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    
+    svg {
+      color: rgba(255, 255, 255, 0.45);
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  // ─── SECTION HEADER (Заголовки групп) ─────────────────────────────
+  .apple-section-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 0 0 6px 4px; 
+  }
+
+  // ─── NETWORK ROW ─────────────────────────────────────────────────
+  .apple-list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    min-height: 38px;
+
+    &:not(:last-child) {
+      border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
+    }
+  }
+
+  .row-left-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .checkmark-gutter {
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    svg {
+      color: rgba(255, 255, 255, 0.85);
+      width: 11px;
+      height: 11px;
+    }
+  }
+
+  .apple-network-name {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 400;
+  }
+
+  .row-right-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+
+    svg {
+      color: rgba(255, 255, 255, 0.45);
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  .apple-icon-circle-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+
+    svg {
+      color: rgba(255, 255, 255, 0.6) !important;
+      width: 12px;
+      height: 12px;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  // ─── OTHER NETWORKS BOX ──────────────────────────────────────────
+  .apple-other-networks-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    min-height: 38px;
+    width: 100%;
+
+    .searching-text {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  // ─── SYSTEM BUTTONS ──────────────────────────────────────────────
+  .apple-btn-secondary {
+    background: rgba(255, 255, 255, 0.07);
+    border: 0.5px solid rgba(255, 255, 255, 0.04);
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  // ─── TOGGLE ROW ──────────────────────────────────────────────────
+  .apple-system-toggle-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 12px;
+    gap: 24px;
+
+    &:not(:last-child) {
+      border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
+    }
+  }
+
+  .toggle-text-block {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .toggle-main-label {
+    display: block;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 400;
+    margin-bottom: 3px;
+  }
+
+  .toggle-hint-desc {
+    margin: 0;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.4;
+  }
+
+  .toggle-action-block {
+    padding-top: 1px;
+    flex-shrink: 0;
+  }
+
+  // ─── FOOTER CONTROLS ─────────────────────────────────────────────
+  .apple-footer-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    margin-top: 10px;
+  }
+
+  .apple-btn-action-panel {
+    background: rgba(255, 255, 255, 0.07);
+    border: 0.5px solid rgba(255, 255, 255, 0.04);
+    border-radius: 5px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  .apple-btn-help-circle {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.07);
+    border: 0.5px solid rgba(255, 255, 255, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.55);
+    padding: 0;
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LIGHT THEME ADAPTATION
+// ═══════════════════════════════════════════════════════════════════
+
+.light-theme .wifi-settings-wrapper {
+  .apple-label-main,
+  .network-title-bold,
+  .apple-list-row .apple-network-name,
+  .toggle-main-label {
+    color: #1d1d1f;
+  }
+
+  .apple-wifi-connected-card {
+    border-top-color: rgba(0, 0, 0, 0.06);
+  }
+
+  .network-subtitle-status {
+    color: rgba(0, 0, 0, 0.5);
+  }
+
+  .apple-section-header,
+  .searching-text,
+  .toggle-hint-desc {
+    color: rgba(0, 0, 0, 0.48);
+  }
+
+  .apple-list-row:not(:last-child),
+  .apple-system-toggle-row:not(:last-child) {
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+  }
+
+  .row-right-content svg,
+  .connected-card-right svg {
+    color: rgba(0, 0, 0, 0.4);
+  }
+
+  .apple-btn-secondary,
+  .apple-btn-action-panel,
+  .apple-btn-help-circle {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.02);
+    color: #1d1d1f;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  .apple-icon-circle-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+  }
+}

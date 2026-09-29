@@ -1,0 +1,326 @@
+// ═══════════════════════════════════════════════════════════════════
+//  Bluetooth Settings — macOS System Settings Style
+// ═══════════════════════════════════════════════════════════════════
+
+.bluetooth-settings-wrapper {
+  // ─── HEADER CARD ─────────────────────────────────────────────────
+  .bt-header-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 12px 16px;
+    gap: 14px;
+  }
+
+  .bt-header-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .bt-icon-square {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: rgba(0, 122, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+  }
+
+  .bt-header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+    padding-top: 2px;
+  }
+
+  .bt-header-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.3;
+  }
+
+  .bt-header-desc {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.4;
+    font-weight: 400;
+  }
+
+  // ─── SECTION HEADER ──────────────────────────────────────────────
+  .bt-section-header {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: none;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 16px 16px 8px;
+    margin-top: 4px;
+  }
+
+  // ─── DEVICE ROW ──────────────────────────────────────────────────
+  .bt-device-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    min-height: 52px;
+
+    &:not(:last-child) {
+      border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
+    }
+  }
+
+  .bt-device-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .bt-device-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.6);
+    flex-shrink: 0;
+
+    svg {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .bt-device-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .bt-device-name {
+    font-size: 13.5px;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bt-device-status {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.45);
+    font-weight: 400;
+  }
+
+  .bt-device-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .bt-info-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    padding: 0;
+    flex-shrink: 0;
+
+    svg {
+      color: rgba(255, 255, 255, 0.5);
+      width: 15px;
+      height: 15px;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+
+      svg {
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+
+  // ─── HELP BUTTON ─────────────────────────────────────────────────
+  .bt-help-row {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 16px;
+    margin-top: 4px;
+  }
+
+  .bt-help-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    padding: 0;
+    flex-shrink: 0;
+
+    svg {
+      color: rgba(255, 255, 255, 0.7);
+      width: 16px;
+      height: 16px;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.18);
+
+      svg {
+        color: rgba(255, 255, 255, 0.9);
+      }
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+
+  // ─── SEARCHING ROW ───────────────────────────────────────────────
+  .bt-searching-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px;
+    min-height: 44px;
+  }
+
+  .bt-searching-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.35);
+
+    .spinner-icon {
+      animation: spin 0.8s linear infinite;
+      width: 16px;
+      height: 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  }
+
+  .bt-searching-text {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.45);
+    font-weight: 400;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LIGHT THEME
+// ═══════════════════════════════════════════════════════════════════
+
+.light-theme .bluetooth-settings-wrapper {
+  // Header
+  .bt-header-title {
+    color: #1d1d1f;
+  }
+
+  .bt-header-desc {
+    color: rgba(29, 29, 31, 0.5);
+  }
+
+  // Section header
+  .bt-section-header {
+    color: rgba(29, 29, 31, 0.5);
+  }
+
+  // Device row
+  .bt-device-name {
+    color: #1d1d1f;
+  }
+
+  .bt-device-status {
+    color: rgba(29, 29, 31, 0.45);
+  }
+
+  .bt-device-icon {
+    color: rgba(29, 29, 31, 0.5);
+  }
+
+  .bt-device-row:not(:last-child) {
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+  }
+
+  // Info button
+  .bt-info-btn {
+    background: rgba(0, 0, 0, 0.04);
+
+    svg {
+      color: rgba(29, 29, 31, 0.4);
+    }
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.06);
+
+      svg {
+        color: rgba(29, 29, 31, 0.6);
+      }
+    }
+  }
+
+  // Help button
+  .bt-help-btn {
+    background: rgba(0, 0, 0, 0.08);
+
+    svg {
+      color: rgba(29, 29, 31, 0.6);
+    }
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.12);
+
+      svg {
+        color: rgba(29, 29, 31, 0.8);
+      }
+    }
+  }
+
+  // Searching
+  .bt-searching-icon {
+    color: rgba(29, 29, 31, 0.35);
+  }
+
+  .bt-searching-text {
+    color: rgba(29, 29, 31, 0.45);
+  }
+}
