@@ -51,5 +51,8 @@ test("keeps 50 ordered tracks with explicit flags on nine rows", () => {
 test("pins the vit u Albums template wiring", () => {
   assert.match(contentSource, /VIT_U_TRACKS/);
   assert.match(contentSource, /VIT_U_ALBUM/);
+  assert.match(contentSource, /openAlbumId/);
+  assert.match(contentSource, /music-album-tile/);
   assert.match(styleSource, /\.music-album-tracks/);
+  assert.match(styleSource, /\.music-album-tile/);
 });
