@@ -17,6 +17,7 @@ import {
   resolveSafariNavigation,
   TARGET_URL,
   APOLOGY_TARGET_URL,
+  UNSENT_TARGET_URL,
 } from "./safariNavigation.js";
 import {
   clearSafariHistory,
@@ -168,6 +169,8 @@ const ApologiesFavicon = memo(() => (
   </svg>
 ));
 
+const UnsentFavicon = memo(() => (<svg viewBox="0 0 64 48" aria-hidden="true"><g id="unsent-envelope" strokeLinecap="round" strokeLinejoin="round" opacity="0.72"><rect x="6" y="10" width="52" height="32" rx="5" fill="#f1f1f3" stroke="#8e8e93" strokeWidth="3" /><path d="M8 14 L32 32 L56 14" fill="none" stroke="#8e8e93" strokeWidth="3" /></g></svg>));
+
 // Static data (never recreated)
 const FAVORITES = [
   { title: "Apple", variant: "apple", icon: AppleFavicon, url: "https://www.apple.com" },
@@ -175,6 +178,7 @@ const FAVORITES = [
   { title: "Google", variant: "google", icon: GoogleFavicon, url: "https://www.google.com" },
   { title: "Birthday ❤️", variant: "birthday", icon: BirthdayFavicon, url: TARGET_URL },
   { title: "Apologies ❤️", variant: "apologies", icon: ApologiesFavicon, url: APOLOGY_TARGET_URL },
+  { title: "Unsent", variant: "unsent", icon: UnsentFavicon, url: UNSENT_TARGET_URL },
 ];
 
 const CUSTOMIZE_ROWS = [

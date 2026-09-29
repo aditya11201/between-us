@@ -36,6 +36,8 @@ import {
   MUSIC_LOCAL_EVENT,
   ambientState,
 } from "./galleryAmbientMusic";
+import { MY_SWEETENERS_ALBUM, MY_SWEETENERS_TRACKS } from "./mySweeteners.js";
+import { VIT_U_ALBUM, VIT_U_TRACKS } from "./vitU.js";
 import {
   PLAYER_STORAGE_KEY,
   filterMusicCatalog,
@@ -249,6 +251,7 @@ export function MusicContent() {
   const [repeat, setRepeat] = useState("none");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSection, setActiveSection] = useState("songs");
+  const [openAlbumId, setOpenAlbumId] = useState(null);
   const [gridMode, setGridMode] = useState(false);
   const [playbackError, setPlaybackError] = useState(null);
   const [sourceLoadRequest, setSourceLoadRequest] = useState(0);
@@ -796,7 +799,95 @@ export function MusicContent() {
             )}
           </section>
         );
-      case "albums":
+      case "albums": {
+        const ALBUM_ENTRIES = [
+          { album: MY_SWEETENERS_ALBUM, tracks: MY_SWEETENERS_TRACKS },
+          { album: VIT_U_ALBUM, tracks: VIT_U_TRACKS },
+        ];
+        const albumQuery = searchQuery.trim().toLowerCase();
+        const visibleAlbums = ALBUM_ENTRIES.filter(({ album, tracks }) => !albumQuery
+          || album.title.toLowerCase().includes(albumQuery)
+          || filterMusicCatalog(tracks, searchQuery).length > 0);
+        const openEntry = ALBUM_ENTRIES.find(({ album }) => album.id === openAlbumId) ?? null;
+        const renderAlbum = (album, tracks) => {
+          const albumTracks = filterMusicCatalog(tracks, searchQuery);
+          return (
+            <div key={album.id}>
+              <button type="button" className="music-album-back" onClick={() => setOpenAlbumId(null)}>
+                <FaChevronLeft /> Albums
+              </button>
+              <div className="music-album">
+                <div className="music-album-cover" aria-hidden="true">
+                  <FaCompactDisc />
+                </div>
+                <div className="music-album-info">
+                  <h2>{album.title}</h2>
+                  <p>{album.description}</p>
+                  <span>{`${tracks.length} songs`}</span>
+                </div>
+              </div>
+              {albumTracks.length ? (
+                <ol className="music-album-tracks">
+                  {albumTracks.map((track) => (
+                    <li key={track.id} className="music-album-row">
+                      <span className="music-album-num">{tracks.indexOf(track) + 1}</span>
+                      <span className="music-album-thumb" aria-hidden="true">
+                        <FaCompactDisc />
+                      </span>
+                      <span className="music-album-meta">
+                        <span className="music-album-title">
+                          {track.title}
+                          {track.explicit ? <span className="music-album-explicit">E</span> : null}
+                        </span>
+                        <span className="music-album-sub">{`${track.artist} • ${track.album}`}</span>
+                      </span>
+                      <span className="music-album-duration">{track.duration}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <div className="music-empty" role="status">
+                  <FaMusic className="music-empty-icon" />
+                  <p>No songs match your search</p>
+                </div>
+              )}
+            </div>
+          );
+        };
+        return (
+          <section className="music-library" aria-label="Albums">
+            <header className="music-library-header">
+              <h1>Albums</h1>
+            </header>
+            {openEntry ? (
+              renderAlbum(openEntry.album, openEntry.tracks)
+            ) : visibleAlbums.length ? (
+              <div className="music-album-grid">
+                {visibleAlbums.map(({ album, tracks }) => (
+                  <button
+                    type="button"
+                    key={album.id}
+                    className="music-album-tile"
+                    onClick={() => setOpenAlbumId(album.id)}
+                    aria-label={`Open ${album.title}`}
+                  >
+                    <span className="music-album-tile-cover" aria-hidden="true">
+                      <FaCompactDisc />
+                    </span>
+                    <span className="music-album-tile-title">{album.title}</span>
+                    <span className="music-album-tile-count">{`${tracks.length} songs`}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="music-empty" role="status">
+                <FaMusic className="music-empty-icon" />
+                <p>{searchQuery ? "No songs match your search" : "Your library is empty"}</p>
+              </div>
+            )}
+          </section>
+        );
+      }
       case "artists":
       case "recent":
       case "playlists":
@@ -968,7 +1059,7 @@ export function MusicContent() {
                 type="button"
                 key={id}
                 className={`music-sidebar-item${activeSection === id ? " active" : ""}`}
-                onClick={() => setActiveSection(id)}
+                onClick={() => { setActiveSection(id); setOpenAlbumId(null); }}
               >
                 <span className="music-sidebar-icon">{icon}</span>
                 <span className="music-sidebar-label">{label}</span>
@@ -981,7 +1072,7 @@ export function MusicContent() {
             <button
               type="button"
               className={`music-sidebar-item${activeSection === "radio" ? " active" : ""}`}
-              onClick={() => setActiveSection("radio")}
+              onClick={() => { setActiveSection("radio"); setOpenAlbumId(null); }}
             >
               <span className="music-sidebar-icon"><FaPodcast /></span>
               <span className="music-sidebar-label">Radio</span>
