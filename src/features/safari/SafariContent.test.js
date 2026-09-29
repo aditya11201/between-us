@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { APOLOGY_TARGET_URL } from "./safariNavigation.js";
+import { APOLOGY_TARGET_URL, UNSENT_TARGET_URL } from "./safariNavigation.js";
 
 const source = readFileSync(new URL("./SafariContent.jsx", import.meta.url), "utf8");
 const favoritesBlock = source.match(/const FAVORITES = \[(?<items>[\s\S]*?)\n\];/)?.groups?.items;
@@ -10,10 +10,11 @@ test("keeps the default Favorites order and apology tile wiring", () => {
   assert.ok(favoritesBlock, "Safari Favorites data should be present");
 
   const titles = [...favoritesBlock.matchAll(/title: "([^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(titles, ["Apple", "iCloud", "Google", "Birthday ❤️", "Apologies ❤️"]);
+  assert.deepEqual(titles, ["Apple", "iCloud", "Google", "Birthday ❤️", "Apologies ❤️", "Unsent"]);
   assert.match(favoritesBlock, /title: "Apologies ❤️", variant: "apologies", icon: ApologiesFavicon/);
   assert.match(favoritesBlock, /title: "Apologies ❤️",[^\n]*url: APOLOGY_TARGET_URL/);
   assert.equal(APOLOGY_TARGET_URL, "https://aditya11201.github.io/apology-web-app/");
+  assert.equal(UNSENT_TARGET_URL, "https://aditya11201.github.io/unsent/");
 });
 
 test("uses the provided Apple logo treatment without changing the label size", () => {
@@ -64,4 +65,12 @@ test("uses the supplied static Apologies scene without changing the Favorite lab
   assert.match(source, /id="apologies-chick"/);
   assert.match(source, /title: "Apologies ❤️", variant: "apologies", icon: ApologiesFavicon,/);
   assert.match(source, /title: "Apologies ❤️",[\s\S]*?url: APOLOGY_TARGET_URL/);
+});
+
+test("uses the supplied static Unsent envelope without changing the Favorite label", () => {
+  assert.match(source, /const UnsentFavicon = memo\(\(\) => \(/);
+  assert.match(source, /viewBox="0 0 64 48"/);
+  assert.match(source, /id="unsent-envelope"/);
+  assert.match(source, /title: "Unsent", variant: "unsent", icon: UnsentFavicon,/);
+  assert.match(source, /title: "Unsent",[\s\S]*?url: UNSENT_TARGET_URL/);
 });

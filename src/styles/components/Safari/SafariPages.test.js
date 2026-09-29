@@ -61,3 +61,10 @@ test("styles the Apologies Favorite as a bright rounded card", () => {
   assert.match(source, /\.sf__fav-icon--apologies[\s\S]*?border:\s*1px solid #dff3c8;/);
   assert.match(source, /\.sf__fav-icon--apologies[\s\S]*?svg\s*\{\s*width:\s*48px;\s*height:\s*50px;/);
 });
+
+test("styles the Unsent Favorite as a muted gray rounded card", () => {
+  assert.match(source, /\.sf__fav-icon--unsent\s*\{/);
+  assert.match(source, /\.sf__fav-icon--unsent[\s\S]*?background:\s*#f2f2f4;/);
+  assert.match(source, /\.sf__fav-icon--unsent[\s\S]*?border:\s*1px solid #d9d9de;/);
+  assert.match(source, /\.sf__fav-icon--unsent[\s\S]*?svg\s*\{\s*width:\s*44px;\s*height:\s*34px;/);
+});

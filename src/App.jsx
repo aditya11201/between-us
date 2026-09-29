@@ -13,6 +13,7 @@ import { BootScreen, MobileNotSupported, ContextMenu, LockScreen } from "@/ui";
 import { Desktop, Dock, WindowList } from "@/windows";
 import { MenuBar } from "@/features/menubar/MenuBar";
 // Ленивая загрузка обоев
+import betweenUsHome from "@/assets/images/wallpapers/Custom/between-us-home.png";
 import defaultWallpaperDark from "@/assets/images/wallpapers/Tahoe/Tahoe Dark.webp";
 import defaultWallpaperLight from "@/assets/images/wallpapers/Tahoe/Tahoe Light.webp";
 
@@ -48,9 +49,9 @@ export function AppContent() {
 
   // Состояние обоев — используется Settings для смены обоев
   const [wallpaper, setWallpaper] = useState(() => ({
-    id: "tahoe_default",
+    id: "custom_between_us",
     type: "image",
-    value: defaultWallpaperDark,
+    value: betweenUsHome,
   }));
 
   // ✅ Синхронизация обоев с темой только при первой загрузке
