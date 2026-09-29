@@ -28,6 +28,8 @@ import {
 } from "react-icons/fa";
 import { MdOutlineRepeat, MdOutlineRepeatOne } from "react-icons/md";
 import { MUSIC_CATALOG } from "./musicCatalog.js";
+import { MY_SWEETENERS_ALBUM, MY_SWEETENERS_TRACKS } from "./mySweeteners.js";
+import { VIT_U_ALBUM, VIT_U_TRACKS } from "./vitU.js";
 import { fetchAudioBlobUrl } from "./musicPlayback.js";
 import {
   PLAYER_STORAGE_KEY,
@@ -666,7 +668,59 @@ export function MusicContent() {
             )}
           </section>
         );
-      case "albums":
+      case "albums": {
+        const renderAlbum = (album, tracks) => {
+          const albumTracks = filterMusicCatalog(tracks, searchQuery);
+          return (
+            <div key={album.id}>
+              <div className="music-album">
+                <div className="music-album-cover" aria-hidden="true">
+                  <FaCompactDisc />
+                </div>
+                <div className="music-album-info">
+                  <h2>{album.title}</h2>
+                  <p>{album.description}</p>
+                  <span>{`${tracks.length} songs`}</span>
+                </div>
+              </div>
+              {albumTracks.length ? (
+                <ol className="music-album-tracks">
+                  {albumTracks.map((track) => (
+                    <li key={track.id} className="music-album-row">
+                      <span className="music-album-num">{tracks.indexOf(track) + 1}</span>
+                      <span className="music-album-thumb" aria-hidden="true">
+                        <FaCompactDisc />
+                      </span>
+                      <span className="music-album-meta">
+                        <span className="music-album-title">
+                          {track.title}
+                          {track.explicit ? <span className="music-album-explicit">E</span> : null}
+                        </span>
+                        <span className="music-album-sub">{`${track.artist} • ${track.album}`}</span>
+                      </span>
+                      <span className="music-album-duration">{track.duration}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <div className="music-empty" role="status">
+                  <FaMusic className="music-empty-icon" />
+                  <p>No songs match your search</p>
+                </div>
+              )}
+            </div>
+          );
+        };
+        return (
+          <section className="music-library" aria-label="Albums">
+            <header className="music-library-header">
+              <h1>Albums</h1>
+            </header>
+            {renderAlbum(MY_SWEETENERS_ALBUM, MY_SWEETENERS_TRACKS)}
+            {renderAlbum(VIT_U_ALBUM, VIT_U_TRACKS)}
+          </section>
+        );
+      }
       case "artists":
       case "recent":
       case "playlists":
