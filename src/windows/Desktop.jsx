@@ -1,5 +1,6 @@
 import React, { memo, useState, useEffect, useCallback, useMemo } from "react";
 import { useDisplaySettings } from "@/core/providers";
+import { RainOverlay } from "./RainOverlay";
 
 
 export const Desktop = memo(function Desktop({ 
@@ -70,6 +71,7 @@ export const Desktop = memo(function Desktop({
         style={{ opacity: 1 - brightness / 100 }}
         aria-hidden="true"
       />
+      <RainOverlay />
       {children}
     </div>
   );

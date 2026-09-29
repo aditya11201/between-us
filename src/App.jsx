@@ -12,6 +12,7 @@ import { BootScreen, MobileNotSupported, ContextMenu, LockScreen } from "@/ui";
 // Layout компоненты
 import { Desktop, Dock, WindowList } from "@/windows";
 import { MenuBar } from "@/features/menubar/MenuBar";
+import { GalleryAmbientAudio } from "@/features/music/GalleryAmbientAudio";
 // Ленивая загрузка обоев
 import defaultWallpaperDark from "@/assets/images/wallpapers/Tahoe/Tahoe Dark.webp";
 import defaultWallpaperLight from "@/assets/images/wallpapers/Tahoe/Tahoe Light.webp";
@@ -107,6 +108,7 @@ export function AppContent() {
       />
 
       <WindowList setWallpaper={setWallpaper} />
+      <GalleryAmbientAudio />
 
       <Dock 
         onOpen={windowManager.openApp} 
