@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { WindowContext } from "@/windows";
 import {
   FiActivity,
   FiCamera,
@@ -116,6 +117,7 @@ function PhotosNavItem({
 }
 
 export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
+  const { onTitleMouseDown } = useContext(WindowContext);
   const photosAppRef = useRef(null);
   const showSidebarButtonRef = useRef(null);
   const wasCompact = useRef(false);
@@ -208,7 +210,12 @@ export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
       ref={photosAppRef}
       className={`photos-app${sidebarCollapsed ? " photos-app--sidebar-collapsed" : ""}`}
     >
-      <header className="photos-window-header">
+      <header
+        className="photos-window-header"
+        onMouseDown={(event) => {
+          if (!event.target.closest("button, input")) onTitleMouseDown?.(event);
+        }}
+      >
         <div className="photos-window-header__lights">
           <button
             type="button"
