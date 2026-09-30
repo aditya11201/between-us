@@ -47,6 +47,13 @@ export function clampVolume(value, fallback = GALLERY_AMBIENT.TARGET_VOLUME) {
   if (!Number.isFinite(numeric)) return fallback;
   return Math.min(1, Math.max(0, numeric));
 }
+// Stall watchdog decision (pure): recover only when the session should still
+// be audible — browser/media stall with the gallery still open. Never fires
+// after an intentional stop (playing false) or when the gallery is gone.
+export function shouldRecoverAudio({ playing, visible, paused, ended, error }) {
+  if (!playing || !visible) return false;
+  return Boolean(paused || ended || error);
+}
 
 // Start-only decision. Stopping needs no decision: closing the gallery begins
 // the fade-out immediately and the session ends when volume reaches 0.

@@ -12,6 +12,7 @@ import {
   decideAmbientAction,
   isGalleryVisible,
   setAmbientState,
+  shouldRecoverAudio,
 } from "./galleryAmbientMusic";
 import manguAudio from "@/content/music/Fourtwnty - Mangu (Orchestral Cover).wasm?url";
 
@@ -29,6 +30,7 @@ export function GalleryAmbientAudio() {
   const fadeRef = useRef(null);
   const latestVolumeRef = useRef(GALLERY_AMBIENT.TARGET_VOLUME);
   const gestureCleanupRef = useRef(null);
+  const watchdogRef = useRef(null);
 
   const visible = isGalleryVisible(windows, minimizedApps);
   visibleRef.current = visible;
@@ -142,7 +144,6 @@ export function GalleryAmbientAudio() {
         rampTo(clampVolume(volume), 300);
       }
     };
-
     // A local Music-app track takes over: stop ambient quickly, keep rain
     // off until ambient itself restarts. Ambient never ducks local playback.
     const onLocalPlaying = (event) => {
@@ -150,6 +151,33 @@ export function GalleryAmbientAudio() {
         fadeOutAndStop(GALLERY_AMBIENT.RESUME_FADE_MS);
       }
     };
+
+    // Stall watchdog: recover unexpected mid-session stalls (browser/IDM
+    // cutting the stream = paused audio + rain still on). Polls every 5s;
+    // resume keeps position and eases back to peak over 3s.
+    const recoverStall = () => {
+      if (!shouldRecoverAudio({
+        playing: playingRef.current,
+        visible: visibleRef.current,
+        paused: audio.paused,
+        ended: audio.ended,
+        error: audio.error?.code ?? 0,
+      })) return;
+      latestVolumeRef.current = audio.volume;
+      setPlaying(true, { currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0 });
+      audio.play().catch(() => {});
+      rampTo(GALLERY_AMBIENT.TARGET_VOLUME, GALLERY_AMBIENT.RESUME_FADE_MS);
+    };
+    const startWatchdog = () => {
+      clearInterval(watchdogRef.current);
+      watchdogRef.current = setInterval(recoverStall, 5_000);
+    };
+    const stopWatchdog = () => {
+      clearInterval(watchdogRef.current);
+      watchdogRef.current = null;
+    };
+    // Immediate kick on media stall signals; the poll covers silent stalls.
+    const onStall = () => recoverStall();
 
     window.addEventListener(GALLERY_AMBIENT_COMMAND, onCommand);
     window.addEventListener(MUSIC_LOCAL_EVENT, onLocalPlaying);
@@ -164,6 +192,11 @@ export function GalleryAmbientAudio() {
       }
     };
     audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onStall);
+    audio.addEventListener("stalled", onStall);
+    audio.addEventListener("suspend", onStall);
+    audio.addEventListener("waiting", onStall);
+    startWatchdog();
     if (visible) {
       visibleSinceRef.current = Date.now();
       clearTimer();
@@ -189,9 +222,14 @@ export function GalleryAmbientAudio() {
 
     return () => {
       clearTimeout(timerRef.current);
+      stopWatchdog();
       window.removeEventListener(GALLERY_AMBIENT_COMMAND, onCommand);
       window.removeEventListener(MUSIC_LOCAL_EVENT, onLocalPlaying);
       audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("error", onStall);
+      audio.removeEventListener("stalled", onStall);
+      audio.removeEventListener("suspend", onStall);
+      audio.removeEventListener("waiting", onStall);
     };
   }, [visible]);
 
@@ -199,6 +237,7 @@ export function GalleryAmbientAudio() {
     return () => {
       clearTimeout(timerRef.current);
       clearInterval(fadeRef.current);
+      clearInterval(watchdogRef.current);
       if (gestureCleanupRef.current) gestureCleanupRef.current();
       const audio = audioRef.current;
       if (audio && playingRef.current) {
