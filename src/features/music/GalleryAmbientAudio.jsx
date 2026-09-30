@@ -153,7 +153,17 @@ export function GalleryAmbientAudio() {
 
     window.addEventListener(GALLERY_AMBIENT_COMMAND, onCommand);
     window.addEventListener(MUSIC_LOCAL_EVENT, onLocalPlaying);
-
+    // ponytail: loop attr already repeats, but some browsers fire ended on
+    // long/streamed files — restart here so playback never dies mid-session.
+    const onEnded = () => {
+      if (playingRef.current && visibleRef.current) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      } else if (playingRef.current) {
+        fadeOutAndStop();
+      }
+    };
+    audio.addEventListener("ended", onEnded);
     if (visible) {
       visibleSinceRef.current = Date.now();
       clearTimer();
@@ -181,6 +191,7 @@ export function GalleryAmbientAudio() {
       clearTimeout(timerRef.current);
       window.removeEventListener(GALLERY_AMBIENT_COMMAND, onCommand);
       window.removeEventListener(MUSIC_LOCAL_EVENT, onLocalPlaying);
+      audio.removeEventListener("ended", onEnded);
     };
   }, [visible]);
 
@@ -202,3 +213,4 @@ export function GalleryAmbientAudio() {
 
   return <audio ref={audioRef} loop preload="none" style={{ display: "none" }} />;
 }
+
