@@ -11,6 +11,7 @@ import {
   computeFadeVolume,
   decideAmbientAction,
   isGalleryVisible,
+  needsSourceReload,
   setAmbientState,
   shouldRecoverAudio,
 } from "./galleryAmbientMusic";
@@ -163,6 +164,14 @@ export function GalleryAmbientAudio() {
         ended: audio.ended,
         error: audio.error?.code ?? 0,
       })) return;
+      // ponytail: dead stream (HAVE_NOTHING + NO_SOURCE) cannot resume with a
+      // bare play() — re-attach src, restore position, then play + ease back.
+      if (needsSourceReload({ readyState: audio.readyState, networkState: audio.networkState, error: audio.error?.code ?? 0 })) {
+        const resumeAt = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+        audio.src = manguAudio;
+        audio.load();
+        audio.currentTime = resumeAt;
+      }
       latestVolumeRef.current = audio.volume;
       setPlaying(true, { currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0 });
       audio.play().catch(() => {});
