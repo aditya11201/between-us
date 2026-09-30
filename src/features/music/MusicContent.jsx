@@ -403,14 +403,15 @@ export function MusicContent() {
 
   useEffect(() => {
     if (!ambientState.songId) return undefined;
-    // ponytail: only a manually-started local track (not the silent mirror)
-    // may take over the ambient session — the mirror flag means Music is
-    // just displaying the bridge, not producing audio.
+    // ponytail: only audible local playback takes over the ambient session.
+    // The silent mirror only displays the bridge (never loads audio), so its
+    // pause/volume programmatic events must not dispatch stop/set-volume —
+    // that is what killed the song at random moments mid-session.
     if (ambientMirrorRef.current || !isAmbientTrack) return undefined;
     const audio = audioRef.current;
     if (!audio) return undefined;
     const onPlay = () => {
-      if (ambientMirrorRef.current) return;
+      if (ambientMirrorRef.current || audio.paused) return;
       ambientMirrorRef.current = null;
       window.dispatchEvent(new CustomEvent(MUSIC_LOCAL_EVENT, { detail: { playing: true } }));
       window.dispatchEvent(
@@ -418,7 +419,7 @@ export function MusicContent() {
       );
     };
     const onVolume = () => {
-      if (ambientMirrorRef.current) return;
+      if (ambientMirrorRef.current || audio.paused) return;
       window.dispatchEvent(
         new CustomEvent(GALLERY_AMBIENT_COMMAND, {
           detail: { action: "set-volume", volume: audio.muted ? 0 : audio.volume },
