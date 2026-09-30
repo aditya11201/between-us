@@ -8,6 +8,7 @@ import {
   decideAmbientAction,
   isGalleryVisible,
   setAmbientState,
+  shouldRecoverAudio,
 } from "./galleryAmbientMusic.js";
 
 test("isGalleryVisible counts an open photos window", () => {
@@ -92,4 +93,13 @@ test("ambientState bridge carries the session snapshot", () => {
   setAmbientState({ playing: false });
   assert.equal(ambientState.playing, false);
   assert.equal(ambientState.songId, "fourtwnty-mangu-orchestral-cover");
+});
+
+test("shouldRecoverAudio fires only on unexpected stall mid-session", () => {
+  assert.equal(shouldRecoverAudio({ playing: true, visible: true, paused: true, ended: false, error: 0 }), true);
+  assert.equal(shouldRecoverAudio({ playing: true, visible: true, paused: false, ended: true, error: 0 }), true);
+  assert.equal(shouldRecoverAudio({ playing: true, visible: true, paused: false, ended: false, error: 4 }), true);
+  assert.equal(shouldRecoverAudio({ playing: true, visible: true, paused: false, ended: false, error: 0 }), false);
+  assert.equal(shouldRecoverAudio({ playing: false, visible: true, paused: true, ended: false, error: 0 }), false);
+  assert.equal(shouldRecoverAudio({ playing: true, visible: false, paused: true, ended: false, error: 0 }), false);
 });
