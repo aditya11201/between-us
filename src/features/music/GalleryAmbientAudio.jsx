@@ -11,6 +11,7 @@ import {
   computeFadeVolume,
   decideAmbientAction,
   isGalleryVisible,
+  needsSourceReload,
   setAmbientState,
   shouldRecoverAudio,
 } from "./galleryAmbientMusic";
@@ -152,9 +153,11 @@ export function GalleryAmbientAudio() {
       }
     };
 
-    // Stall watchdog: recover unexpected mid-session stalls (browser/IDM
-    // cutting the stream = paused audio + rain still on). Polls every 5s;
-    // resume keeps position and eases back to peak over 3s.
+    // Stall watchdog: recover unexpected mid-session stalls (network cut =
+    // paused audio + rain still on). Polls every 5s; resume restores position
+    // and eases back to peak over 3s. Only error/stalled events kick it —
+    // suspend/waiting are normal buffering, wiring them caused an infinite
+    // play→error→recover loop that thrashed the element to death.
     const recoverStall = () => {
       if (!shouldRecoverAudio({
         playing: playingRef.current,
@@ -163,6 +166,14 @@ export function GalleryAmbientAudio() {
         ended: audio.ended,
         error: audio.error?.code ?? 0,
       })) return;
+      // ponytail: dead stream (HAVE_NOTHING + NO_SOURCE) cannot resume with a
+      // bare play() — re-attach src, restore position, then play + ease back.
+      if (needsSourceReload({ readyState: audio.readyState, networkState: audio.networkState, error: audio.error?.code ?? 0 })) {
+        const resumeAt = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+        audio.src = manguAudio;
+        audio.load();
+        audio.currentTime = resumeAt;
+      }
       latestVolumeRef.current = audio.volume;
       setPlaying(true, { currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0 });
       audio.play().catch(() => {});
@@ -176,7 +187,6 @@ export function GalleryAmbientAudio() {
       clearInterval(watchdogRef.current);
       watchdogRef.current = null;
     };
-    // Immediate kick on media stall signals; the poll covers silent stalls.
     const onStall = () => recoverStall();
 
     window.addEventListener(GALLERY_AMBIENT_COMMAND, onCommand);
@@ -194,8 +204,6 @@ export function GalleryAmbientAudio() {
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("error", onStall);
     audio.addEventListener("stalled", onStall);
-    audio.addEventListener("suspend", onStall);
-    audio.addEventListener("waiting", onStall);
     startWatchdog();
     if (visible) {
       visibleSinceRef.current = Date.now();
@@ -228,8 +236,6 @@ export function GalleryAmbientAudio() {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onStall);
       audio.removeEventListener("stalled", onStall);
-      audio.removeEventListener("suspend", onStall);
-      audio.removeEventListener("waiting", onStall);
     };
   }, [visible]);
 

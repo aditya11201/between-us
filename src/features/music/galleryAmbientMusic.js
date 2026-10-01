@@ -55,6 +55,14 @@ export function shouldRecoverAudio({ playing, visible, paused, ended, error }) {
   return Boolean(paused || ended || error);
 }
 
+// Dead-stream detector (pure): HAVE_NOTHING + NO_SOURCE means the element
+// lost its resource (decode/network kill); a bare play() cannot revive it,
+// the src must be re-attached. HAVE_METADATA+ is a live element.
+export function needsSourceReload({ readyState, networkState, error }) {
+  if (error) return true;
+  return readyState === 0 && networkState === 3;
+}
+
 // Start-only decision. Stopping needs no decision: closing the gallery begins
 // the fade-out immediately and the session ends when volume reaches 0.
 export function decideAmbientAction({ visible, playing, visibleSince, now }) {
