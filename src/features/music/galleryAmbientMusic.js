@@ -1,5 +1,5 @@
 export const GALLERY_AMBIENT = Object.freeze({
-  TRIGGER_MS: 30_000,
+  TRIGGER_MS: 60_000,
   FADE_IN_MS: 12_000,
   FADE_OUT_MS: 30_000,
   RESUME_FADE_MS: 3_000,

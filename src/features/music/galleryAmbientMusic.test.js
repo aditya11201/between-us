@@ -46,7 +46,7 @@ test("computeFadeVolume eases gently at both ends toward target", () => {
   assert.equal(computeFadeVolume(-5, 12000, 0.3), 0);
 });
 
-test("decideAmbientAction starts after 30 s visible", () => {
+test("decideAmbientAction starts after 1 min visible", () => {
   const { TRIGGER_MS } = GALLERY_AMBIENT;
   const now = 1_000_000;
   assert.equal(
