@@ -3,7 +3,7 @@ export const GALLERY_AMBIENT = Object.freeze({
   FADE_IN_MS: 12_000,
   FADE_OUT_MS: 30_000,
   RESUME_FADE_MS: 3_000,
-  TARGET_VOLUME: 0.4,
+  TARGET_VOLUME: 0.3,
   TICK_MS: 50,
 });
 

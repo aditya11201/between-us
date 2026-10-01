@@ -28,22 +28,22 @@ test("isGalleryVisible is false for empty windows", () => {
   assert.equal(isGalleryVisible([], new Set()), false);
 });
 
-test("peak volume is 40%", () => {
-  assert.equal(GALLERY_AMBIENT.TARGET_VOLUME, 0.4);
+test("peak volume is 30%", () => {
+  assert.equal(GALLERY_AMBIENT.TARGET_VOLUME, 0.3);
 });
 
 test("computeFadeVolume eases gently at both ends toward target", () => {
-  assert.equal(computeFadeVolume(0, 12000, 0.4), 0);
-  assert.equal(computeFadeVolume(12000, 12000, 0.4), 0.4);
-  assert.equal(computeFadeVolume(13000, 12000, 0.4), 0.4);
-  const quarter = computeFadeVolume(3000, 12000, 0.4);
-  const half = computeFadeVolume(6000, 12000, 0.4);
+  assert.equal(computeFadeVolume(0, 12000, 0.3), 0);
+  assert.equal(computeFadeVolume(12000, 12000, 0.3), 0.3);
+  assert.equal(computeFadeVolume(13000, 12000, 0.3), 0.3);
+  const quarter = computeFadeVolume(3000, 12000, 0.3);
+  const half = computeFadeVolume(6000, 12000, 0.3);
   // cosine ease-in-out: quarter point below linear, half at midpoint, smooth slope
-  assert.ok(quarter < 0.4 * 0.25);
-  assert.ok(Math.abs(half - 0.2) < 1e-9);
-  assert.ok(computeFadeVolume(100, 12000, 0.4) < computeFadeVolume(200, 12000, 0.4));
-  assert.equal(computeFadeVolume(NaN, 12000, 0.4), 0);
-  assert.equal(computeFadeVolume(-5, 12000, 0.4), 0);
+  assert.ok(quarter < 0.3 * 0.25);
+  assert.ok(Math.abs(half - 0.15) < 1e-9);
+  assert.ok(computeFadeVolume(100, 12000, 0.3) < computeFadeVolume(200, 12000, 0.3));
+  assert.equal(computeFadeVolume(NaN, 12000, 0.3), 0);
+  assert.equal(computeFadeVolume(-5, 12000, 0.3), 0);
 });
 
 test("decideAmbientAction starts after 30 s visible", () => {
@@ -87,10 +87,10 @@ test("clampVolume bounds Music-slider input", () => {
 });
 
 test("ambientState bridge carries the session snapshot", () => {
-  setAmbientState({ playing: true, songId: "fourtwnty-mangu-orchestral-cover", volume: 0.4, currentTime: 12 });
+  setAmbientState({ playing: true, songId: "fourtwnty-mangu-orchestral-cover", volume: 0.3, currentTime: 12 });
   assert.equal(ambientState.playing, true);
   assert.equal(ambientState.songId, "fourtwnty-mangu-orchestral-cover");
-  assert.equal(ambientState.volume, 0.4);
+  assert.equal(ambientState.volume, 0.3);
   setAmbientState({ playing: false });
   assert.equal(ambientState.playing, false);
   assert.equal(ambientState.songId, "fourtwnty-mangu-orchestral-cover");
