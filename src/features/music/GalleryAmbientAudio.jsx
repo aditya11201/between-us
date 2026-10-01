@@ -153,9 +153,11 @@ export function GalleryAmbientAudio() {
       }
     };
 
-    // Stall watchdog: recover unexpected mid-session stalls (browser/IDM
-    // cutting the stream = paused audio + rain still on). Polls every 5s;
-    // resume keeps position and eases back to peak over 3s.
+    // Stall watchdog: recover unexpected mid-session stalls (network cut =
+    // paused audio + rain still on). Polls every 5s; resume restores position
+    // and eases back to peak over 3s. Only error/stalled events kick it —
+    // suspend/waiting are normal buffering, wiring them caused an infinite
+    // play→error→recover loop that thrashed the element to death.
     const recoverStall = () => {
       if (!shouldRecoverAudio({
         playing: playingRef.current,
@@ -185,7 +187,6 @@ export function GalleryAmbientAudio() {
       clearInterval(watchdogRef.current);
       watchdogRef.current = null;
     };
-    // Immediate kick on media stall signals; the poll covers silent stalls.
     const onStall = () => recoverStall();
 
     window.addEventListener(GALLERY_AMBIENT_COMMAND, onCommand);
@@ -203,8 +204,6 @@ export function GalleryAmbientAudio() {
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("error", onStall);
     audio.addEventListener("stalled", onStall);
-    audio.addEventListener("suspend", onStall);
-    audio.addEventListener("waiting", onStall);
     startWatchdog();
     if (visible) {
       visibleSinceRef.current = Date.now();
@@ -237,8 +236,6 @@ export function GalleryAmbientAudio() {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onStall);
       audio.removeEventListener("stalled", onStall);
-      audio.removeEventListener("suspend", onStall);
-      audio.removeEventListener("waiting", onStall);
     };
   }, [visible]);
 
