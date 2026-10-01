@@ -7,6 +7,7 @@ import {
   computeFadeVolume,
   decideAmbientAction,
   isGalleryVisible,
+  needsSourceReload,
   setAmbientState,
   shouldRecoverAudio,
 } from "./galleryAmbientMusic.js";
@@ -102,4 +103,11 @@ test("shouldRecoverAudio fires only on unexpected stall mid-session", () => {
   assert.equal(shouldRecoverAudio({ playing: true, visible: true, paused: false, ended: false, error: 0 }), false);
   assert.equal(shouldRecoverAudio({ playing: false, visible: true, paused: true, ended: false, error: 0 }), false);
   assert.equal(shouldRecoverAudio({ playing: true, visible: false, paused: true, ended: false, error: 0 }), false);
+});
+
+test("needsSourceReload detects dead stream behind a live element", () => {
+  assert.equal(needsSourceReload({ readyState: 0, networkState: 3, error: 0 }), true);
+  assert.equal(needsSourceReload({ readyState: 0, networkState: 2, error: 2 }), true);
+  assert.equal(needsSourceReload({ readyState: 4, networkState: 1, error: 0 }), false);
+  assert.equal(needsSourceReload({ readyState: 1, networkState: 2, error: 0 }), false);
 });
