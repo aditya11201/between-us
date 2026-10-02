@@ -1,12 +1,16 @@
 import { validateMusicCatalog } from "./musicModel.js";
 import perfectAudio from "@/content/music/Ed Sheeran - Perfect.wasm?url";
 import perfectArtwork from "@/content/music/Ed Sheeran - Perfect.webp";
+import perfectLyrics from "@/content/music/ed-sheeran-perfect.lrc?raw";
 import ordinaryAudio from "@/content/music/Alex Warren - Ordinary.wasm?url";
 import ordinaryArtwork from "@/content/music/Alex Warren - Ordinary.webp";
+import ordinaryLyrics from "@/content/music/alex-warren-ordinary.lrc?raw";
 import riskItAllAudio from "@/content/music/Bruno Mars - Risk It All.wasm?url";
 import riskItAllArtwork from "@/content/music/Bruno Mars - Risk It All.webp";
+import riskItAllLyrics from "@/content/music/bruno-mars-risk-it-all.lrc?raw";
 import untilIFoundYouAudio from "@/content/music/Stephen Sanchez - Until I Found You.wasm?url";
 import untilIFoundYouArtwork from "@/content/music/Stephen Sanchez - Until I Found You.webp";
+import untilIFoundYouLyrics from "@/content/music/stephen-sanchez-until-i-found-you.lrc?raw";
 import manguAudio from "@/content/music/Fourtwnty - Mangu (Orchestral Cover).wasm?url";
 
 const catalog = [
@@ -19,6 +23,7 @@ const catalog = [
     src: perfectAudio,
     artwork: perfectArtwork,
     mimeType: "audio/mp4",
+    lyrics: perfectLyrics,
     explicit: false,
   },
   {
@@ -30,6 +35,7 @@ const catalog = [
     src: ordinaryAudio,
     artwork: ordinaryArtwork,
     mimeType: "audio/mp4",
+    lyrics: ordinaryLyrics,
     explicit: false,
   },
   {
@@ -41,6 +47,7 @@ const catalog = [
     src: riskItAllAudio,
     artwork: riskItAllArtwork,
     mimeType: "audio/mp4",
+    lyrics: riskItAllLyrics,
     explicit: false,
   },
   {
@@ -52,6 +59,7 @@ const catalog = [
     src: untilIFoundYouAudio,
     artwork: untilIFoundYouArtwork,
     mimeType: "audio/mp4",
+    lyrics: untilIFoundYouLyrics,
     explicit: false,
   },
   {

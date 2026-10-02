@@ -46,6 +46,7 @@ import {
   restorePlayerState,
   serializePlayerState,
 } from "./musicModel.js";
+import { getActiveLyricIndex, parseLRC } from "./lyricsParser.js";
 
 function formatTime(sec) {
   if (!sec || Number.isNaN(sec)) return "0:00";
@@ -254,6 +255,7 @@ export function MusicContent() {
   const [openAlbumId, setOpenAlbumId] = useState(null);
   const [gridMode, setGridMode] = useState(false);
   const [playbackError, setPlaybackError] = useState(null);
+  const [lyricFx, setLyricFx] = useState({ armed: false, songId: null });
   const [sourceLoadRequest, setSourceLoadRequest] = useState(0);
   const [nowPlayingArtworkFailed, setNowPlayingArtworkFailed] = useState(false);
 
@@ -346,6 +348,12 @@ export function MusicContent() {
       audio.muted = isMuted;
     }
   }, [volume, isMuted]);
+
+  const lyricLines = useMemo(
+    () => parseLRC(activeSong?.lyrics ?? ""),
+    [activeSong],
+  );
+  const activeLyricIndex = getActiveLyricIndex(lyricLines, currentTime);
 
   useEffect(() => {
     const adoptMirror = (songId, ambientVolume, ambientTime) => {
@@ -661,6 +669,41 @@ export function MusicContent() {
     );
   }, []);
 
+  const playSongById = useCallback((id) => {
+    const song = songs.find((item) => item.id === id);
+    if (!song) return null;
+    selectSongForPlayback(song);
+    return song;
+  }, [selectSongForPlayback, songs]);
+
+  const pause = useCallback(() => {
+    audioRef.current?.pause();
+  }, []);
+
+  const armLyricFx = useCallback((songId) => {
+    setLyricFx({ armed: true, songId });
+  }, []);
+
+  const disarmLyricFx = useCallback(() => {
+    setLyricFx({ armed: false, songId: null });
+  }, []);
+
+  musicBridgeRef.current = {
+    songs,
+    activeSong,
+    activeId,
+    currentTime,
+    duration,
+    isPlaying: effectivePlaying,
+    lyricLines,
+    activeLyricIndex,
+    lyricFxArmed: lyricFx.armed,
+    lyricFxSongId: lyricFx.songId,
+    playSongById,
+    pause,
+    armLyricFx,
+    disarmLyricFx,
+  };
   const handleCardSelect = useCallback((id) => {
     const song = songs.find((item) => item.id === id);
     if (!song) return;
@@ -1111,6 +1154,14 @@ export function MusicContent() {
           <div className="music-now-playing-info">
             <span className="music-now-playing-title">{activeSong.title}</span>
             <span className="music-now-playing-artist">{activeSong.artist}</span>
+            {lyricLines.length > 0 && (
+              <div className="music-lyric-live" aria-live="polite">
+                <span className="music-lyric-current">{lyricLines[activeLyricIndex]?.text ?? "♪"}</span>
+                {lyricLines[activeLyricIndex + 1] && (
+                  <span className="music-lyric-next">{lyricLines[activeLyricIndex + 1].text}</span>
+                )}
+              </div>
+            )}
             {playbackError && (
               <span className="music-playback-error" role="status">{playbackError}</span>
             )}
@@ -1138,4 +1189,39 @@ export function MusicContent() {
       )}
     </div>
   );
+}
+
+const MUSIC_BRIDGE_EVENT = "between-us:music-player";
+
+const musicBridgeRef = { current: null };
+
+function emitMusicBridge() {
+  window.dispatchEvent(new CustomEvent(MUSIC_BRIDGE_EVENT));
+}
+
+export function useMusicPlayer() {
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    const rerender = () => forceUpdate((value) => value + 1);
+    window.addEventListener(MUSIC_BRIDGE_EVENT, rerender);
+    return () => window.removeEventListener(MUSIC_BRIDGE_EVENT, rerender);
+  }, []);
+
+  return musicBridgeRef.current ?? {
+    songs: MUSIC_CATALOG,
+    activeSong: null,
+    activeId: null,
+    currentTime: 0,
+    duration: 0,
+    isPlaying: false,
+    lyricLines: [],
+    activeLyricIndex: -1,
+    lyricFxArmed: false,
+    lyricFxSongId: null,
+    playSongById: () => null,
+    pause: () => {},
+    armLyricFx: () => {},
+    disarmLyricFx: () => {},
+  };
 }
