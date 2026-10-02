@@ -704,6 +704,10 @@ export function MusicContent() {
     armLyricFx,
     disarmLyricFx,
   };
+
+  useEffect(() => {
+    emitMusicBridge();
+  });
   const handleCardSelect = useCallback((id) => {
     const song = songs.find((item) => item.id === id);
     if (!song) return;
