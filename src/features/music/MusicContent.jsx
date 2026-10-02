@@ -676,6 +676,17 @@ export function MusicContent() {
     return song;
   }, [selectSongForPlayback, songs]);
 
+  useEffect(() => {
+    if (pendingPlayRef.current) {
+      playSongById(pendingPlayRef.current);
+      pendingPlayRef.current = null;
+    }
+    if (pendingArmRef.current) {
+      setLyricFx({ armed: true, songId: pendingArmRef.current });
+      pendingArmRef.current = null;
+    }
+  }, [playSongById]);
+
   const pause = useCallback(() => {
     audioRef.current?.pause();
   }, []);
@@ -1198,6 +1209,8 @@ export function MusicContent() {
 const MUSIC_BRIDGE_EVENT = "between-us:music-player";
 
 const musicBridgeRef = { current: null };
+const pendingPlayRef = { current: null };
+const pendingArmRef = { current: null };
 
 function emitMusicBridge() {
   window.dispatchEvent(new CustomEvent(MUSIC_BRIDGE_EVENT));
@@ -1223,9 +1236,12 @@ export function useMusicPlayer() {
     activeLyricIndex: -1,
     lyricFxArmed: false,
     lyricFxSongId: null,
-    playSongById: () => null,
-    pause: () => {},
-    armLyricFx: () => {},
+    playSongById: (id) => {
+      pendingPlayRef.current = id;
+    },
+    armLyricFx: (songId) => {
+      pendingArmRef.current = songId;
+    },
     disarmLyricFx: () => {},
   };
 }
