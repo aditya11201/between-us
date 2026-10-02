@@ -5,6 +5,7 @@ import {
   filterMusicCatalog,
   getNextSong,
   getPreviousAction,
+  resolveSongQuery,
   restorePlayerState,
   serializePlayerState,
   validateMusicCatalog,
@@ -125,5 +126,23 @@ test("serializes the persisted player fields", () => {
       volume: 0.4,
       isMuted: false,
     }),
+  );
+});
+
+test("resolves song queries by id, title, and substring", () => {
+  assert.equal(resolveSongQuery(songs, "first-song"), songs[0]);
+  assert.equal(resolveSongQuery(songs, "Second Song"), songs[1]);
+  assert.equal(resolveSongQuery(songs, "third"), songs[2]);
+  assert.equal(resolveSongQuery(songs, "BETA"), songs[1]);
+  assert.equal(resolveSongQuery(songs, "the cure"), null);
+  assert.equal(resolveSongQuery(songs, ""), null);
+});
+
+test("accepts optional lyrics in catalog records", () => {
+  assert.equal(validateMusicCatalog([...songs, { ...songs[0], id: "with-lyrics", lyrics: "[00:01.00] hi" }]).length, 4);
+  assert.equal(validateMusicCatalog([{ ...songs[0], lyrics: "" }]).length, 1);
+  assert.throws(
+    () => validateMusicCatalog([{ ...songs[0], id: "bad-lyrics", lyrics: 42 }]),
+    /lyrics/i,
   );
 });

@@ -13,6 +13,7 @@ import { BootScreen, MobileNotSupported, ContextMenu, LockScreen } from "@/ui";
 import { Desktop, Dock, WindowList } from "@/windows";
 import { MenuBar } from "@/features/menubar/MenuBar";
 import { GalleryAmbientAudio } from "@/features/music/GalleryAmbientAudio";
+import { DesktopLyricOverlay } from "@/features/music/DesktopLyricOverlay.jsx";
 // Ленивая загрузка обоев
 import betweenUsHome from "@/assets/images/wallpapers/Custom/between-us-home.png";
 import defaultWallpaperDark from "@/assets/images/wallpapers/Tahoe/Tahoe Dark.webp";
@@ -110,13 +111,14 @@ export function AppContent() {
 
       <WindowList setWallpaper={setWallpaper} />
       <GalleryAmbientAudio />
-
-      <Dock 
-        onOpen={windowManager.openApp} 
-        openApps={windowManager.openApps} 
-        minimizedApps={windowManager.minimizedApps} 
+      <Dock
+        onOpen={windowManager.openApp}
+        openApps={windowManager.openApps}
+        minimizedApps={windowManager.minimizedApps}
         isLightTheme={isLightTheme}
       />
+
+      <DesktopLyricOverlay />
 
       {contextMenu && (
         <ContextMenu 

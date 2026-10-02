@@ -39,6 +39,9 @@ export function validateMusicCatalog(catalog) {
     if (typeof song.artwork !== "string" || !song.artwork.trim()) {
       throw new TypeError(`Song ${song.id} requires artwork`);
     }
+    if (song.lyrics !== undefined && typeof song.lyrics !== "string") {
+      throw new TypeError(`Song ${song.id} lyrics must be a string`);
+    }
     ids.add(song.id);
   });
 
@@ -54,6 +57,21 @@ export function filterMusicCatalog(catalog, query) {
       .filter(Boolean)
       .some((value) => value.toLowerCase().includes(normalized)),
   );
+}
+
+export function resolveSongQuery(catalog, query) {
+  const normalized = String(query ?? "").trim().toLowerCase();
+  if (!normalized || !Array.isArray(catalog)) return null;
+
+  const byId = catalog.find((song) => song.id === normalized);
+  if (byId) return byId;
+
+  const byTitle = catalog.find(
+    (song) => typeof song.title === "string" && song.title.toLowerCase() === normalized,
+  );
+  if (byTitle) return byTitle;
+
+  return filterMusicCatalog(catalog, query)[0] ?? null;
 }
 
 export function getNextSong(

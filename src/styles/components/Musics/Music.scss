@@ -750,6 +750,29 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
     white-space: nowrap;
   }
 
+  .music-lyric-live {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .music-lyric-current {
+    font-size: 11px;
+    color: $text-primary;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .music-lyric-next {
+    font-size: 10px;
+    color: $text-tertiary;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .music-playback-error {
     color: #ff9aaa;
     font-size: 10px;
@@ -786,6 +809,55 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   flex: 1;
   min-width: 80px;
   accent-color: $music-accent;
+}
+
+/* =========================================================
+   DESKTOP FLOATING LYRICS (Terminal `play` overlay)
+========================================================= */
+.lyric-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 9520;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.lyric-fx-line {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+  font-size: 15px;
+  color: #32d74b;
+  text-shadow: 0 0 8px rgba(50, 215, 75, 0.8), 0 0 24px rgba(50, 215, 75, 0.4);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  animation: lyric-fx-in 0.35s ease-out, lyric-fx-glitch 0.9s steps(2) 0.35s 3, lyric-fx-out 0.8s ease-in 5.2s forwards;
+}
+
+@keyframes lyric-fx-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 8px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+@keyframes lyric-fx-glitch {
+  0% { clip-path: inset(0 0 0 0); transform: translate(-50%, -50%); }
+  25% { clip-path: inset(20% 0 40% 0); transform: translate(calc(-50% - 2px), -50%); }
+  50% { clip-path: inset(50% 0 10% 0); transform: translate(calc(-50% + 2px), -50%); }
+  75% { clip-path: inset(10% 0 60% 0); transform: translate(calc(-50% - 2px), -50%); }
+  100% { clip-path: inset(0 0 0 0); transform: translate(-50%, -50%); }
+}
+
+@keyframes lyric-fx-out {
+  to { opacity: 0; }
 }
 
 @container (max-width: 720px) {
@@ -1067,6 +1139,20 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
     .music-playback-error {
       color: #a61726;
     }
+
+    .music-lyric-current {
+      color: rgba(0, 0, 0, 0.85);
+    }
+
+    .music-lyric-next {
+      color: rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  .lyric-fx-line {
+    color: #0d6e1f;
+    text-shadow: none;
+    background: rgba(255, 255, 255, 0.72);
   }
 
   .music-progress {
@@ -1096,6 +1182,10 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   }
 
   .music-now-playing-disc--spin {
+    animation: none;
+  }
+
+  .lyric-fx-line {
     animation: none;
   }
 }
