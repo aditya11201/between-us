@@ -757,6 +757,72 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
     input[type="range"] { min-width: 0; }
   }
 }
+// ─── Library detail rows ───
+.music-detail-back {
+  align-self: flex-start;
+  margin: 16px 20px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: $text-secondary;
+  font-size: 13px;
+  cursor: pointer;
+  &:hover { color: $text-primary; }
+}
+.music-detail-header {
+  padding: 8px 20px 12px;
+  h1 { margin: 0; font-size: 20px; color: $text-primary; }
+  p { margin: 4px 0 10px; font-size: 12px; color: $text-secondary; }
+}
+.music-track-list { display: flex; flex-direction: column; padding: 0 12px 16px; gap: 2px; }
+.music-track-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  &:hover { background: $music-hover; }
+  &--active { background: $music-active-bg; }
+}
+.music-track-num { color: $text-tertiary; font-size: 12px; text-align: right; }
+.music-track-main {
+  display: flex; flex-direction: column; gap: 2px;
+  border: 0; background: none; padding: 0; text-align: left;
+  color: $text-primary; font-size: 13px; cursor: pointer; min-width: 0;
+}
+.music-track-title { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.music-track-explicit {
+  width: 17px; height: 17px; border-radius: 4px;
+  background: #c2251c; color: #fff;
+  display: grid; place-items: center; font-size: 10px; font-weight: 800;
+}
+.music-track-artist { color: $text-secondary; font-size: 12px; }
+.music-track-badge { color: $text-tertiary; font-size: 11px; font-variant-numeric: tabular-nums; }
+.music-track-play, .music-track-remove, .music-playlist-delete {
+  border: 1px solid $music-border; background: none; color: $text-secondary;
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; font-size: 11px;
+  &:hover { color: $text-primary; background: $music-hover; }
+}
+.music-play-all-btn {
+  border: 0; border-radius: 999px; cursor: pointer;
+  background: $music-accent; color: #fff;
+  font-size: 12px; font-weight: 700; padding: 7px 16px;
+}
+.music-playlist-form { display: flex; gap: 8px; padding: 0 20px 12px; flex-wrap: wrap; }
+.music-playlist-form input, .music-playlist-form select {
+  flex: 1 1 180px; min-width: 0;
+  background: $music-hover; border: 1px solid $music-border; border-radius: 8px;
+  color: $text-primary; font-size: 13px; padding: 8px 10px;
+}
+.music-playlist-form button {
+  border: 1px solid $music-border; border-radius: 8px; cursor: pointer;
+  background: $music-active-bg; color: $text-primary; font-size: 12px; padding: 8px 12px;
+}
+.music-inline-error { margin: 0 20px 12px; color: #ff9aaa; font-size: 12px; }
+.music-playlist-card { position: relative; }
+.music-playlist-delete { position: absolute; top: 6px; right: 6px; }
 
 
 /* =========================================================

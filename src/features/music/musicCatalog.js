@@ -19,6 +19,7 @@ const catalog = [
     artwork: perfectArtwork,
     mimeType: "audio/mp4",
     explicit: false,
+    addedAt: "2026-08-02",
   },
   {
     id: "alex-warren-ordinary",
@@ -30,6 +31,7 @@ const catalog = [
     artwork: ordinaryArtwork,
     mimeType: "audio/mp4",
     explicit: false,
+    addedAt: "2026-09-12",
   },
   {
     id: "bruno-mars-risk-it-all",
@@ -41,6 +43,7 @@ const catalog = [
     artwork: riskItAllArtwork,
     mimeType: "audio/mp4",
     explicit: false,
+    addedAt: "2026-09-20",
   },
   {
     id: "stephen-sanchez-until-i-found-you",
@@ -52,6 +55,7 @@ const catalog = [
     artwork: untilIFoundYouArtwork,
     mimeType: "audio/mp4",
     explicit: false,
+    addedAt: "2026-09-28",
   },
 ];
 

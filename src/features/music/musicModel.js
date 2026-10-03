@@ -1,4 +1,5 @@
 export const PLAYER_STORAGE_KEY = "between-us.music.player";
+export const PLAYLISTS_STORAGE_KEY = "between-us.music.playlists";
 
 const DEFAULT_PLAYER_STATE = Object.freeze({
   activeId: null,
@@ -38,6 +39,9 @@ export function validateMusicCatalog(catalog) {
     }
     if (typeof song.artwork !== "string" || !song.artwork.trim()) {
       throw new TypeError(`Song ${song.id} requires artwork`);
+    }
+    if (song.addedAt !== undefined && (typeof song.addedAt !== "string" || Number.isNaN(Date.parse(song.addedAt)))) {
+      throw new TypeError(`Song ${song.id} requires a valid addedAt`);
     }
     ids.add(song.id);
   });
@@ -127,4 +131,134 @@ export function serializePlayerState(state) {
     volume: Number.isFinite(state.volume) ? clamp(state.volume, 0, 1) : DEFAULT_PLAYER_STATE.volume,
     isMuted: state.isMuted === true,
   });
+}
+
+export function groupAlbums(catalog) {
+  const groups = new Map();
+  for (const song of catalog) {
+    const albumName = song.album || "Unknown Album";
+    const artistName = song.artist || "Unknown Artist";
+    const key = `${albumName}|||${artistName}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.songs.push(song);
+      existing.count = existing.songs.length;
+    } else {
+      groups.set(key, { key, name: albumName, artist: artistName, artwork: song.artwork, count: 1, songs: [song] });
+    }
+  }
+  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name) || a.artist.localeCompare(b.artist));
+}
+
+export function groupArtists(catalog) {
+  const groups = new Map();
+  for (const song of catalog) {
+    const name = typeof song.artist === "string" && song.artist.trim() ? song.artist.trim() : "Unknown Artist";
+    const existing = groups.get(name);
+    if (existing) {
+      existing.songs.push(song);
+      existing.count = existing.songs.length;
+    } else {
+      groups.set(name, { key: name, name, artwork: song.artwork, count: 1, songs: [song] });
+    }
+  }
+  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function getRecentlyAdded(catalog, limit = catalog.length) {
+  const ranked = [...catalog].sort((a, b) => {
+    const aTime = typeof a.addedAt === "string" ? Date.parse(a.addedAt) : NaN;
+    const bTime = typeof b.addedAt === "string" ? Date.parse(b.addedAt) : NaN;
+    return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+  });
+  return ranked.slice(0, Math.max(0, limit));
+}
+
+function makePlaylistId() {
+  return `pl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function normalizePlaylistName(name, playlists, excludeId = null) {
+  const trimmed = String(name ?? "").trim();
+  if (!trimmed) throw new Error("Playlist name is required");
+  const duplicate = playlists.some(
+    (playlist) => playlist.id !== excludeId && playlist.name.toLowerCase() === trimmed.toLowerCase(),
+  );
+  if (duplicate) throw new Error("Playlist name already exists");
+  return trimmed;
+}
+
+export function createPlaylist(playlists, name) {
+  const trimmed = normalizePlaylistName(name, playlists);
+  const now = new Date().toISOString();
+  const playlist = { id: makePlaylistId(), name: trimmed, songIds: [], createdAt: now, updatedAt: now };
+  return { playlists: [...playlists, playlist], playlist };
+}
+
+export function renamePlaylist(playlists, id, name) {
+  const trimmed = normalizePlaylistName(name, playlists, id);
+  let found = false;
+  const next = playlists.map((playlist) => {
+    if (playlist.id !== id) return playlist;
+    found = true;
+    return { ...playlist, name: trimmed, updatedAt: new Date().toISOString() };
+  });
+  return found ? next : playlists;
+}
+
+export function deletePlaylist(playlists, id) {
+  const next = playlists.filter((playlist) => playlist.id !== id);
+  return next.length === playlists.length ? playlists : next;
+}
+
+export function addSongToPlaylist(playlists, playlistId, songId, catalog) {
+  if (!catalog.some((song) => song.id === songId)) return playlists;
+  let changed = false;
+  const next = playlists.map((playlist) => {
+    if (playlist.id !== playlistId || playlist.songIds.includes(songId)) return playlist;
+    changed = true;
+    return { ...playlist, songIds: [...playlist.songIds, songId], updatedAt: new Date().toISOString() };
+  });
+  return changed ? next : playlists;
+}
+
+export function removeSongFromPlaylist(playlists, playlistId, songId) {
+  let changed = false;
+  const next = playlists.map((playlist) => {
+    if (playlist.id !== playlistId || !playlist.songIds.includes(songId)) return playlist;
+    changed = true;
+    return { ...playlist, songIds: playlist.songIds.filter((id) => id !== songId), updatedAt: new Date().toISOString() };
+  });
+  return changed ? next : playlists;
+}
+
+export function restorePlaylists(rawValue, catalog) {
+  if (typeof rawValue !== "string" || !rawValue) return [];
+  let parsed;
+  try {
+    parsed = JSON.parse(rawValue);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const validIds = new Set(catalog.map((song) => song.id));
+  return parsed
+    .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+    .filter((entry) => typeof entry.name === "string" && entry.name.trim() && Array.isArray(entry.songIds))
+    .map((entry, index) => ({
+      id: typeof entry.id === "string" && entry.id ? entry.id : `pl-${index}`,
+      name: entry.name.trim(),
+      songIds: entry.songIds.filter((id) => validIds.has(id)),
+      createdAt: typeof entry.createdAt === "string" ? entry.createdAt : new Date(0).toISOString(),
+      updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : new Date(0).toISOString(),
+    }));
+}
+
+export function serializePlaylists(playlists) {
+  return JSON.stringify(playlists.map(({ id, name, songIds, createdAt, updatedAt }) => ({ id, name, songIds, createdAt, updatedAt })));
+}
+
+export function getPlaylistSongs(playlist, catalog) {
+  if (!playlist || !Array.isArray(playlist.songIds)) return [];
+  return playlist.songIds.map((id) => catalog.find((song) => song.id === id)).filter(Boolean);
 }
