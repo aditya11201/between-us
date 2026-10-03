@@ -25,6 +25,7 @@ const catalog = [
     mimeType: "audio/mp4",
     lyrics: perfectLyrics,
     explicit: false,
+    addedAt: "2026-08-02",
   },
   {
     id: "alex-warren-ordinary",
@@ -37,6 +38,7 @@ const catalog = [
     mimeType: "audio/mp4",
     lyrics: ordinaryLyrics,
     explicit: false,
+    addedAt: "2026-09-12",
   },
   {
     id: "bruno-mars-risk-it-all",
@@ -49,6 +51,7 @@ const catalog = [
     mimeType: "audio/mp4",
     lyrics: riskItAllLyrics,
     explicit: false,
+    addedAt: "2026-09-20",
   },
   {
     id: "stephen-sanchez-until-i-found-you",
@@ -61,6 +64,7 @@ const catalog = [
     mimeType: "audio/mp4",
     lyrics: untilIFoundYouLyrics,
     explicit: false,
+    addedAt: "2026-09-28",
   },
   {
     id: "fourtwnty-mangu-orchestral-cover",
@@ -73,6 +77,7 @@ const catalog = [
     artwork: perfectArtwork,
     mimeType: "audio/mp4",
     explicit: false,
+    addedAt: "2026-09-30",
   },
 ];
 
