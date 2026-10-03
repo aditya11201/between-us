@@ -12,7 +12,10 @@ import { BootScreen, MobileNotSupported, ContextMenu, LockScreen } from "@/ui";
 // Layout компоненты
 import { Desktop, Dock, WindowList } from "@/windows";
 import { MenuBar } from "@/features/menubar/MenuBar";
+import { GalleryAmbientAudio } from "@/features/music/GalleryAmbientAudio";
+import { DesktopLyricOverlay } from "@/features/music/DesktopLyricOverlay.jsx";
 // Ленивая загрузка обоев
+import betweenUsHome from "@/assets/images/wallpapers/Custom/between-us-home.png";
 import defaultWallpaperDark from "@/assets/images/wallpapers/Tahoe/Tahoe Dark.webp";
 import defaultWallpaperLight from "@/assets/images/wallpapers/Tahoe/Tahoe Light.webp";
 
@@ -48,9 +51,9 @@ export function AppContent() {
 
   // Состояние обоев — используется Settings для смены обоев
   const [wallpaper, setWallpaper] = useState(() => ({
-    id: "tahoe_default",
+    id: "custom_between_us",
     type: "image",
-    value: defaultWallpaperDark,
+    value: betweenUsHome,
   }));
 
   // ✅ Синхронизация обоев с темой только при первой загрузке
@@ -107,13 +110,15 @@ export function AppContent() {
       />
 
       <WindowList setWallpaper={setWallpaper} />
-
-      <Dock 
-        onOpen={windowManager.openApp} 
-        openApps={windowManager.openApps} 
-        minimizedApps={windowManager.minimizedApps} 
+      <GalleryAmbientAudio />
+      <Dock
+        onOpen={windowManager.openApp}
+        openApps={windowManager.openApps}
+        minimizedApps={windowManager.minimizedApps}
         isLightTheme={isLightTheme}
       />
+
+      <DesktopLyricOverlay />
 
       {contextMenu && (
         <ContextMenu 

@@ -3,10 +3,13 @@ export const TARGET_PATH_PREFIX = "/glad-you-were-born/";
 export const TARGET_URL = "https://aditya11201.github.io/glad-you-were-born/";
 export const APOLOGY_TARGET_PATH_PREFIX = "/apology-web-app/";
 export const APOLOGY_TARGET_URL = "https://aditya11201.github.io/apology-web-app/";
+export const UNSENT_TARGET_PATH_PREFIX = "/unsent/";
+export const UNSENT_TARGET_URL = "https://aditya11201.github.io/unsent/";
 
 const TARGET_PATH_PREFIXES = [
   TARGET_PATH_PREFIX,
   APOLOGY_TARGET_PATH_PREFIX,
+  UNSENT_TARGET_PATH_PREFIX,
 ];
 
 const LOCAL_COMMANDS = Object.freeze({

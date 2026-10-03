@@ -15,6 +15,7 @@ import {
   groupArtists,
   removeSongFromPlaylist,
   renamePlaylist,
+  resolveSongQuery,
   restorePlaylists,
   restorePlayerState,
   serializePlaylists,
@@ -194,4 +195,22 @@ test("supports the local playlist round-trip", () => {
   const restored = restorePlaylists(serializePlaylists([{ id: "pl-1", name: "Mix", songIds: ["a", "stale"], createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" }]), catalog);
   assert.deepEqual(restored[0].songIds, ["a"]);
   assert.deepEqual(restorePlaylists("broken", catalog), []);
+});
+
+test("resolves song queries by id, title, and substring", () => {
+  assert.equal(resolveSongQuery(songs, "first-song"), songs[0]);
+  assert.equal(resolveSongQuery(songs, "Second Song"), songs[1]);
+  assert.equal(resolveSongQuery(songs, "third"), songs[2]);
+  assert.equal(resolveSongQuery(songs, "BETA"), songs[1]);
+  assert.equal(resolveSongQuery(songs, "the cure"), null);
+  assert.equal(resolveSongQuery(songs, ""), null);
+});
+
+test("accepts optional lyrics in catalog records", () => {
+  assert.equal(validateMusicCatalog([...songs, { ...songs[0], id: "with-lyrics", lyrics: "[00:01.00] hi" }]).length, 4);
+  assert.equal(validateMusicCatalog([{ ...songs[0], lyrics: "" }]).length, 1);
+  assert.throws(
+    () => validateMusicCatalog([{ ...songs[0], id: "bad-lyrics", lyrics: 42 }]),
+    /lyrics/i,
+  );
 });

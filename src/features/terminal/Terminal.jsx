@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { WindowContext } from "@/windows";
 import { VscTerminalBash } from "react-icons/vsc";
+import { MUSIC_CATALOG } from "@/features/music/musicCatalog.js";
+import { useMusicPlayer } from "@/features/music/MusicContent.jsx";
+import { resolveSongQuery } from "@/features/music/musicModel.js";
+import { parseLRC } from "@/features/music/lyricsParser.js";
 
 // Массив для команды fortune
 const FORTUNES = [
@@ -25,6 +29,7 @@ const randomMatrixString = (length = 20) => {
 
 export function TerminalContent({ openApp }) {
   const { onClose, onMinimize, onZoom, onTitleMouseDown } = useContext(WindowContext);
+  const { activeSong, pause, playSongById, armLyricFx, disarmLyricFx } = useMusicPlayer();
 
   const [history, setHistory] = useState([
     { type: "output", text: `\x1b[33mLast login:\x1b[0m ${new Date().toDateString()} on ttys001` },
@@ -151,6 +156,9 @@ export function TerminalContent({ openApp }) {
           "  du          – display disk usage",
           "  uname -a    – display all system info",
           "  who         – display logged-in users",
+          "  play <song> – play a song from the Music catalog",
+          "  stop        – pause music playback (alias: pause)",
+          "  lyrics [song] – show synced lyrics for a song",
         ],
       };
     }
@@ -492,6 +500,58 @@ export function TerminalContent({ openApp }) {
         lines: [
           `you                 tty1         2025-01-01 12:00`,
           `you                 tty2         2025-01-01 13:30`,
+        ],
+      };
+    }
+
+    // === MUSIC PLAYBACK ===
+    if (cmd === "play") {
+      const available = `Available: ${MUSIC_CATALOG.map((song) => `${song.title} — ${song.artist}`).join(", ")}`;
+      if (!joinArgs) {
+        return { clear: false, lines: ["Usage: play <song title or artist>", available] };
+      }
+      const song = resolveSongQuery(MUSIC_CATALOG, joinArgs);
+      if (!song) {
+        return { clear: false, lines: [`\x1b[31mNo match for '${joinArgs}'\x1b[0m`, available] };
+      }
+      playSongById(song.id);
+      armLyricFx(song.id);
+      openAppHelper("music");
+      return {
+        clear: false,
+        lines: [
+          `\x1b[32m▶ Now playing:\x1b[0m ${song.artist} — ${song.title}`,
+          "Floating lyrics on desktop · type 'lyrics' for full text",
+        ],
+      };
+    }
+
+    if (cmd === "stop" || cmd === "pause") {
+      if (!activeSong) return { clear: false, lines: ["Nothing playing"] };
+      pause();
+      disarmLyricFx();
+      return { clear: false, lines: ["⏸ Paused"] };
+    }
+
+    if (cmd === "lyrics") {
+      const target = joinArgs ? resolveSongQuery(MUSIC_CATALOG, joinArgs) : activeSong;
+      if (joinArgs && !target) {
+        return {
+          clear: false,
+          lines: [
+            `\x1b[31mNo match for '${joinArgs}'\x1b[0m`,
+            `Available: ${MUSIC_CATALOG.map((song) => `${song.title} — ${song.artist}`).join(", ")}`,
+          ],
+        };
+      }
+      if (!target) return { clear: false, lines: ["No song playing — try: lyrics perfect"] };
+      const lines = parseLRC(target.lyrics ?? "");
+      if (!lines.length) return { clear: false, lines: [`(instrumental / no lyrics for ${target.title})`] };
+      return {
+        clear: false,
+        lines: [
+          `\x1b[36mLyrics — ${target.artist} — ${target.title}:\x1b[0m`,
+          ...lines.map((line) => line.text),
         ],
       };
     }

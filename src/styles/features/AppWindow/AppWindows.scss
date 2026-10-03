@@ -19,17 +19,18 @@
 
   &--active {
     border-color: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 32px 100px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    // ponytail: no window shadows anywhere — active matches dragging/inactive
+    box-shadow: none;
 
     &.app-window--resizing {
       border-color: rgba(255, 255, 255, 0.18);
-      box-shadow: 0 32px 100px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.25);
+      box-shadow: none;
     }
   }
 
   &--inactive {
     @include glass-dark(rgba(25, 25, 28, 0.75), 30px, 0.05, false);
-    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+    box-shadow: none;
   }
 
   &__content {

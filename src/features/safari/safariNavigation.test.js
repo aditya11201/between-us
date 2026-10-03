@@ -26,7 +26,8 @@ test("canonicalizes a target URL without a trailing slash", () => {
 });
 
 const APOLOGY_URL = "https://aditya11201.github.io/apology-web-app/";
-const ALLOWLISTED_PATHS = ["/glad-you-were-born/", "/apology-web-app/"];
+const UNSENT_URL = "https://aditya11201.github.io/unsent/";
+const ALLOWLISTED_PATHS = ["/glad-you-were-born/", "/apology-web-app/", "/unsent/"];
 
 test("accepts the apology-app root URL", () => {
   assert.deepEqual(resolveSafariNavigation(APOLOGY_URL), {
@@ -58,6 +59,40 @@ test("accepts apology-app descendants with query and hash values", () => {
 test("rejects a lookalike apology-app path", () => {
   assert.equal(
     resolveSafariNavigation("https://aditya11201.github.io/apology-web-app-attacker/").kind,
+    "blocked",
+  );
+});
+
+test("accepts the unsent root URL", () => {
+  assert.deepEqual(resolveSafariNavigation(UNSENT_URL), {
+    kind: "iframe",
+    url: UNSENT_URL,
+    title: UNSENT_URL,
+  });
+});
+
+test("canonicalizes the unsent root without a trailing slash", () => {
+  assert.equal(
+    resolveSafariNavigation("https://aditya11201.github.io/unsent").url,
+    UNSENT_URL,
+  );
+});
+
+test("accepts unsent descendants with query and hash values", () => {
+  const result = resolveSafariNavigation(
+    "https://aditya11201.github.io/unsent/section?scene=finale#message",
+  );
+
+  assert.equal(result.kind, "iframe");
+  assert.equal(
+    result.url,
+    "https://aditya11201.github.io/unsent/section?scene=finale#message",
+  );
+});
+
+test("rejects a lookalike unsent path", () => {
+  assert.equal(
+    resolveSafariNavigation("https://aditya11201.github.io/unsent-attacker/").kind,
     "blocked",
   );
 });

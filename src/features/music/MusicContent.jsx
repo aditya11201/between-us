@@ -28,7 +28,16 @@ import {
 } from "react-icons/fa";
 import { MdOutlineRepeat, MdOutlineRepeatOne } from "react-icons/md";
 import { MUSIC_CATALOG } from "./musicCatalog.js";
-import { fetchAudioBlobUrl } from "./musicPlayback.js";
+import {
+  GALLERY_AMBIENT,
+  GALLERY_AMBIENT_COMMAND,
+  GALLERY_AMBIENT_EVENT,
+  GALLERY_AMBIENT_SONG_ID,
+  MUSIC_LOCAL_EVENT,
+  ambientState,
+} from "./galleryAmbientMusic";
+import { MY_SWEETENERS_ALBUM, MY_SWEETENERS_TRACKS } from "./mySweeteners.js";
+import { VIT_U_ALBUM, VIT_U_TRACKS } from "./vitU.js";
 import {
   PLAYER_STORAGE_KEY,
   PLAYLISTS_STORAGE_KEY,
@@ -49,6 +58,7 @@ import {
   serializePlaylists,
   serializePlayerState,
 } from "./musicModel.js";
+import { getActiveLyricIndex, parseLRC } from "./lyricsParser.js";
 
 function formatTime(sec) {
   if (!sec || Number.isNaN(sec)) return "0:00";
@@ -60,14 +70,38 @@ function formatTime(sec) {
 const getInitialPlayerState = () => {
   if (typeof window === "undefined") return restorePlayerState(null, MUSIC_CATALOG);
   try {
-    return restorePlayerState(
+    const restored = restorePlayerState(
       window.localStorage.getItem(PLAYER_STORAGE_KEY),
       MUSIC_CATALOG,
     );
+    // ponytail: the ambient track is gallery-timed, never restored — IDM
+    // grabs the audio when a persisted activeId auto-loads it on next boot.
+    if (restored.activeId === GALLERY_AMBIENT_SONG_ID) {
+      return { ...restored, activeId: null, currentTime: 0 };
+    }
+    return restored;
   } catch {
     return restorePlayerState(null, MUSIC_CATALOG);
   }
 };
+// ponytail: the ambient track is gallery-timed, never restored — IDM grabs
+// the MP3 when a persisted activeId auto-loads it on next boot. Scrubbed at
+// module import (runs on first chunk load, before any component mounts), so
+// a pre-fix stored id never survives to trigger a fetch.
+try {
+  const stored = window.localStorage.getItem(PLAYER_STORAGE_KEY);
+  if (stored && stored.includes(GALLERY_AMBIENT_SONG_ID)) {
+    const parsed = JSON.parse(stored);
+    if (parsed?.activeId === GALLERY_AMBIENT_SONG_ID) {
+      window.localStorage.setItem(
+        PLAYER_STORAGE_KEY,
+        serializePlayerState({ ...parsed, activeId: null, currentTime: 0 }),
+      );
+    }
+  }
+} catch {
+  // Storage can be unavailable in private or restricted browsing contexts.
+}
 
 function isCurrentAudioSource(audio, expectedSource, audioRef, audioSourceRef) {
   const currentSource = audioSourceRef.current;
@@ -296,8 +330,10 @@ export function MusicContent() {
   const [repeat, setRepeat] = useState("none");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSection, setActiveSection] = useState("songs");
+  const [openAlbumId, setOpenAlbumId] = useState(null);
   const [gridMode, setGridMode] = useState(false);
   const [playbackError, setPlaybackError] = useState(null);
+  const [lyricFx, setLyricFx] = useState({ armed: false, songId: null });
   const [sourceLoadRequest, setSourceLoadRequest] = useState(0);
   const [nowPlayingArtworkFailed, setNowPlayingArtworkFailed] = useState(false);
   const [queue, setQueue] = useState(songs);
@@ -333,8 +369,6 @@ export function MusicContent() {
   const metadataLoadedRef = useRef(false);
   const playerStateRef = useRef(initialPlayerState);
   const handleEndedRef = useRef(null);
-  const mediaRequestRef = useRef(null);
-  const mediaObjectUrlRef = useRef(null);
 
   const filteredSongs = useMemo(
     () => filterMusicCatalog(songs, searchQuery),
@@ -344,10 +378,6 @@ export function MusicContent() {
     () => songs.find((song) => song.id === activeId) || null,
     [songs, activeId],
   );
-
-  useEffect(() => {
-    playerStateRef.current = { activeId, currentTime, volume, isMuted };
-  }, [activeId, currentTime, volume, isMuted]);
 
   const persistPlayerState = useCallback(() => {
     try {
@@ -359,6 +389,15 @@ export function MusicContent() {
       // Storage can be unavailable in private or restricted browsing contexts.
     }
   }, []);
+
+  useEffect(() => {
+    playerStateRef.current = { activeId, currentTime, volume, isMuted };
+    // ponytail: the ambient track is gallery-timed, never restored — IDM
+    // grabs the MP3 when a persisted activeId auto-loads it on next boot.
+    // Import-time scrub already removed pre-fix ids; this guards new writes.
+    if (activeId === GALLERY_AMBIENT_SONG_ID) return;
+    persistPlayerState();
+  }, [activeId, volume, isMuted, persistPlayerState]);
 
   const persistAudioTime = useCallback((expectedSource = null) => {
     try {
@@ -382,6 +421,9 @@ export function MusicContent() {
         ? audio.currentTime
         : state.currentTime;
       const nextState = { ...state, currentTime: currentAudioTime };
+      // ponytail: the ambient track is gallery-timed, never restored — IDM
+      // grabs the audio when a persisted activeId auto-loads it on boot.
+      if (nextState.activeId === GALLERY_AMBIENT_SONG_ID) return;
       playerStateRef.current = nextState;
       window.localStorage.setItem(
         PLAYER_STORAGE_KEY,
@@ -392,6 +434,15 @@ export function MusicContent() {
     }
   }, []);
 
+  // ponytail: mirror of the gallery ambient session. While mirrored, Music
+  // shows the ambient track as playing (Pause/equalizer/spin) without
+  // producing local audio; transport + slider drive the bridge instead.
+  const ambientMirrorRef = useRef(null);
+  const [mirrorId, setMirrorId] = useState(null);
+  const [ambientPlaying, setAmbientPlaying] = useState(false);
+  const isAmbientTrack = activeId === ambientState.songId && ambientState.songId !== null;
+  const effectivePlaying = isPlaying || (mirrorId !== null && mirrorId === activeId && ambientPlaying);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
@@ -399,6 +450,99 @@ export function MusicContent() {
       audio.muted = isMuted;
     }
   }, [volume, isMuted]);
+
+  const lyricLines = useMemo(
+    () => parseLRC(activeSong?.lyrics ?? ""),
+    [activeSong],
+  );
+  const activeLyricIndex = getActiveLyricIndex(lyricLines, currentTime);
+
+  useEffect(() => {
+    const adoptMirror = (songId, ambientVolume, ambientTime) => {
+      pendingAutoplayRef.current = false;
+      pendingSeekRef.current = ambientTime ?? 0;
+      setIsMuted(false);
+      setIsPlaying(false);
+      setActiveId(songId);
+      ambientMirrorRef.current = { id: songId, generation: -1 };
+      setMirrorId(songId);
+      // ponytail: adopt reads the start-event volume only and leaves the
+      // slider user-controlled afterwards; the volume effect never bridges,
+      // so only explicit slider/mute gestures reach the ambient gain.
+      // Adopt from silence keeps 0 so the slider can follow the fade up.
+      if (ambientVolume !== undefined && ambientVolume > 0) setVolume(ambientVolume);
+      else if (ambientVolume === 0) setVolume(0);
+      setAmbientPlaying(true);
+      // ponytail: adopt would trigger a blob fetch + autoplay; force silence —
+      // the ambient session owns audible output, Music only mirrors state.
+      queueMicrotask(() => {
+        pendingAutoplayRef.current = false;
+        audioRef.current?.pause();
+      });
+    };
+    // Late-open Music window joins a running ambient session — even when a
+    // restored activeId already points at the song (no mirror flag yet).
+    if (
+      ambientState.playing
+      && ambientState.songId
+      && ambientMirrorRef.current?.id !== ambientState.songId
+    ) {
+      adoptMirror(ambientState.songId, ambientState.volume, ambientState.currentTime);
+      return undefined;
+    }
+    const onAmbient = (event) => {
+      const { playing, songId, volume: ambientVolume, currentTime: ambientTime } = event.detail ?? {};
+      if (!songId) return;
+      // ponytail: bridge events fire on (re)start and stop only — no
+      // per-tick gain follow, so the fade ramp runs without echo churn.
+      if (playing) {
+        if (ambientMirrorRef.current?.id === songId) return;
+        adoptMirror(songId, ambientVolume, ambientTime);
+      } else if (ambientMirrorRef.current?.id === songId) {
+        ambientMirrorRef.current = null;
+        setMirrorId(null);
+        setAmbientPlaying(false);
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      }
+    };
+    window.addEventListener(GALLERY_AMBIENT_EVENT, onAmbient);
+    return () => window.removeEventListener(GALLERY_AMBIENT_EVENT, onAmbient);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!ambientState.songId) return undefined;
+    // ponytail: only audible local playback takes over the ambient session.
+    // The silent mirror only displays the bridge (never loads audio), so its
+    // pause/volume programmatic events must not dispatch stop/set-volume —
+    // that is what killed the song at random moments mid-session.
+    if (ambientMirrorRef.current || !isAmbientTrack) return undefined;
+    const audio = audioRef.current;
+    if (!audio) return undefined;
+    const onPlay = () => {
+      if (ambientMirrorRef.current || audio.paused) return;
+      ambientMirrorRef.current = null;
+      window.dispatchEvent(new CustomEvent(MUSIC_LOCAL_EVENT, { detail: { playing: true } }));
+      window.dispatchEvent(
+        new CustomEvent(GALLERY_AMBIENT_COMMAND, { detail: { action: "stop" } }),
+      );
+    };
+    const onVolume = () => {
+      if (ambientMirrorRef.current || audio.paused) return;
+      window.dispatchEvent(
+        new CustomEvent(GALLERY_AMBIENT_COMMAND, {
+          detail: { action: "set-volume", volume: audio.muted ? 0 : audio.volume },
+        }),
+      );
+    };
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("volumechange", onVolume);
+    return () => {
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("volumechange", onVolume);
+    };
+  }, [isAmbientTrack]);
 
   useEffect(() => {
     setNowPlayingArtworkFailed(false);
@@ -435,15 +579,31 @@ export function MusicContent() {
     const audio = audioRef.current;
     if (!audio) return undefined;
 
+    // ponytail: the ambient track is gallery-timed, never restored — skip
+    // loading it here entirely so no audio fetch ever fires for it on boot
+    // (this is what IDM was grabbing). Mirror adopt below shows metadata only.
+    if (activeSong?.id === GALLERY_AMBIENT_SONG_ID && !ambientMirrorRef.current) {
+      pendingAutoplayRef.current = false;
+      setDuration(0);
+      setCurrentTime(0);
+      return undefined;
+    }
+
+    // ponytail: mirror adopt shows metadata only; the ambient session owns
+    // audible output, so skip the load/autoplay entirely.
+    if (ambientMirrorRef.current?.id === activeSong?.id) {
+      pendingAutoplayRef.current = false;
+      audio.pause();
+      setDuration(0);
+      setCurrentTime(pendingSeekRef.current ?? 0);
+      return undefined;
+    }
+
     const source = {
       id: activeSong?.id ?? null,
       generation: sourceGenerationRef.current + 1,
       ready: false,
     };
-    sourceGenerationRef.current = source.generation;
-    audioSourceRef.current = source;
-    metadataLoadedRef.current = false;
-
     const isCurrent = () => isCurrentAudioSource(audio, source, audioRef, audioSourceRef);
     const onLoadedMetadata = () => {
       if (!isCurrent() || playerStateRef.current.activeId !== source.id) return;
@@ -456,7 +616,8 @@ export function MusicContent() {
       setDuration(nextDuration);
       setCurrentTime(nextTime);
       playerStateRef.current = { ...playerStateRef.current, currentTime: nextTime };
-      persistAudioTime(source);
+      // ponytail: never persist the gallery-timed track (see IDM note above).
+      if (source.id !== ambientState.songId) persistAudioTime(source);
       if (pendingAutoplayRef.current) {
         pendingAutoplayRef.current = false;
         tryPlay();
@@ -487,7 +648,8 @@ export function MusicContent() {
         setCurrentTime(audio.currentTime);
       }
       setIsPlaying(false);
-      if (metadataLoadedRef.current) persistAudioTime(source);
+      // ponytail: never persist the gallery-timed track (see IDM note above).
+      if (metadataLoadedRef.current && source.id !== ambientState.songId) persistAudioTime(source);
     };
     const onError = () => {
       if (!isCurrent() || playerStateRef.current.activeId !== source.id) return;
@@ -508,40 +670,14 @@ export function MusicContent() {
       audio.addEventListener("error", onError);
       audio.addEventListener("ended", onEnded);
 
-      const controller = new AbortController();
-      mediaRequestRef.current = { controller, generation: source.generation };
-      fetchAudioBlobUrl(activeSong.src, {
-        signal: controller.signal,
-        mimeType: activeSong.mimeType,
-      })
-        .then(({ url, revoke }) => {
-          const requestIsCurrent = mediaRequestRef.current?.generation === source.generation
-            && !controller.signal.aborted
-            && isCurrent();
-          if (!requestIsCurrent) {
-            revoke();
-            return;
-          }
-
-          mediaObjectUrlRef.current = { url, revoke, generation: source.generation };
-          audioSourceRef.current = { ...source, ready: true };
-          audio.src = url;
-          audio.load();
-          setDuration(0);
-          setCurrentTime(pendingSeekRef.current);
-        })
-        .catch(() => {
-          if (
-            controller.signal.aborted
-            || mediaRequestRef.current?.generation !== source.generation
-            || !isCurrent()
-          ) {
-            return;
-          }
-          pendingAutoplayRef.current = false;
-          setIsPlaying(false);
-          setPlaybackError("This audio file could not be loaded");
-        });
+      // ponytail: stream the catalog URL directly — no fetch+blob copy, so
+      // IDM never sees a downloadable audio response to grab.
+      audioSourceRef.current = { ...source, ready: true };
+      audio.preload = "metadata";
+      if (audio.getAttribute("src") !== activeSong.src) audio.src = activeSong.src;
+      audio.load();
+      setDuration(0);
+      setCurrentTime(pendingSeekRef.current);
     } else {
       pendingAutoplayRef.current = false;
       audio.pause();
@@ -552,11 +688,8 @@ export function MusicContent() {
     }
 
     return () => {
-      if (source.id && metadataLoadedRef.current) persistAudioTime(source);
-      if (mediaRequestRef.current?.generation === source.generation) {
-        mediaRequestRef.current.controller.abort();
-        mediaRequestRef.current = null;
-      }
+      // ponytail: never persist the gallery-timed track (see IDM note above).
+      if (source.id && source.id !== ambientState.songId && metadataLoadedRef.current) persistAudioTime(source);
       audio.pause();
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("timeupdate", onTimeUpdate);
@@ -566,18 +699,11 @@ export function MusicContent() {
       audio.removeEventListener("ended", onEnded);
       audio.removeAttribute("src");
       audio.load();
-      if (mediaObjectUrlRef.current?.generation === source.generation) {
-        mediaObjectUrlRef.current.revoke();
-        mediaObjectUrlRef.current = null;
-      }
       metadataLoadedRef.current = false;
       audioSourceRef.current = { id: null, generation: source.generation, ready: false };
     };
   }, [activeSong?.id, persistAudioTime, sourceLoadRequest, tryPlay]);
 
-  useEffect(() => {
-    persistPlayerState();
-  }, [activeId, volume, isMuted, persistPlayerState]);
 
   const requestSourcePlayback = useCallback(() => {
     const source = audioSourceRef.current;
@@ -610,22 +736,22 @@ export function MusicContent() {
   const selectSongForPlayback = useCallback((song, contextList = null) => {
     if (!song) return;
     if (Array.isArray(contextList)) setQueue(contextList);
-    persistAudioTime();
+    // ponytail: manual pick leaves the mirror; the bridge no longer owns output.
+    ambientMirrorRef.current = null;
+    setMirrorId(null);
+    setAmbientPlaying(false);
+    // ponytail: never persist the gallery-timed track — IDM grabs the MP3
+    // when a persisted activeId auto-loads it on next boot.
+    if (song.id !== ambientState.songId) persistAudioTime();
     const isSameSong = song.id === activeId;
     if (isSameSong) {
-      const audio = audioRef.current;
-      if (audio) audio.currentTime = 0;
+      // ponytail: same-song restart after a mirror session has no loaded
+      // source — bump the load generation so it restreams, then play.
       pendingSeekRef.current = 0;
-      pendingAutoplayRef.current = false;
-      playerStateRef.current = {
-        ...playerStateRef.current,
-        activeId: song.id,
-        currentTime: 0,
-      };
-      persistPlayerState();
       setCurrentTime(0);
       setPlaybackError(null);
-      requestSourcePlayback();
+      setSourceLoadRequest((value) => value + 1);
+      pendingAutoplayRef.current = true;
       return;
     }
 
@@ -635,19 +761,73 @@ export function MusicContent() {
     setCurrentTime(0);
     setIsPlaying(false);
     setActiveId(song.id);
-  }, [activeId, persistAudioTime, persistPlayerState, requestSourcePlayback]);
+  }, [activeId, persistAudioTime, requestSourcePlayback]);
 
+  const stopAmbientBridge = useCallback(() => {
+    ambientMirrorRef.current = null;
+    setMirrorId(null);
+    setAmbientPlaying(false);
+    window.dispatchEvent(
+      new CustomEvent(GALLERY_AMBIENT_COMMAND, { detail: { action: "stop" } }),
+    );
+  }, []);
+
+  const playSongById = useCallback((id) => {
+    const song = songs.find((item) => item.id === id);
+    if (!song) return null;
+    selectSongForPlayback(song);
+    return song;
+  }, [selectSongForPlayback, songs]);
+
+  const pause = useCallback(() => {
+    audioRef.current?.pause();
+  }, []);
+
+  const armLyricFx = useCallback((songId) => {
+    setLyricFx({ armed: true, songId });
+  }, []);
+
+  const disarmLyricFx = useCallback(() => {
+    setLyricFx({ armed: false, songId: null });
+  }, []);
+
+  musicBridgeRef.current = {
+    songs,
+    activeSong,
+    activeId,
+    currentTime,
+    duration,
+    isPlaying: effectivePlaying,
+    lyricLines,
+    activeLyricIndex,
+    lyricFxArmed: lyricFx.armed,
+    lyricFxSongId: lyricFx.songId,
+    playSongById,
+    pause,
+    armLyricFx,
+    disarmLyricFx,
+  };
+
+  useEffect(() => {
+    emitMusicBridge();
+  });
   const handleCardSelect = useCallback((id, contextList = null) => {
     const source = Array.isArray(contextList) ? contextList : songs;
     const song = source.find((item) => item.id === id) ?? songs.find((item) => item.id === id);
     if (!song) return;
     if (song.id === activeId) {
+      // Mirror row drives the ambient session when it shows the ambient track.
+      if (mirrorId === song.id) {
+        if (ambientState.playing) stopAmbientBridge();
+        else selectSongForPlayback(song);
+        return;
+      }
       if (isPlaying) audioRef.current?.pause();
       else requestSourcePlayback();
       return;
     }
     selectSongForPlayback(song, Array.isArray(contextList) ? contextList : undefined);
-  }, [activeId, isPlaying, requestSourcePlayback, selectSongForPlayback, songs]);
+  }, [activeId, isPlaying, mirrorId, requestSourcePlayback, selectSongForPlayback, songs, stopAmbientBridge]);
 
   const handleEnded = useCallback(() => {
     const audio = audioRef.current;
@@ -716,6 +896,12 @@ export function MusicContent() {
   }, [activeId, queue, selectSongForPlayback, songs]);
 
   const handlePlayPause = useCallback(() => {
+    // Mirror session: transport pauses the ambient bridge, never local audio.
+    if (mirrorId !== null && activeSong && mirrorId === activeSong.id) {
+      if (ambientState.playing) stopAmbientBridge();
+      else selectSongForPlayback(activeSong);
+      return;
+    }
     if (!activeSong) {
       const context = queue.length ? queue : songs;
       if (context[0]) selectSongForPlayback(context[0], context);
@@ -723,7 +909,7 @@ export function MusicContent() {
     }
     if (isPlaying) audioRef.current?.pause();
     else requestSourcePlayback();
-  }, [activeSong, isPlaying, queue, requestSourcePlayback, selectSongForPlayback, songs]);
+  }, [activeSong, isPlaying, mirrorId, queue, requestSourcePlayback, selectSongForPlayback, songs, stopAmbientBridge]);
 
   const cycleRepeat = () => {
     setRepeat((value) => (
@@ -761,7 +947,7 @@ export function MusicContent() {
                 songs={filteredSongs}
                 gridMode={gridMode}
                 activeId={activeId}
-                isPlaying={isPlaying}
+                isPlaying={effectivePlaying}
                 onSelect={(id) => handleCardSelect(id, filteredSongs)}
                 onToggle={(id) => handleCardSelect(id, filteredSongs)}
               />
@@ -777,6 +963,15 @@ export function MusicContent() {
       case "albums": {
         const visible = searchQuery ? filterMusicCatalog(songs, searchQuery) : songs;
         const albums = groupAlbums(visible);
+        const curatedEntries = [
+          { album: MY_SWEETENERS_ALBUM, tracks: MY_SWEETENERS_TRACKS },
+          { album: VIT_U_ALBUM, tracks: VIT_U_TRACKS },
+        ];
+        const albumQuery = searchQuery.trim().toLowerCase();
+        const visibleCurated = curatedEntries.filter(({ album, tracks }) => !albumQuery
+          || album.title.toLowerCase().includes(albumQuery)
+          || filterMusicCatalog(tracks, searchQuery).length > 0);
+        const openCurated = curatedEntries.find(({ album }) => album.id === openAlbumId) ?? null;
         const selected = albums.find((album) => album.key === selectedAlbumKey);
         if (selected) {
           return (
@@ -789,23 +984,93 @@ export function MusicContent() {
               </header>
               <div className="music-track-list">
                 {selected.songs.map((song, index) => (
-                  <TrackRow key={song.id} index={index} song={song} isActive={song.id === activeId} isPlaying={song.id === activeId && isPlaying} onPlay={() => handleCardSelect(song.id, selected.songs)} />
+                  <TrackRow key={song.id} index={index} song={song} isActive={song.id === activeId} isPlaying={song.id === activeId && effectivePlaying} onPlay={() => handleCardSelect(song.id, selected.songs)} />
                 ))}
               </div>
             </section>
           );
         }
+        const renderCuratedAlbum = (album, tracks) => {
+          const albumTracks = filterMusicCatalog(tracks, searchQuery);
+          return (
+            <div key={album.id}>
+              <button type="button" className="music-album-back" onClick={() => setOpenAlbumId(null)}>
+                <FaChevronLeft /> Albums
+              </button>
+              <div className="music-album">
+                <div className="music-album-cover" aria-hidden="true">
+                  <FaCompactDisc />
+                </div>
+                <div className="music-album-info">
+                  <h2>{album.title}</h2>
+                  <p>{album.description}</p>
+                  <span>{`${tracks.length} songs`}</span>
+                </div>
+              </div>
+              {albumTracks.length ? (
+                <ol className="music-album-tracks">
+                  {albumTracks.map((track) => (
+                    <li key={track.id} className="music-album-row">
+                      <span className="music-album-num">{tracks.indexOf(track) + 1}</span>
+                      <span className="music-album-thumb" aria-hidden="true">
+                        <FaCompactDisc />
+                      </span>
+                      <span className="music-album-meta">
+                        <span className="music-album-title">
+                          {track.title}
+                          {track.explicit ? <span className="music-album-explicit">E</span> : null}
+                        </span>
+                        <span className="music-album-sub">{`${track.artist} • ${track.album}`}</span>
+                      </span>
+                      <span className="music-album-duration">{track.duration}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <div className="music-empty" role="status">
+                  <FaMusic className="music-empty-icon" />
+                  <p>No songs match your search</p>
+                </div>
+              )}
+            </div>
+          );
+        };
         return (
           <section className="music-library" aria-label="Albums">
             <header className="music-library-header">
               <h1>Albums</h1>
             </header>
-            {albums.length ? (
-              <div className="music-shelf music-shelf--grid" aria-label="Album list">
-                {albums.map((album) => (
-                  <CollectionCard key={album.key} artwork={album.artwork} title={album.name} subtitle={`${album.artist} • ${album.count} songs`} label="Album" onOpen={() => setSelectedAlbumKey(album.key)} />
-                ))}
-              </div>
+            {openCurated ? (
+              renderCuratedAlbum(openCurated.album, openCurated.tracks)
+            ) : albums.length || visibleCurated.length ? (
+              <>
+                {albums.length ? (
+                  <div className="music-shelf music-shelf--grid" aria-label="Album list">
+                    {albums.map((album) => (
+                      <CollectionCard key={album.key} artwork={album.artwork} title={album.name} subtitle={`${album.artist} • ${album.count} songs`} label="Album" onOpen={() => setSelectedAlbumKey(album.key)} />
+                    ))}
+                  </div>
+                ) : null}
+                {visibleCurated.length ? (
+                  <div className="music-album-grid">
+                    {visibleCurated.map(({ album, tracks }) => (
+                      <button
+                        type="button"
+                        key={album.id}
+                        className="music-album-tile"
+                        onClick={() => setOpenAlbumId(album.id)}
+                        aria-label={`Open ${album.title}`}
+                      >
+                        <span className="music-album-tile-cover" aria-hidden="true">
+                          <FaCompactDisc />
+                        </span>
+                        <span className="music-album-tile-title">{album.title}</span>
+                        <span className="music-album-tile-count">{`${tracks.length} songs`}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </>
             ) : (
               <div className="music-empty" role="status">
                 <FaCompactDisc className="music-empty-icon" />
@@ -830,7 +1095,7 @@ export function MusicContent() {
               </header>
               <div className="music-track-list">
                 {selected.songs.map((song, index) => (
-                  <TrackRow key={song.id} index={index} song={song} isActive={song.id === activeId} isPlaying={song.id === activeId && isPlaying} onPlay={() => handleCardSelect(song.id, selected.songs)} />
+                  <TrackRow key={song.id} index={index} song={song} isActive={song.id === activeId} isPlaying={song.id === activeId && effectivePlaying} onPlay={() => handleCardSelect(song.id, selected.songs)} />
                 ))}
               </div>
             </section>
@@ -866,7 +1131,7 @@ export function MusicContent() {
             {visible.length ? (
               <div className="music-track-list">
                 {visible.map((song, index) => (
-                  <TrackRow key={song.id} index={index} song={song} isActive={song.id === activeId} isPlaying={song.id === activeId && isPlaying} badge={song.addedAt} onPlay={() => handleCardSelect(song.id, visible)} />
+                  <TrackRow key={song.id} index={index} song={song} isActive={song.id === activeId} isPlaying={song.id === activeId && effectivePlaying} badge={song.addedAt} onPlay={() => handleCardSelect(song.id, visible)} />
                 ))}
               </div>
             ) : (
@@ -912,7 +1177,7 @@ export function MusicContent() {
               {detailSongs.length ? (
                 <div className="music-track-list">
                   {detailSongs.map((song, index) => (
-                    <TrackRow key={song.id} index={index} song={song} isActive={song.id === activeId} isPlaying={song.id === activeId && isPlaying} onPlay={() => handleCardSelect(song.id, detailSongs)} action={(<button type="button" className="music-track-remove" aria-label={`Remove ${song.title}`} onClick={() => setPlaylists(removeSongFromPlaylist(playlists, selected.id, song.id))}>✕</button>)} />
+                    <TrackRow key={song.id} index={index} song={song} isActive={song.id === activeId} isPlaying={song.id === activeId && effectivePlaying} onPlay={() => handleCardSelect(song.id, detailSongs)} action={(<button type="button" className="music-track-remove" aria-label={`Remove ${song.title}`} onClick={() => setPlaylists(removeSongFromPlaylist(playlists, selected.id, song.id))}>✕</button>)} />
                   ))}
                 </div>
               ) : (
@@ -984,6 +1249,7 @@ export function MusicContent() {
           </section>
         );
       }
+
       case "radio":
         return (
           <div className="music-empty">
@@ -1053,10 +1319,10 @@ export function MusicContent() {
             type="button"
             className="music-ctrl-btn music-ctrl-btn--play"
             onClick={handlePlayPause}
-            aria-label={isPlaying ? "Pause" : "Play"}
-            aria-pressed={isPlaying}
+            aria-label={effectivePlaying ? "Pause" : "Play"}
+            aria-pressed={effectivePlaying}
           >
-            {isPlaying ? <FaPause /> : <FaPlay />}
+            {effectivePlaying ? <FaPause /> : <FaPlay />}
           </button>
           <button
             type="button"
@@ -1083,7 +1349,18 @@ export function MusicContent() {
           <button
             type="button"
             className="music-ctrl-btn"
-            onClick={() => setIsMuted((value) => !value)}
+            onClick={() => {
+              const next = !isMuted;
+              setIsMuted(next);
+              // ponytail: explicit mute gesture drives the ambient gain.
+              if (mirrorId !== null && mirrorId === activeId) {
+                window.dispatchEvent(
+                  new CustomEvent(GALLERY_AMBIENT_COMMAND, {
+                    detail: { action: "set-volume", volume: next ? 0 : volume },
+                  }),
+                );
+              }
+            }}
             title={isMuted ? "Unmute" : "Mute"}
             aria-label={isMuted ? "Unmute" : "Mute"}
             aria-pressed={isMuted}
@@ -1097,8 +1374,17 @@ export function MusicContent() {
             step="0.01"
             value={isMuted ? 0 : volume}
             onChange={(event) => {
-              setVolume(Number(event.target.value));
+              const next = Number(event.target.value);
+              setVolume(next);
               setIsMuted(false);
+              // ponytail: explicit slider gesture drives the ambient gain.
+              if (mirrorId !== null && mirrorId === activeId) {
+                window.dispatchEvent(
+                  new CustomEvent(GALLERY_AMBIENT_COMMAND, {
+                    detail: { action: "set-volume", volume: next },
+                  }),
+                );
+              }
             }}
             className="music-volume-slider"
             aria-label="Volume"
@@ -1132,7 +1418,7 @@ export function MusicContent() {
                 type="button"
                 key={id}
                 className={`music-sidebar-item${activeSection === id ? " active" : ""}`}
-                onClick={() => { setActiveSection(id); setSelectedAlbumKey(null); setSelectedArtistKey(null); setSelectedPlaylistId(null); }}
+                onClick={() => { setActiveSection(id); setSelectedAlbumKey(null); setSelectedArtistKey(null); setSelectedPlaylistId(null); setOpenAlbumId(null); }}
               >
                 <span className="music-sidebar-icon">{icon}</span>
                 <span className="music-sidebar-label">{label}</span>
@@ -1145,7 +1431,7 @@ export function MusicContent() {
             <button
               type="button"
               className={`music-sidebar-item${activeSection === "radio" ? " active" : ""}`}
-              onClick={() => { setActiveSection("radio"); setSelectedAlbumKey(null); setSelectedArtistKey(null); setSelectedPlaylistId(null); }}
+              onClick={() => { setActiveSection("radio"); setSelectedAlbumKey(null); setSelectedArtistKey(null); setSelectedPlaylistId(null); setOpenAlbumId(null); }}
             >
               <span className="music-sidebar-icon"><FaPodcast /></span>
               <span className="music-sidebar-label">Radio</span>
@@ -1164,7 +1450,7 @@ export function MusicContent() {
             {nowPlayingArtworkFailed || !activeSong.artwork ? (
               <FaCompactDisc
                 aria-hidden="true"
-                className={`music-now-playing-disc${isPlaying ? " music-now-playing-disc--spin" : ""}`}
+                className={`music-now-playing-disc${effectivePlaying ? " music-now-playing-disc--spin" : ""}`}
               />
             ) : (
               <img
@@ -1178,6 +1464,14 @@ export function MusicContent() {
           <div className="music-now-playing-info">
             <span className="music-now-playing-title">{activeSong.title}</span>
             <span className="music-now-playing-artist">{activeSong.artist}</span>
+            {lyricLines.length > 0 && (
+              <div className="music-lyric-live" aria-live="polite">
+                <span className="music-lyric-current">{lyricLines[activeLyricIndex]?.text ?? "♪"}</span>
+                {lyricLines[activeLyricIndex + 1] && (
+                  <span className="music-lyric-next">{lyricLines[activeLyricIndex + 1].text}</span>
+                )}
+              </div>
+            )}
             {playbackError && (
               <span className="music-playback-error" role="status">{playbackError}</span>
             )}
@@ -1205,4 +1499,39 @@ export function MusicContent() {
       )}
     </div>
   );
+}
+
+const MUSIC_BRIDGE_EVENT = "between-us:music-player";
+
+const musicBridgeRef = { current: null };
+
+function emitMusicBridge() {
+  window.dispatchEvent(new CustomEvent(MUSIC_BRIDGE_EVENT));
+}
+
+export function useMusicPlayer() {
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    const rerender = () => forceUpdate((value) => value + 1);
+    window.addEventListener(MUSIC_BRIDGE_EVENT, rerender);
+    return () => window.removeEventListener(MUSIC_BRIDGE_EVENT, rerender);
+  }, []);
+
+  return musicBridgeRef.current ?? {
+    songs: MUSIC_CATALOG,
+    activeSong: null,
+    activeId: null,
+    currentTime: 0,
+    duration: 0,
+    isPlaying: false,
+    lyricLines: [],
+    activeLyricIndex: -1,
+    lyricFxArmed: false,
+    lyricFxSongId: null,
+    playSongById: () => null,
+    pause: () => {},
+    armLyricFx: () => {},
+    disarmLyricFx: () => {},
+  };
 }

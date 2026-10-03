@@ -43,12 +43,21 @@ import Tahoe_Beach_Day_thumb from "@/assets/images/wallpapers/Tahoe/thumbs/26-Ta
 import Tahoe_Beach_Dusk_thumb from "@/assets/images/wallpapers/Tahoe/thumbs/26-Tahoe-Beach-Dusk_thumb.png";
 import Tahoe_Beach_Night_thumb from "@/assets/images/wallpapers/Tahoe/thumbs/26-Tahoe-Beach-Night_thumb.png";
 
+// ─── Custom ──────────────────────────────────────────────────────────
+import BetweenUsHome from "@/assets/images/wallpapers/Custom/between-us-home.png";
 
 // ═══════════════════════════════════════════════════════════════════
 //  WALLPAPER GROUPS
 // ═══════════════════════════════════════════════════════════════════
 
 export const WALLPAPER_GROUPS = [
+  {
+    id: "custom",
+    title: "Custom",
+    wallpapers: [
+      { id: "custom_between_us", name: "Between Us", image: BetweenUsHome, thumbnail: BetweenUsHome },
+    ]
+  },
   {
     id: "sequoia",
     title: "macOS Sequoia",
@@ -80,8 +89,8 @@ export const WALLPAPER_GROUPS = [
   }
 ];
 
-const SEQUOIA_GROUP = 0;
-const TAHOE_GROUP = 1;
+const SEQUOIA_GROUP = 1;
+const TAHOE_GROUP = 2;
 
 // Default Dark Themes (Tahoe Dark)
 export const DEFAULT_WALLPAPER = WALLPAPER_GROUPS[TAHOE_GROUP].wallpapers[3];
