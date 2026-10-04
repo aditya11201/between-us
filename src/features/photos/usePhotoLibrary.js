@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { photoCatalog, photoSections } from "./photoCatalog.js";
 import { fetchDrivePhotos } from "./drivePhotos.js";
 import { isDriveConfigured } from "./driveConfig.js";
-import { FAVORITES_SECTION_ID, mergePhotoLibrary, withVirtualFavorites } from "./photoLibraryModel.js";
+import { FAVORITES_SECTION_ID, mergePhotoLibrary, withVirtualFavorites, withVirtualMediaViews } from "./photoLibraryModel.js";
 import { loadFavoriteIds, toggleFavoriteId } from "./photoFavoritesModel.js";
-
 export function usePhotoLibrary() {
   const [driveResult, setDriveResult] = useState(null);
   const [status, setStatus] = useState(isDriveConfigured() ? "loading" : "local");
@@ -52,7 +51,7 @@ export function usePhotoLibrary() {
     return seeded;
   }, [merged.sections, likedIds, driveData.favoriteIds]);
   const sections = useMemo(
-    () => withVirtualFavorites(merged.sections, effectiveFavorites),
+    () => withVirtualMediaViews(withVirtualFavorites(merged.sections, effectiveFavorites)),
     [merged.sections, effectiveFavorites],
   );
   return {
