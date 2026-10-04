@@ -21,6 +21,12 @@ test("library view keeps all matching photo sections", () => {
   assert.deepEqual(visible.map((section) => section.id), ["favorites"]);
 });
 
+test("collections view keeps all matching photo sections like library", () => {
+  const visible = getVisiblePhotoSections("collections", sections, "");
+
+  assert.deepEqual(visible.map((section) => section.id), ["favorites", "travel"]);
+});
+
 test("album view isolates its matching folder", () => {
   const visible = getVisiblePhotoSections("section:travel", sections, "");
 

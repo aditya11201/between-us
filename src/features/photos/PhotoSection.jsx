@@ -3,7 +3,9 @@ import { PhotoCard } from "./PhotoCard";
 export function PhotoSection({
   section,
   selectedPhotoIds,
+  favoriteIds,
   onTogglePhoto,
+  onToggleFavorite,
   onDoubleClickPhoto,
 }) {
   return (
@@ -15,7 +17,9 @@ export function PhotoSection({
             key={photo.id}
             photo={photo}
             selected={selectedPhotoIds.has(photo.id)}
+            favorite={favoriteIds?.has(photo.id) === true}
             onToggle={onTogglePhoto}
+            onToggleFavorite={onToggleFavorite}
             onDoubleClick={onDoubleClickPhoto}
           />
         ))}

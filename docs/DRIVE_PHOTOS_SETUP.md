@@ -38,15 +38,9 @@ Google Drive API langsung.
 
 5. **Commit & push** — deploy GitHub Pages otomatis via `.github/workflows/deploy.yml`.
 
-## Cara menambah foto
+## Favorit permanen via favorites.json (tanpa login, tanpa copy file)
 
-1. Upload foto ke folder Drive (ke subfolder album yang diinginkan).
-2. Refresh halaman app. Selesai — tidak ada rebuild/redeploy.
-
-## Catatan
-
-- API key ini akan tersedia di bundle browser, jadi batasi hanya ke **Google
-  Drive API** dan **HTTP referrer GitHub Pages** (`https://<username>.github.io/*`).
-- Jika foto Drive tidak muncul: cek folder sudah di-share "Anyone with the link",
-  API key aktif + Drive API enabled, dan referrer restriction sesuai domain deploy.
-- Katalog lokal (`src/content/photos/`) tetap bekerja seperti biasa.
+- Satu file `favorites.json` di root folder Drive berisi daftar id foto, contoh: `["travel/bali.jpg", "drive:travel/bali.jpg"]`.
+- Favorit = isi folder `Favorites` + `favorites.json` + tombol ♥ lokal (per browser). Tanpa login, tanpa OAuth.
+- Permanen = edit `favorites.json` / folder `Favorites` langsung di Drive UI; reload app → masuk Favorit di semua device.
+- ♥ di app = sementara per browser (localStorage); hilang kalau ganti browser/clear data.

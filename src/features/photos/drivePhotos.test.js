@@ -21,6 +21,7 @@ test("maps image files to photo objects with drive-prefixed ids", () => {
   assert.equal(photos[0].name, "beach.jpg");
   assert.equal(photos[0].url, "https://lh3.googleusercontent.com/d/FILE_A");
   assert.equal(photos[0].mediaType, "image");
+  assert.equal(photos[0].driveFileId, "FILE_A");
 });
 
 test("prefers EXIF capture time over Drive creation time", () => {
@@ -131,9 +132,10 @@ test("filters unsupported non-media files", () => {
   assert.deepEqual(photos.map((photo) => photo.name), ["photo.png", "video.mp4"]);
 });
 
-// mock fetch: folder root berisi 2 subfolder + 1 file root
+// mock fetch: folder root berisi 2 subfolder + 1 file root; favorites.json tidak ada
 function makeFetchStub(responses) {
   return async (url) => {
+    if (url.includes("favorites.json")) return { ok: true, json: async () => ({ files: [] }) };
     const match = responses.find(([test]) => test(url));
     if (!match) throw new Error(`unexpected fetch: ${url}`);
     return {
@@ -155,7 +157,7 @@ test("fetchDrivePhotos returns empty result when config is empty", async () => {
   });
 
   assert.equal(called, false);
-  assert.deepEqual(result, { photos: [], sections: [] });
+  assert.deepEqual(result, { photos: [], sections: [], favoriteIds: [], favoritesFileId: null });
 
   setDriveConfigForTests(null);
 });
@@ -193,9 +195,9 @@ test("fetchDrivePhotos walks one level of subfolders", async () => {
 
   const result = await fetchDrivePhotos(makeFetchStub(responses));
 
-  // total media: cat.png + clip.mp4 (root) + sunset.webp (Favorites) = 3; my-trips kosong
+  // total media: cat.png + clip.mp4 (root) + sunset.webp (favorites) = 3; my-trips kosong
   assert.equal(result.photos.length, 3);
-  assert.deepEqual(result.sections.map((s) => s.id), ["drive-photos", "Favorites"]);
+  assert.deepEqual(result.sections.map((s) => s.id), ["drive-photos", "favorites"]);
   assert.equal(result.sections[0].photos.length, 2);
   assert.equal(result.sections[0].label, "Drive Photos");
   assert.equal(result.sections[0].photos[0].mediaType, "image");
@@ -204,7 +206,26 @@ test("fetchDrivePhotos walks one level of subfolders", async () => {
     result.sections[0].photos[1].url,
     "https://www.googleapis.com/drive/v3/files/VIDEO_ROOT?alt=media&key=test-api-key",
   );
-  assert.equal(result.sections[1].photos[0].id, "drive:Favorites/sunset.webp");
+  assert.equal(result.sections[1].photos[0].id, "drive:favorites/sunset.webp");
+  assert.deepEqual(result.favoriteIds, []);
+  assert.equal(result.favoritesFileId, null);
+
+  setDriveConfigForTests(null);
+});
+
+test("fetchDrivePhotos reads favorites.json alongside folder listing", async () => {
+  const { setDriveConfigForTests } = await import("./driveConfig.js");
+  setDriveConfigForTests({ folderId: "ROOT", apiKey: "test-api-key" });
+
+  const fetchImpl = async (url) => {
+    if (url.includes("favorites.json")) return { ok: true, json: async () => ({ files: [{ id: "JSON_1" }] }) };
+    if (url.includes("alt=media")) return { ok: true, text: async () => '["drive:drive-photos/a.jpg"]' };
+    return { ok: true, json: async () => ({ files: [] }) };
+  };
+  const result = await fetchDrivePhotos(fetchImpl);
+
+  assert.deepEqual(result.favoriteIds, ["drive:drive-photos/a.jpg"]);
+  assert.equal(result.favoritesFileId, "JSON_1");
 
   setDriveConfigForTests(null);
 });
