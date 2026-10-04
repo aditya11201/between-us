@@ -31,6 +31,31 @@ export function withVirtualFavorites(sections, favoriteIds) {
   );
 }
 
+// ponytail: Videos/Screenshots = filter mediaType lintas album; video tetap di albumnya, tidak dipindah.
+export function buildMediaTypePhotos(sections, mediaType) {
+  const seen = new Set();
+  const matches = [];
+  for (const section of sections) {
+    for (const photo of section.photos) {
+      if (photo.mediaType === mediaType && !seen.has(photo.id)) {
+        seen.add(photo.id);
+        matches.push(photo);
+      }
+    }
+  }
+  return matches;
+}
+
+export function withVirtualMediaViews(sections) {
+  const videos = buildMediaTypePhotos(sections, "video");
+  if (videos.length === 0) return sections;
+  if (sections.some((section) => section.id === "videos")) return sections;
+  const favoritesIndex = sections.findIndex((section) => section.id === FAVORITES_SECTION_ID);
+  const entry = { id: "videos", label: "Videos", photos: videos };
+  if (favoritesIndex === -1) return [entry, ...sections];
+  return [...sections.slice(0, favoritesIndex + 1), entry, ...sections.slice(favoritesIndex + 1)];
+}
+
 // ponytail: section id sama (lokal "favorites" + Drive "Favorites") digabung, bukan double section.
 export function mergePhotoLibrary(local, drive) {
   const sections = local.sections.map((section) => ({ ...section, photos: [...section.photos] }));

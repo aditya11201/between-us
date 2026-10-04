@@ -39,6 +39,9 @@ test("pinned Favorites view shows the favorites folder", () => {
   assert.deepEqual(visible.map((section) => section.id), ["favorites"]);
 });
 
-test("non-library utility views do not invent photo data", () => {
-  assert.deepEqual(getVisiblePhotoSections("people", sections, ""), []);
+test("pinned Videos view shows the virtual videos section", () => {
+  const withVideos = [...sections, { id: "videos", label: "Videos", photos: [{ id: "travel/clip.mp4" }] }];
+  const visible = getVisiblePhotoSections("videos", withVideos, "");
+
+  assert.deepEqual(visible.map((section) => section.id), ["videos"]);
 });

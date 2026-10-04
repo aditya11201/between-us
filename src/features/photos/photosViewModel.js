@@ -2,6 +2,7 @@ import { filterPhotoSections } from "./photoSelectionModel.js";
 
 const SECTION_VIEW_ALIASES = {
   favorites: "favorites",
+  videos: "videos",
 };
 
 export function getPhotoSectionId(activeView) {

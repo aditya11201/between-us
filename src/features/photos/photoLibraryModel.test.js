@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildFavoritePhotos, mergePhotoLibrary, withVirtualFavorites } from "./photoLibraryModel.js";
+import { buildFavoritePhotos, mergePhotoLibrary, withVirtualFavorites, withVirtualMediaViews } from "./photoLibraryModel.js";
 
 test("mergePhotoLibrary merges same-id Drive sections without duplicating photos", () => {
   const local = {
@@ -52,4 +52,17 @@ test("withVirtualFavorites includes favorites.json ids even without a local like
 
   assert.deepEqual(next.find((s) => s.id === "favorites").photos.map((p) => p.id), ["drive:travel/bali.jpg"]);
   assert.deepEqual(next.find((s) => s.id === "travel").photos.map((p) => p.id), ["drive:travel/bali.jpg", "travel/plain.jpg"]);
+});
+
+test("withVirtualMediaViews collects videos across albums without moving them", () => {
+  const sections = [
+    { id: "favorites", label: "Favorites", photos: [{ id: "favorites/a.jpg", mediaType: "image" }] },
+    { id: "travel", label: "Travel", photos: [{ id: "drive:travel/clip.mp4", mediaType: "video" }, { id: "travel/b.jpg", mediaType: "image" }] },
+  ];
+
+  const next = withVirtualMediaViews(withVirtualFavorites(sections, new Set()));
+
+  assert.deepEqual(next.map((s) => s.id), ["favorites", "videos", "travel"]);
+  assert.deepEqual(next.find((s) => s.id === "videos").photos.map((p) => p.id), ["drive:travel/clip.mp4"]);
+  assert.deepEqual(next.find((s) => s.id === "travel").photos.map((p) => p.id), ["drive:travel/clip.mp4", "travel/b.jpg"]);
 });
