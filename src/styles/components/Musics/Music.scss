@@ -464,11 +464,10 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-
   strong { font-size: 13px; font-weight: 600; }
   span { margin-top: 4px; color: $text-secondary; font-size: 12px; }
+  .music-card-note { color: $text-tertiary; font-size: 11px; }
 }
-
 .music-card-explicit {
   position: absolute;
   top: 11px;
@@ -577,49 +576,6 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   }
 }
 
-.music-album-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 18px 16px;
-}
-
-.music-album-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-
-  &-cover {
-    aspect-ratio: 1;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.08);
-    display: grid;
-    place-items: center;
-    font-size: 44px;
-    color: $text-tertiary;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  }
-
-  &:hover &-cover { background: rgba(255, 255, 255, 0.12); }
-
-  &-title {
-    font-size: 13px;
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &-count { font-size: 12px; color: $text-tertiary; }
-}
-
 .music-album-back {
   display: inline-flex;
   align-items: center;
@@ -633,6 +589,36 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   cursor: pointer;
 
   &:hover { color: $text-primary; }
+}
+.music-album-template-note, .music-card-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: $text-tertiary;
+}
+.music-album-hit {
+  display: contents;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  &:disabled { cursor: default; }
+}
+.music-album-row--template .music-album-thumb { opacity: 0.55; }
+.music-album-soon {
+  display: inline-grid;
+  place-items: center;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid $music-border;
+  border-radius: 999px;
+  color: $text-tertiary;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: 1px;
 }
 
 // ─── Empty state ──────────────────────────────────────────────────

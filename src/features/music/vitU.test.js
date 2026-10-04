@@ -52,7 +52,12 @@ test("pins the vit u Albums template wiring", () => {
   assert.match(contentSource, /VIT_U_TRACKS/);
   assert.match(contentSource, /VIT_U_ALBUM/);
   assert.match(contentSource, /openAlbumId/);
-  assert.match(contentSource, /music-album-tile/);
+  assert.match(contentSource, /music-shelf--grid/);
   assert.match(styleSource, /\.music-album-tracks/);
-  assert.match(styleSource, /\.music-album-tile/);
+  assert.match(contentSource, /Audio coming soon/);
+});
+
+test("exposes unplayable template placeholders", () => {
+  assert.equal(VIT_U_TRACKS.every((track) => track.src === ""), true);
+  assert.equal(VIT_U_TRACKS.every((track) => track.artwork === ""), true);
 });
