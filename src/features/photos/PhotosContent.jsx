@@ -128,7 +128,7 @@ export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
   const [isCompact, setIsCompact] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState(() => new Set());
-  const { catalog: photoCatalog, sections: photoSections, status: driveStatus } = usePhotoLibrary();
+  const { catalog: photoCatalog, sections: photoSections, status: driveStatus, favoriteIds, toggleFavorite } = usePhotoLibrary();
 
   const visibleSections = getVisiblePhotoSections(activeView, photoSections, query);
   const totalCount = photoCatalog.length;
@@ -360,8 +360,9 @@ export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
                   <FiSidebar />
                 </button>
               )}
+              {driveStatus === "loading" && <span className="photos-drive-status">Loading Drive…</span>}
+              {driveStatus === "error" && <span className="photos-drive-status">Drive offline — local only</span>}
             </div>
-
             {isLibrary ? (
               <div className="photos-segmented" role="group" aria-label="Photo timeline">
                 {[
@@ -407,7 +408,9 @@ export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
                     key={section.id}
                     section={section}
                     selectedPhotoIds={selectedPhotoIds}
+                    favoriteIds={favoriteIds}
                     onTogglePhoto={handleTogglePhoto}
+                    onToggleFavorite={toggleFavorite}
                     onDoubleClickPhoto={handlePhotoDoubleClick}
                   />
                 ))}

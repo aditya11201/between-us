@@ -15,7 +15,8 @@ export function getPhotoSectionId(activeView) {
 export function getVisiblePhotoSections(activeView, sections, query) {
   const matchingSections = filterPhotoSections(sections, query);
 
-  if (activeView === "library") return matchingSections;
+  // ponytail: Library = timeline semua foto; Collections = grup album semua foto.
+  if (activeView === "library" || activeView === "collections") return matchingSections;
 
   const sectionId = getPhotoSectionId(activeView);
   if (sectionId === null) return [];
