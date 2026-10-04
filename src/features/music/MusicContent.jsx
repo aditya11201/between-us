@@ -45,6 +45,7 @@ import {
   createPlaylist,
   deletePlaylist,
   filterMusicCatalog,
+  getNextSong,
   getPlaylistSongs,
   isPlayable,
   getPreviousAction,
