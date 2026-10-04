@@ -13,6 +13,7 @@ import {
   getRecentlyAdded,
   groupAlbums,
   groupArtists,
+  isPlayable,
   removeSongFromPlaylist,
   renamePlaylist,
   resolveSongQuery,
@@ -22,7 +23,6 @@ import {
   serializePlayerState,
   validateMusicCatalog,
 } from "./musicModel.js";
-
 const songs = [
   {
     id: "first-song",
@@ -213,4 +213,12 @@ test("accepts optional lyrics in catalog records", () => {
     () => validateMusicCatalog([{ ...songs[0], id: "bad-lyrics", lyrics: 42 }]),
     /lyrics/i,
   );
+});
+
+test("flags empty-src templates as unplayable", () => {
+  assert.equal(isPlayable({ src: "/a.mp3" }), true);
+  assert.equal(isPlayable({ src: "" }), false);
+  assert.equal(isPlayable({ src: "  " }), false);
+  assert.equal(isPlayable(null), false);
+  assert.throws(() => validateMusicCatalog([{ ...songs[0], id: "empty-src", src: "" }]), /audio/i);
 });

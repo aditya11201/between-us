@@ -52,6 +52,10 @@ export function validateMusicCatalog(catalog) {
   return catalog;
 }
 
+export function isPlayable(song) {
+  return !!song && typeof song.src === "string" && !!song.src.trim();
+}
+
 export function filterMusicCatalog(catalog, query) {
   const normalized = String(query ?? "").trim().toLowerCase();
   if (!normalized) return catalog;

@@ -51,3 +51,8 @@ test("pins the Albums template wiring", () => {
   assert.match(contentSource, /MY_SWEETENERS_TRACKS/);
   assert.match(styleSource, /\.music-album-tracks/);
 });
+
+test("exposes unplayable template placeholders", () => {
+  assert.equal(MY_SWEETENERS_TRACKS.every((track) => track.src === ""), true);
+  assert.equal(MY_SWEETENERS_TRACKS.every((track) => track.artwork === ""), true);
+});

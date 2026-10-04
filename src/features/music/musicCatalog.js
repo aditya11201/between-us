@@ -1,3 +1,5 @@
+import { MY_SWEETENERS_TRACKS } from "./mySweeteners.js";
+import { VIT_U_TRACKS } from "./vitU.js";
 import { validateMusicCatalog } from "./musicModel.js";
 import perfectAudio from "@/content/music/Ed Sheeran - Perfect.wasm?url";
 import perfectArtwork from "@/content/music/Ed Sheeran - Perfect.webp";
@@ -80,5 +82,28 @@ const catalog = [
     addedAt: "2026-09-30",
   },
 ];
-
 export const MUSIC_CATALOG = validateMusicCatalog(catalog);
+
+function toTemplateSong(track, collection) {
+  return {
+    id: track.id,
+    title: track.title,
+    artist: track.artist,
+    album: track.album,
+    genre: "",
+    src: track.src ?? "",
+    artwork: track.artwork ?? "",
+    mimeType: "audio/mp4",
+    explicit: track.explicit === true,
+    addedAt: track.addedAt ?? "",
+    duration: track.duration,
+    collection,
+  };
+}
+
+// ponytail: 84 empty templates. Fill src/artwork/addedAt per entry in
+// mySweeteners.js / vitU.js as assets land; each becomes playable everywhere.
+export const TEMPLATE_SONGS = [
+  ...MY_SWEETENERS_TRACKS.map((track) => toTemplateSong(track, "My Sweeteners")),
+  ...VIT_U_TRACKS.map((track) => toTemplateSong(track, "vit u")),
+];
