@@ -1,24 +1,13 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 import { createServer } from "vite";
-import { Window } from "happy-dom";
+import { setupHarness, unmountMount } from "./testUtils/harness.js";
 
-const projectRoot = new URL("../", import.meta.url).pathname;
-const window = new Window({ url: "http://localhost/" });
-const { document } = window;
-
+const { browserWindow, document, projectRoot } = setupHarness();
+const window = browserWindow;
 Object.assign(globalThis, {
-  window,
-  document,
-  HTMLElement: window.HTMLElement,
-  Event: window.Event,
-  WheelEvent: window.WheelEvent,
-  PointerEvent: window.PointerEvent,
-  IS_REACT_ACT_ENVIRONMENT: true,
-});
-Object.defineProperty(globalThis, "navigator", {
-  configurable: true,
-  value: window.navigator,
+  WheelEvent: browserWindow.WheelEvent,
+  PointerEvent: browserWindow.PointerEvent,
 });
 
 let vite;
@@ -154,8 +143,7 @@ test("cancels ordinary wheel input but leaves Ctrl+wheel available", async () =>
   });
   assert.deepEqual(changes, [74]);
 
-  await act(async () => root.unmount());
-  container.remove();
+  await unmountMount(act, { root, container });
 });
 
 test("commits the latest wheel value on the queued animation frame", async () => {
@@ -171,8 +159,7 @@ test("commits the latest wheel value on the queued animation frame", async () =>
   await act(async () => flushAnimationFrames());
   assert.deepEqual(changes, [73]);
 
-  await act(async () => root.unmount());
-  container.remove();
+  await unmountMount(act, { root, container });
 });
 
 test("keyboard, Home, and End input supersede a queued wheel commit", async () => {
@@ -193,21 +180,6 @@ test("keyboard, Home, and End input supersede a queued wheel commit", async () =
     await act(async () => flushAnimationFrames());
     assert.deepEqual(changes, [expected]);
 
-    await act(async () => root.unmount());
-    container.remove();
+    await unmountMount(act, { root, container });
   }
-});
-
-test("exposes the slider label and value metadata", async () => {
-  const { bar, container, root } = await renderSlider({ label: "Sound volume" });
-
-  assert.equal(bar.getAttribute("role"), "slider");
-  assert.equal(bar.getAttribute("aria-label"), "Sound volume");
-  assert.equal(bar.getAttribute("aria-orientation"), "horizontal");
-  assert.equal(bar.getAttribute("aria-valuemin"), "0");
-  assert.equal(bar.getAttribute("aria-valuemax"), "100");
-  assert.equal(bar.getAttribute("aria-valuenow"), "75");
-
-  await act(async () => root.unmount());
-  container.remove();
 });

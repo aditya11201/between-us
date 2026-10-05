@@ -1,3 +1,5 @@
+@use "../../base/variables" as *;
+
 // =========================================================
 // Calendar Dark Theme
 // Стили тёмной темы для приложения Calendar
@@ -11,14 +13,14 @@
   /* ── Title Bar ── */
   .calendar-titlebar {
     background: rgba(44, 44, 46, 0.95);
-    border-bottom-color: rgba(255, 255, 255, 0.1);
+    border-bottom-color: $white-10;
   }
 
   /* ── Toolbar ── */
   .calendar-toolbar-btn {
     background: rgba(58, 58, 60, 0.8);
     color: rgba(255, 255, 255, 0.9);
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: $white-10;
 
     &:hover {
       background: rgba(58, 58, 60, 1);
@@ -63,7 +65,7 @@
   /* ── Sidebar ── */
   .calendar-sidebar {
     background: rgba(44, 44, 46, 0.6);
-    border-right-color: rgba(255, 255, 255, 0.1);
+    border-right-color: $white-10;
   }
 
   .calendar-create-btn {
@@ -81,7 +83,7 @@
 
   .calendar-list-item {
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: $white-08;
     }
   }
 
@@ -91,7 +93,7 @@
 
   /* ── Mini Calendar ── */
   .calendar-mini-wrapper {
-    border-top-color: rgba(255, 255, 255, 0.1);
+    border-top-color: $white-10;
   }
 
   .calendar-mini-title {
@@ -99,7 +101,7 @@
   }
 
   .calendar-mini-nav {
-    background: rgba(255, 255, 255, 0.1);
+    background: $white-10;
     color: rgba(255, 255, 255, 0.6);
 
     &:hover {
@@ -115,7 +117,7 @@
     color: rgba(255, 255, 255, 0.7);
 
     &:hover:not(.empty) {
-      background: rgba(255, 255, 255, 0.1);
+      background: $white-10;
     }
 
     &.selected:not(.today) {
@@ -129,7 +131,7 @@
   }
 
   .calendar-main-header {
-    border-bottom-color: rgba(255, 255, 255, 0.1);
+    border-bottom-color: $white-10;
   }
 
   .calendar-main-title {
@@ -140,7 +142,7 @@
   .calendar-today-btn {
     background: rgba(58, 58, 60, 0.8);
     color: rgba(255, 255, 255, 0.8);
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: $white-10;
 
     &:hover {
       background: rgba(58, 58, 60, 1);
@@ -151,11 +153,11 @@
   /* ── Weekdays ── */
   .calendar-weekdays {
     background: rgba(44, 44, 46, 0.6);
-    border-bottom-color: rgba(255, 255, 255, 0.1);
+    border-bottom-color: $white-10;
   }
 
   .calendar-weekday {
-    border-right-color: rgba(255, 255, 255, 0.08);
+    border-right-color: $white-08;
   }
 
   .calendar-weekday-name {
@@ -168,8 +170,8 @@
 
   /* ── Calendar Grid ── */
   .calendar-day {
-    border-right-color: rgba(255, 255, 255, 0.08);
-    border-bottom-color: rgba(255, 255, 255, 0.08);
+    border-right-color: $white-08;
+    border-bottom-color: $white-08;
 
     &:hover {
       background: rgba(255, 255, 255, 0.05);
@@ -224,7 +226,7 @@
   /* ── Event Popup ── */
   .calendar-event-popup {
     background: rgba(44, 44, 46, 0.98);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px $white-10;
   }
 
   .calendar-popup-title {
@@ -232,7 +234,7 @@
   }
 
   .calendar-popup-close {
-    background: rgba(255, 255, 255, 0.1);
+    background: $white-10;
     color: rgba(255, 255, 255, 0.5);
 
     &:hover {

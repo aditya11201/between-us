@@ -25,8 +25,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  background: vars.$white-06;
+  border: 0.5px solid vars.$white-08;
   border-radius: 12px;
 }
 
@@ -63,7 +63,6 @@
   font-weight: 400;
   color: #007aff;
   cursor: pointer;
-  font-family: inherit;
   transition: opacity 0.12s;
 
   svg {
@@ -138,8 +137,8 @@
 
 // ─── apple-btn-secondary (already defined globally — local fallback) ──
 .apple-btn-secondary {
-  background: rgba(255, 255, 255, 0.08);
-  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  background: vars.$white-08;
+  border: 0.5px solid vars.$white-10;
   border-radius: 5px;
   padding: 5px 11px;
   font-size: 12px;
@@ -147,7 +146,6 @@
   color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
   white-space: nowrap;
-  font-family: inherit;
   transition: background 0.1s;
   flex-shrink: 0;
 
@@ -184,7 +182,7 @@
 
 .storage-bar {
   height: 5px;
-  background: rgba(255, 255, 255, 0.08);
+  background: vars.$white-08;
   border-radius: 2.5px;
   overflow: hidden;
 }
@@ -242,7 +240,6 @@
   cursor: pointer;
   padding: 3px 8px;
   border-radius: 5px;
-  font-family: inherit;
   transition: background 0.1s;
 
   &:hover { background: rgba(0, 122, 255, 0.1); }

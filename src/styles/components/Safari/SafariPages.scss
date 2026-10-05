@@ -1,3 +1,5 @@
+@use "../../base/variables" as *;
+
 // ═══════════════════════════════════════════════════════════════════
 //  START PAGE
 // ═══════════════════════════════════════════════════════════════════
@@ -21,7 +23,7 @@
 .sf__empty-card,
 .sf__privacy-card {
   background: rgba(32, 32, 32, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid $white-08;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
 }
@@ -52,13 +54,13 @@
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 6px;
+  border-radius: $r-sm;
   background: transparent;
   color: rgba(255, 255, 255, 0.52);
   cursor: pointer;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.10);
+    background: $white-10;
     color: rgba(255, 255, 255, 0.90);
   }
 }
@@ -123,7 +125,7 @@
   transition: background 0.15s ease, transform 0.15s ease;
 
   &:hover { 
-    background: rgba(255, 255, 255, 0.06);
+    background: $white-06;
     transform: translateY(-2px); 
   }
   
@@ -141,7 +143,7 @@
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 0 0 1px $white-10;
 
   svg { width: 60px; height: 60px; display: block; }
 }
@@ -259,7 +261,7 @@
 
 .sf__bookmark-btn {
   padding: 8px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid $white-08;
   border-radius: 8px;
   background: rgba(32, 32, 32, 0.72);
   color: #fff;
@@ -299,7 +301,7 @@
   flex-direction: column;
   gap: 1px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid $white-08;
   border-radius: 12px;
   background: rgba(32, 32, 32, 0.72);
 }
@@ -372,8 +374,8 @@
 .sf__customize-rows {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid $white-08;
+  border-bottom: 1px solid $white-08;
 }
 
 .sf__customize-row {
@@ -381,7 +383,7 @@
   align-items: center;
   gap: 9px;
   min-height: 38px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid $white-06;
   color: rgba(255, 255, 255, 0.78);
   font-size: 12px;
   cursor: grab;
@@ -503,7 +505,7 @@
     backdrop-filter: blur(15px);
     border-radius: 14px;
     padding: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid $white-10;
     
     a { 
       color: #5ac8fa; 
@@ -524,7 +526,7 @@
   margin-top: 10px;
   background: rgba(10, 132, 255, 0.2);
   border: 1px solid rgba(10, 132, 255, 0.4);
-  border-radius: 6px;
+  border-radius: $r-sm;
   color: #fff;
   padding: 6px 16px;
   cursor: pointer;

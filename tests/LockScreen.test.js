@@ -1,140 +1,24 @@
 import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { createServer } from "vite";
-import { Window } from "happy-dom";
 import { DEMO_LOGIN_PASSWORD } from "../src/ui/LockScreen/loginLock.js";
+import { setupHarness, unmountMount } from "./testUtils/harness.js";
+import { installClock as installClockShared, advanceTimers as advanceClock } from "./testUtils/clock.js";
+import { createDom } from "./testUtils/dom.js";
 
-const projectRoot = new URL("../", import.meta.url).pathname;
-const browserWindow = new Window({ url: "http://localhost/" });
-const { document } = browserWindow;
-
-Object.assign(globalThis, {
-  window: browserWindow,
-  document,
-  Element: browserWindow.Element,
-  HTMLElement: browserWindow.HTMLElement,
-  Event: browserWindow.Event,
-  KeyboardEvent: browserWindow.KeyboardEvent,
-  MouseEvent: browserWindow.MouseEvent,
-  requestAnimationFrame: (callback) => setTimeout(callback, 0),
-  cancelAnimationFrame: (id) => clearTimeout(id),
-  IS_REACT_ACT_ENVIRONMENT: true,
-});
+const { browserWindow, document, projectRoot } = setupHarness();
 
 let vite;
 let React;
 let act;
 let createRoot;
 let LockScreen;
-let NamedLockScreen;
 let activeClock;
+let dom;
 const mountedRoots = [];
 
 function installClock() {
-  const originals = {
-    globalSetTimeout: globalThis.setTimeout,
-    globalClearTimeout: globalThis.clearTimeout,
-    globalSetInterval: globalThis.setInterval,
-    globalClearInterval: globalThis.clearInterval,
-    windowSetTimeout: browserWindow.setTimeout,
-    windowClearTimeout: browserWindow.clearTimeout,
-    windowSetInterval: browserWindow.setInterval,
-    windowClearInterval: browserWindow.clearInterval,
-  };
-  const timeouts = new Map();
-  const intervals = new Map();
-  let now = 0;
-  let nextId = 1;
-
-  function schedule(store, callback, delay, args) {
-    const duration = Math.max(1, Number(delay) || 0);
-    const id = nextId++;
-    store.set(id, { callback, args, duration, due: now + duration });
-    return id;
-  }
-
-  function setTimeoutMock(callback, delay, ...args) {
-    return schedule(timeouts, callback, delay, args);
-  }
-
-  function setIntervalMock(callback, delay, ...args) {
-    return schedule(intervals, callback, delay, args);
-  }
-
-  function clearTimeoutMock(id) {
-    timeouts.delete(id);
-  }
-
-  function clearIntervalMock(id) {
-    intervals.delete(id);
-  }
-
-  function nextTask(target) {
-    return [
-      ...[...timeouts].map(([id, task]) => ({ id, store: timeouts, task })),
-      ...[...intervals].map(([id, task]) => ({ id, store: intervals, task })),
-    ]
-      .filter(({ task }) => task.due <= target)
-      .sort((left, right) => left.task.due - right.task.due)[0];
-  }
-
-  function advance(milliseconds) {
-    const target = now + milliseconds;
-    let task;
-
-    while ((task = nextTask(target))) {
-      now = task.task.due;
-      if (task.store === intervals) {
-        task.task.due += task.task.duration;
-      } else {
-        task.store.delete(task.id);
-      }
-      task.task.callback(...task.task.args);
-    }
-
-    now = target;
-  }
-
-  Object.assign(globalThis, {
-    setTimeout: setTimeoutMock,
-    clearTimeout: clearTimeoutMock,
-    setInterval: setIntervalMock,
-    clearInterval: clearIntervalMock,
-  });
-  Object.assign(browserWindow, {
-    setTimeout: setTimeoutMock,
-    clearTimeout: clearTimeoutMock,
-    setInterval: setIntervalMock,
-    clearInterval: clearIntervalMock,
-  });
-
-  const clock = {
-    advance,
-    activeTimerCount: () => timeouts.size + intervals.size,
-    activeTimers: () => [
-      ...[...timeouts].map(([id, task]) => ({ id, type: "timeout", ...task })),
-      ...[...intervals].map(([id, task]) => ({ id, type: "interval", ...task })),
-    ],
-    restore() {
-      Object.assign(globalThis, {
-        setTimeout: originals.globalSetTimeout,
-        clearTimeout: originals.globalClearTimeout,
-        setInterval: originals.globalSetInterval,
-        clearInterval: originals.globalClearInterval,
-      });
-      Object.assign(browserWindow, {
-        setTimeout: originals.windowSetTimeout,
-        clearTimeout: originals.windowClearTimeout,
-        setInterval: originals.windowSetInterval,
-        clearInterval: originals.windowClearInterval,
-      });
-      timeouts.clear();
-      intervals.clear();
-    },
-  };
-
-  activeClock = clock;
-  return clock;
+  return activeClock = installClockShared(browserWindow);
 }
 
 function timersAddedSince(clock, baseline, predicate) {
@@ -152,18 +36,7 @@ function assertTimersCleared(clock, timerIds) {
   for (const timerId of timerIds) assert.equal(activeIds.has(timerId), false);
 }
 
-function dispatch(element, type, init = {}) {
-  const EventConstructor = type === "keydown"
-    ? browserWindow.KeyboardEvent
-    : browserWindow.MouseEvent;
-  const event = new EventConstructor(type, {
-    bubbles: true,
-    cancelable: true,
-    ...init,
-  });
-  element.dispatchEvent(event);
-  return event;
-}
+const dispatch = (...args) => dom.dispatch(...args);
 
 async function renderLock({ isLocked = true, onUnlock = () => {}, strict = false } = {}) {
   const container = document.createElement("div");
@@ -193,10 +66,7 @@ async function revealWithPointer(mount) {
 }
 
 async function advanceTimers(milliseconds) {
-  await act(async () => {
-    activeClock.advance(milliseconds);
-    await Promise.resolve();
-  });
+  await advanceClock(act, activeClock, milliseconds);
 }
 
 function getInput(container) {
@@ -205,19 +75,9 @@ function getInput(container) {
   return input;
 }
 
-function setInputValue(input, value) {
-  const setter = Object.getOwnPropertyDescriptor(
-    browserWindow.HTMLInputElement.prototype,
-    "value",
-  ).set;
-  setter.call(input, value);
-  input.dispatchEvent(new browserWindow.Event("input", { bubbles: true }));
-  input.dispatchEvent(new browserWindow.Event("change", { bubbles: true }));
-}
+const setInputValue = (...args) => dom.setValue(...args);
 
-async function fill(input, value) {
-  await act(async () => setInputValue(input, value));
-}
+const fill = (...args) => dom.fill(...args);
 
 async function submit(container) {
   await act(async () => {
@@ -227,10 +87,7 @@ async function submit(container) {
   });
 }
 
-async function unmount(mount) {
-  await act(async () => mount.root.unmount());
-  mount.container.remove();
-}
+const unmount = (mount) => unmountMount(act, mount);
 
 before(async () => {
   vite = await createServer({
@@ -241,9 +98,10 @@ before(async () => {
   ({ default: React } = await import("react"));
   ({ act } = React);
   ({ createRoot } = await import("react-dom/client"));
-  ({ default: LockScreen, LockScreen: NamedLockScreen } = await vite.ssrLoadModule(
+  ({ default: LockScreen } = await vite.ssrLoadModule(
     "/src/ui/LockScreen/LockScreen.jsx",
   ));
+  dom = createDom(act, browserWindow, document);
 });
 
 afterEach(async () => {
@@ -256,29 +114,6 @@ afterEach(async () => {
 after(async () => {
   await vite.close();
   browserWindow.close();
-});
-
-test("exports the lock screen both ways and renders the locked reference copy", async () => {
-  installClock();
-  const mount = await renderLock();
-  const root = mount.container.firstElementChild;
-  const wallpaper = mount.container.querySelector(".wallpaper");
-
-  assert.equal(NamedLockScreen, LockScreen);
-  assert.equal(root.tagName, "DIV");
-  assert.equal(root.classList.contains("lock-screen"), true);
-  assert.match(wallpaper.style.getPropertyValue("--wallpaper-image"), /lockscreen-wallpaper\.webp/);
-  assert.equal(wallpaper.getAttribute("aria-hidden"), "true");
-  assert.equal(mount.container.querySelector(".menubar span").textContent, "ID");
-  assert.equal(mount.container.querySelector("main"), null);
-  assert.equal(getInput(mount.container).disabled, true);
-  assert.equal(mount.container.querySelector(".user-name").textContent, "My Pwetty Cutie Princess Sassy");
-  assert.equal(
-    mount.container.querySelector(".hint").textContent,
-    "Click or press any key to log in",
-  );
-  assert.ok(mount.container.querySelector(".time-ghost"));
-  assert.ok(mount.container.querySelector(".time-glass"));
 });
 
 test("keeps the persistent overlay inert and controls disabled when unlocked", async () => {

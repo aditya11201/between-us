@@ -4,12 +4,11 @@
 .sf {
   display: flex;
   flex-direction: column;
+  font-family: var(--system-font-family);
   container-name: safari-window;
   container-type: inline-size;
   height: 100%;
-  background-size: cover;
   background-position: center;
-  font-family: var(--system-font-family);
   overflow: hidden;
   color: rgba(255, 255, 255, 0.92);
 }
@@ -44,7 +43,7 @@
   background: rgba(30, 30, 35, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid $white-10;
   cursor: default;
   z-index: 10;
   
@@ -104,21 +103,21 @@
   }
 
   &--close {
-    background: #ff5f57;
+    background: $tl-close;
     &::after { 
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M3 3l4 4M7 3l-4 4' stroke='%236e0000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E"); 
     }
   }
   
   &--minimize {
-    background: #ffbd2e;
+    background: $tl-min;
     &::after { 
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5h6' stroke='%236e4000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E"); 
     }
   }
   
   &--zoom {
-    background: #28c840;
+    background: $tl-zoom;
     &::after { 
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5h6M5 2v6' stroke='%23004d00' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E"); 
     }
@@ -141,7 +140,7 @@
   transition: background 0.12s, color 0.12s;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.10);
+    background: $white-10;
     color: rgba(255, 255, 255, 0.85);
   }
 
@@ -186,7 +185,7 @@
   transition: background 0.12s;
 
   &:hover:not(.sf__nav-btn--disabled) {
-    background: rgba(255, 255, 255, 0.10);
+    background: $white-10;
   }
   
   &--disabled {
@@ -209,7 +208,7 @@
   background: rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   padding: 0 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid $white-08;
   transition: all 0.15s;
   width: clamp(300px, 50%, 500px);
 
@@ -274,7 +273,7 @@
   transition: background 0.12s, color 0.12s;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.10);
+    background: $white-10;
     color: rgba(255, 255, 255, 0.75);
   }
 
@@ -325,8 +324,8 @@
   align-items: center;
   gap: 8px;
   padding: 4px 10px 4px 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
+  background: $white-08;
+  border-radius: $r-sm;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -394,7 +393,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.08);
+  background: $white-08;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -650,7 +649,7 @@
   cursor: pointer;
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.10);
+    background: $white-10;
   }
 
   &:disabled,
@@ -685,7 +684,7 @@
 .sf__history-divider {
   height: 1px;
   margin: 5px 0;
-  background: rgba(255, 255, 255, 0.1);
+  background: $white-10;
 }
 
 .sf__history-submenu {

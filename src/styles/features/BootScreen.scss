@@ -7,6 +7,16 @@
   align-items: center;
   justify-content: center;
   background: #000;
+  animation: boot-fade-in 0.9s ease-out both;
+}
+
+@keyframes boot-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .boot-screen--complete {
@@ -147,25 +157,3 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .boot-logo {
-    animation: none;
-    transition: opacity 0.01ms linear;
-
-    &:hover:not(:disabled),
-    &:active:not(:disabled) {
-      transform: none;
-      filter: none;
-      transition: none;
-    }
-  }
-
-  .boot-progress {
-    animation: none;
-    opacity: 1;
-  }
-
-  .boot-screen--complete {
-    animation-duration: 0.01ms;
-  }
-}

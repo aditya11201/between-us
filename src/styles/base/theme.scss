@@ -89,7 +89,7 @@
   --cc-card-bg: #{$color-cc-network-group-bg-start};
   --cc-card-border: #{$color-cc-network-group-border};
   --cc-network-item-hover: #{$color-cc-network-item-hover};
-  --cc-network-icon-bg: rgba(255, 255, 255, 0.08);
+  --cc-network-icon-bg: #{$white-08};
   --cc-network-icon-color: rgba(255, 255, 255, 0.5);
   
   --dock-bg: rgba(255, 255, 255, 0.2);
@@ -98,7 +98,7 @@
   --dock-separator: rgba(255, 255, 255, 0.35);
   
   --window-bg: rgba(30, 30, 34, 0.92);
-  --window-border: rgba(255, 255, 255, 0.08);
+  --window-border: #{$white-08};
   --window-header: rgba(36, 36, 40, 0.95);
   
   --scrollbar-thumb: #{$color-scrollbar-thumb};

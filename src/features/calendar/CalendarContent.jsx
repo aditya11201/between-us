@@ -2,6 +2,7 @@ import React, { useState, useContext, useMemo, useCallback, useEffect, useLayout
 import { createPortal } from "react-dom";
 import { FiHeart } from "react-icons/fi";
 import { WindowContext } from "@/windows";
+import { matchesQuery } from "@/utils/search.js";
 import {
   BIRTHDAY_EVENT,
   getEventsForDate as getEventsForDateKey,
@@ -9,7 +10,31 @@ import {
   restoreHiddenEventIds,
 } from "./calendarModel";
 
-// Списки календарей
+function buildMonthGrid(year, month, { padToSixWeeks = false } = {}) {
+  const firstDay = new Date(year, month, 1);
+  const lastDate = new Date(year, month + 1, 0).getDate();
+  const startDay = firstDay.getDay();
+  const prevMonthLastDay = new Date(year, month, 0).getDate();
+  const days = [];
+
+  for (let i = startDay - 1; i >= 0; i--) {
+    days.push({
+      date: new Date(year, month - 1, prevMonthLastDay - i),
+      isCurrentMonth: false,
+    });
+  }
+  for (let day = 1; day <= lastDate; day++) {
+    days.push({ date: new Date(year, month, day), isCurrentMonth: true });
+  }
+  if (padToSixWeeks) {
+    const remaining = 42 - days.length;
+    for (let i = 1; i <= remaining; i++) {
+      days.push({ date: new Date(year, month + 1, i), isCurrentMonth: false });
+    }
+  }
+  return days;
+}
+
 const ICLOUD_CALENDARS = [
   { id: "home", name: "Home", color: "#a855f7", checked: true },
   { id: "calendar", name: "Calendar", color: "#f97316", checked: true },
@@ -36,7 +61,6 @@ export function CalendarContent() {
   const today = new Date();
   const [currentDate, setCurrentDate] = useState(today);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [view, setView] = useState("Month");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Календари (состояние чекбоксов)
@@ -112,56 +136,17 @@ export function CalendarContent() {
   const dayNamesFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
   // Получаем дни месяца для основной сетки
-  const daysInMonth = useMemo(() => {
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
-    const days = [];
-
-    const startDay = firstDay.getDay();
-
-    const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
-    for (let i = startDay - 1; i >= 0; i--) {
-      days.push({
-        date: new Date(currentYear, currentMonth - 1, prevMonthLastDay - i),
-        isCurrentMonth: false,
-      });
-    }
-
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      days.push({
-        date: new Date(currentYear, currentMonth, day),
-        isCurrentMonth: true,
-      });
-    }
-
-    const remaining = 42 - days.length;
-    for (let i = 1; i <= remaining; i++) {
-      days.push({
-        date: new Date(currentYear, currentMonth + 1, i),
-        isCurrentMonth: false,
-      });
-    }
-
-    return days;
-  }, [currentYear, currentMonth]);
+  const daysInMonth = useMemo(
+    () => buildMonthGrid(currentYear, currentMonth, { padToSixWeeks: true }),
+    [currentYear, currentMonth],
+  );
 
   // Мини-календарь
   const miniCalendarDays = useMemo(() => {
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
-    const days = [];
-
-    const startDay = firstDay.getDay();
-
-    for (let i = 0; i < startDay; i++) {
-      days.push(null);
-    }
-
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      days.push(new Date(currentYear, currentMonth, day));
-    }
-
-    return days;
+    const startDay = new Date(currentYear, currentMonth, 1).getDay();
+    const leading = Array.from({ length: startDay }, () => null);
+    const dates = buildMonthGrid(currentYear, currentMonth).map((item) => item.date);
+    return [...leading, ...dates];
   }, [currentYear, currentMonth]);
 
   const isToday = useCallback((date) => {
@@ -188,9 +173,7 @@ export function CalendarContent() {
     return getEventsForDateKey(events, key);
   }, [events]);
 
-  const formatDateKey = useCallback((date) => {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  }, []);
+  const formatDateKey = useCallback((date) => date.toLocaleDateString("en-CA"), []);
 
   const formatMonthYear = useCallback((date) => {
     return date.toLocaleDateString("en-US", { month: 'long', year: 'numeric' });
@@ -309,12 +292,6 @@ export function CalendarContent() {
     trigger?.closest(".calendar-day")?.focus();
   }, [closeEventDetail, deleteEvent, eventDetail, showToast]);
 
-  // Подсчёт событий для даты
-  const getEventCount = useCallback((date) => {
-    if (!date) return 0;
-    return getEventsForDate(date).length;
-  }, [getEventsForDate]);
-
   const updateEventDetailPosition = useCallback(() => {
     if (!eventDetail || !eventDetailRef.current || !eventDetailTriggerRef.current) return;
 
@@ -414,11 +391,10 @@ export function CalendarContent() {
   // Поиск событий
   const filteredEvents = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase();
     const results = [];
     Object.entries(events).forEach(([dateKey, evts]) => {
       evts.forEach(evt => {
-        if (evt.text.toLowerCase().includes(query)) {
+        if (matchesQuery(evt.text, searchQuery)) {
           results.push({ ...evt, date: dateKey });
         }
       });
@@ -437,17 +413,6 @@ export function CalendarContent() {
         </div>
         <div className="calendar-toolbar">
           <button className="calendar-toolbar-btn" onClick={goToToday}>Today</button>
-          <div className="calendar-view-switcher">
-            {['Day', 'Week', 'Month', 'Year'].map(v => (
-              <button
-                key={v}
-                className={`calendar-view-btn ${view === v ? 'active' : ''}`}
-                onClick={() => setView(v)}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
           <div className="calendar-search">
             <svg className="calendar-search-icon" viewBox="0 0 16 16" fill="currentColor">
               <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
@@ -519,7 +484,7 @@ export function CalendarContent() {
                 <div key={day} className="calendar-mini-day-name">{day}</div>
               ))}
               {miniCalendarDays.map((date, index) => {
-                const hasEvents = date && getEventCount(date) > 0;
+                const hasEvents = date && getEventsForDate(date).length > 0;
                 return (
                   <div
                     key={index}
@@ -562,7 +527,7 @@ export function CalendarContent() {
             {daysInMonth.map((item, index) => {
               const date = item.date;
               const isCurrentMonth = item.isCurrentMonth;
-              const eventCount = getEventCount(date);
+              const eventCount = getEventsForDate(date).length;
               const hasEvents = eventCount > 0;
 
               return (

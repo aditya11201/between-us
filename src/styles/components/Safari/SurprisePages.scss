@@ -1,3 +1,5 @@
+@use "../../base/variables" as *;
+
 /* ─── GLOBALS & LAYOUT ──────────────────────────────────────────────────── */
 .sf-local-page {
   height: 100%;
@@ -5,9 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
   box-sizing: border-box;
-  font-family: var(--system-font-family);
   color: rgba(255, 255, 255, 0.9);
   overflow-y: auto;
   
@@ -22,10 +22,10 @@
   background: rgba(30, 30, 34, 0.65);
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid $white-10;
   border-radius: 18px;
   padding: 36px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25), inset 0 1px 0 $white-08;
   width: 100%;
   max-width: 440px;
   text-align: center;
@@ -74,10 +74,8 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
   text-decoration: none;
   border: none;
-  font-family: inherit;
   
   &:active {
     transform: scale(0.96);
@@ -100,9 +98,9 @@
 }
 
 .sf-btn-secondary {
-  background: rgba(255, 255, 255, 0.1);
+  background: $white-10;
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid $white-10;
   
   &:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.15);
@@ -167,7 +165,7 @@
 .sf-spinner {
   width: 24px;
   height: 24px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid $white-10;
   border-top-color: #0a84ff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -228,7 +226,7 @@
 }
 
 .memory-card-front {
-  background: rgba(255, 255, 255, 0.08);
+  background: $white-08;
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: rgba(255, 255, 255, 0.3);
   
@@ -278,8 +276,8 @@
 }
 
 .math-option-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: $white-10;
+  border: 1px solid $white-10;
   color: white;
   font-size: 20px;
   font-weight: 500;
@@ -288,7 +286,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
-  
+
   &:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.15);
     transform: translateY(-2px);

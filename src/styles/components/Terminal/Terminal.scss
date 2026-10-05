@@ -21,7 +21,7 @@
   justify-content: center;
   position: relative;
   background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid $white-06;
   cursor: move;
   user-select: none;
   flex-shrink: 0;
@@ -44,9 +44,9 @@
   padding: 0;
   transition: opacity 0.15s, transform 0.15s;
 
-  &--close { background: #ff5f56; border: 0.5px solid #e0443e; }
-  &--minimize { background: #ffbd2e; border: 0.5px solid #dea123; }
-  &--zoom { background: #27c93f; border: 0.5px solid #1aab29; }
+  &--close { background: $tl-close; border: 0.5px solid #e0443e; }
+  &--minimize { background: $tl-min; border: 0.5px solid #dea123; }
+  &--zoom { background: $tl-zoom; border: 0.5px solid #1aab29; }
 
   &:hover {
     opacity: 0.8;

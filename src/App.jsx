@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, memo, useMemo } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useMobileCheck, useContextMenu } from "@/core/hooks";
 import {
   WindowManagerProvider,
@@ -8,7 +8,7 @@ import {
   DisplaySettingsProvider,
 } from "@/core/providers";
 // UI компоненты
-import { BootScreen, MobileNotSupported, ContextMenu, LockScreen } from "@/ui";
+import { BootScreen, IntroScreen, MobileNotSupported, ContextMenu, LockScreen } from "@/ui";
 // Layout компоненты
 import { Desktop, Dock, WindowList } from "@/windows";
 import { MenuBar } from "@/features/menubar/MenuBar";
@@ -139,9 +139,11 @@ export function AppContent() {
  */
 function AppInner() {
   const isMobile = useMobileCheck();
+  const [introComplete, setIntroComplete] = useState(false);
   const [bootComplete, setBootComplete] = useState(false);
   
-  if (!bootComplete) return <BootScreen onComplete={() => setBootComplete(true)} />;
+  if (!introComplete) return <IntroScreen onComplete={() => setIntroComplete(true)} />;
+  if (!bootComplete) return <BootScreen autoStart onComplete={() => setBootComplete(true)} />;
   if (isMobile) return <MobileNotSupported />;
 
   return (

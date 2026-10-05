@@ -4,7 +4,6 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  font-family: var(--system-font-family);
   background: rgba(22, 22, 26, 0.99);
   overflow: hidden;
 
@@ -53,13 +52,13 @@
     }
 
     &--close {
-      background: #ff5f57;
+      background: $tl-close;
     }
     &--minimize {
-      background: #ffbd2e;
+      background: $tl-min;
     }
     &--zoom {
-      background: #28c840;
+      background: $tl-zoom;
     }
   }
 
@@ -98,7 +97,7 @@
 
   &-list-item {
     padding: 10px 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid $white-04;
     cursor: pointer;
     border-left: 3px solid transparent;
     transition: background 0.12s, border-color 0.12s;
@@ -109,7 +108,7 @@
     }
 
     &:hover:not(.active) {
-      background: rgba(255, 255, 255, 0.04);
+      background: $white-04;
     }
   }
 

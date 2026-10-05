@@ -2,11 +2,7 @@ import React, { useLayoutEffect } from 'react';
 import { useWindowManager } from "@/core/providers";
 import { AppWindow } from './AppWindow/AppWindow';
 import { renderAppContent } from "@/utils/renderAppContent";
-import { Suspense, memo, useCallback, useMemo, useRef } from 'react';
-import { WindowLoading } from "@/ui";
-
-// ✅ Отдельный контекст для изоляции активных окон
-const ActiveWindowContext = React.createContext(null);
+import { memo, useCallback, useMemo, useRef } from 'react';
 
 const WindowItem = memo(function WindowItem({ winId, setWallpaper }) {
   const { 
@@ -38,18 +34,14 @@ const WindowItem = memo(function WindowItem({ winId, setWallpaper }) {
   const handleZoom = useCallback(() => maximizeWindow(winId), [maximizeWindow, winId]);
 
   // Мемоизация рендера контента
-  const appContent = useMemo(() => (
-    <Suspense fallback={<WindowLoading />}>
-      {renderAppContent(winId, { 
-        closeWindow: handleClose, 
-        minimizeWindow: handleMinimize, 
-        maximizeWindow: handleZoom, 
-        setWallpaper,
-        openApp,
-        payload: win.payload,
-      })}
-    </Suspense>
-  ), [winId, handleClose, handleMinimize, handleZoom, setWallpaper, openApp, win.payload]);
+  const appContent = useMemo(() => renderAppContent(winId, {
+    closeWindow: handleClose,
+    minimizeWindow: handleMinimize,
+    maximizeWindow: handleZoom,
+    setWallpaper,
+    openApp,
+    payload: win.payload,
+  }), [winId, handleClose, handleMinimize, handleZoom, setWallpaper, openApp, win.payload]);
 
   return (
     <AppWindow

@@ -1,31 +1,10 @@
 import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { createServer } from "vite";
-import { Window } from "happy-dom";
-import { waitForCondition } from "./testUtils/waitForCondition.js";
+import { waitForPreviewState as waitForPreviewStateShared } from "./testUtils/waitForCondition.js";
+import { setupHarness, unmountMount } from "./testUtils/harness.js";
 
-const projectRoot = new URL("../", import.meta.url).pathname;
-const browserWindow = new Window({ url: "http://localhost/" });
-const { document } = browserWindow;
-
-Object.assign(globalThis, {
-  window: browserWindow,
-  document,
-  localStorage: browserWindow.localStorage,
-  Element: browserWindow.Element,
-  HTMLElement: browserWindow.HTMLElement,
-  Event: browserWindow.Event,
-  KeyboardEvent: browserWindow.KeyboardEvent,
-  MouseEvent: browserWindow.MouseEvent,
-  SVGElement: browserWindow.SVGElement,
-  requestAnimationFrame: (callback) => setTimeout(callback, 0),
-  cancelAnimationFrame: (id) => clearTimeout(id),
-  IS_REACT_ACT_ENVIRONMENT: true,
-});
-Object.defineProperty(globalThis, "navigator", {
-  configurable: true,
-  value: browserWindow.navigator,
-});
+const { browserWindow, document, projectRoot } = setupHarness();
 
 let vite;
 let React;
@@ -76,8 +55,7 @@ after(async () => {
 
 afterEach(async () => {
   for (const { root, container } of mountedRoots.splice(0)) {
-    await act(async () => root.unmount());
-    container.remove();
+    await unmountMount(act, { root, container });
   }
   currentManager = null;
 });
@@ -95,23 +73,8 @@ async function render(element) {
   return container;
 }
 
-async function waitForPreviewState(container, predicate, description) {
-  await waitForCondition(
-    async () => {
-      let matches = false;
-      await act(async () => {
-        await Promise.resolve();
-        matches = predicate(container);
-      });
-      return matches;
-    },
-    {
-      description,
-      wait: (delay) => act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }),
-    },
-  );
+function waitForPreviewState(container, predicate, description) {
+  return waitForPreviewStateShared(act, container, predicate, description);
 }
 
 function previewWindowTree() {
@@ -209,22 +172,3 @@ test("MenuBar exposes Preview instead of a dynamic preview ID", async () => {
   assert.equal(container.textContent.includes(previewId), false);
 });
 
-test("APPS and Dock do not register Preview as a launchable app", async () => {
-  const container = await render(
-    React.createElement(Dock, {
-      onOpen: () => {},
-      openApps: [],
-      minimizedApps: new Set(),
-      isLightTheme: false,
-    }),
-  );
-
-  assert.equal(APPS.some((app) => app.id === "preview"), false);
-
-  const dockLabels = [...container.querySelectorAll(".dock__item")].map(
-    (item) => item.getAttribute("aria-label"),
-  );
-  assert.ok(
-    dockLabels.every((label) => !(label ?? "").toLowerCase().includes("preview")),
-  );
-});

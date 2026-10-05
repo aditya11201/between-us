@@ -1,3 +1,5 @@
+@use "../../base/variables" as *;
+
 // ═══════════════════════════════════════════════════════════════════
 //  CONTROL CENTER — macOS 26 Tahoe (Liquid Glass)
 // ═══════════════════════════════════════════════════════════════════
@@ -19,7 +21,7 @@ $card-bg-active:  rgba(255, 255, 255, 0.55);
 // ─── DARK VARIANT (slightly darker glass, same family) ─────────────
 $glass-bg-dark:      rgba(60, 60, 66, 0.45);
 $glass-border-dark:  rgba(255, 255, 255, 0.14);
-$card-bg-dark:       rgba(255, 255, 255, 0.1);
+$card-bg-dark:       $white-10;
 $card-bg-hover-dark: rgba(255, 255, 255, 0.16);
 
 // ─── APPLE ACCENTS ─────────────────────────────────────────────────
@@ -35,7 +37,7 @@ $text-secondary-dark: rgba(255, 255, 255, 0.55);
 
 // ─── SHADOWS ────────────────────────────────────────────────────────
 $shadow: 0 20px 50px rgba(0, 0, 0, 0.25), 0 0 0 0.5px rgba(255, 255, 255, 0.4) inset;
-$shadow-dark: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.08) inset;
+$shadow-dark: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 0.5px $white-08 inset;
 
 // ═══════════════════════════════════════════════════════════════════
 //  MAIN PANEL
@@ -60,7 +62,6 @@ $shadow-dark: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.
   border: 0.5px solid $glass-border;
   box-shadow: $shadow;
 
-  font-family: var(--system-font-family);
   color: $text-primary;
 }
 
@@ -596,7 +597,7 @@ $shadow-dark: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.
     &:hover { background: $card-bg-hover-dark; }
   }
 
-  .cc-conn-item:hover { background: rgba(255, 255, 255, 0.08); }
+  .cc-conn-item:hover { background: $white-08; }
 
   .cc-icon-circle,
   .cc-output-btn {
@@ -623,7 +624,7 @@ $shadow-dark: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.
   }
 
   .cc-slider-bar {
-    background: rgba(255, 255, 255, 0.1);
+    background: $white-10;
     box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.05);
 
     &:focus-visible {
@@ -635,12 +636,12 @@ $shadow-dark: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.
 
   .cc-music-art,
   .cc-music-art-placeholder {
-    background: rgba(255, 255, 255, 0.08);
+    background: $white-08;
   }
 
   .cc-music-btn {
     color: $text-primary-dark;
-    &:hover { background: rgba(255, 255, 255, 0.1); }
+    &:hover { background: $white-10; }
   }
 
   .cc-utility-square,

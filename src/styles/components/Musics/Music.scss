@@ -3,8 +3,8 @@
 // ─── Tokens ───────────────────────────────────────────────────────
 $music-bg:        #161618;
 $music-sidebar-bg:#111113;
-$music-border:    rgba(255, 255, 255, 0.06);
-$music-hover:     rgba(255, 255, 255, 0.04);
+$music-border:    $white-06;
+$music-hover:     $white-04;
 $music-active-bg: rgba(255, 255, 255, 0.07);
 $music-accent:    #fa233b;
 $music-accent2:   #ff6b81;
@@ -14,12 +14,12 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
 
 // ─── Root ─────────────────────────────────────────────────────────
 .music {
+  font-family: var(--system-font-family);
   display: flex;
   flex-direction: column;
   height: 100%;
   background: $music-bg;
   color: $text-primary;
-  font-family: var(--system-font-family);
   overflow: hidden;
   container-type: inline-size;
 }
@@ -72,9 +72,9 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   }
   &:hover::after { opacity: 1; }
 
-  &--close    { background: #ff5f57; &::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M3 3l4 4M7 3l-4 4' stroke='%236e0000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E"); } }
-  &--minimize { background: #ffbd2e; &::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5h6' stroke='%236e4000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E"); } }
-  &--zoom     { background: #28c840; &::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5h6M5 2v6' stroke='%23004d00' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E"); } }
+  &--close    { background: $tl-close; &::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M3 3l4 4M7 3l-4 4' stroke='%236e0000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E"); } }
+  &--minimize { background: $tl-min; &::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5h6' stroke='%236e4000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E"); } }
+  &--zoom     { background: $tl-zoom; &::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5h6M5 2v6' stroke='%23004d00' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E"); } }
 }
 
 // ── Toolbar controls ──────────────────────────────────────────────
@@ -100,14 +100,14 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   font-size: 14px;
   cursor: pointer;
   padding: 6px;
-  border-radius: 6px;
+  border-radius: $r-sm;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: color 0.12s, background 0.12s;
 
-  &:hover     { color: $text-primary; background: rgba(255,255,255,0.06); }
-  &--play     { font-size: 18px; color: $text-primary; width: 36px; height: 36px; background: rgba(255,255,255,0.08); border-radius: 50%;
+  &:hover     { color: $text-primary; background: $white-06; }
+  &--play     { font-size: 18px; color: $text-primary; width: 36px; height: 36px; background: $white-08; border-radius: 50%;
     &:hover   { background: rgba(255,255,255,0.14); }
   }
   &--active   { color: $music-accent; &:hover { color: $music-accent2; } }
@@ -164,15 +164,15 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   display: flex;
   align-items: center;
   background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid $white-06;
   border-radius: 8px;
   padding: 6px 10px;
   margin-bottom: 8px;
   transition: background 0.15s;
 
   &:focus-within {
-    background: rgba(255, 255, 255, 0.10);
-    border-color: rgba(255,255,255,0.1);
+    background: $white-10;
+    border-color: $white-10;
   }
 
   &-icon {
@@ -373,7 +373,7 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.08);
+  background: $white-08;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
   transition: transform 180ms ease, box-shadow 180ms ease;
 
@@ -433,7 +433,7 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   gap: 3px;
   height: 22px;
   padding: 4px 7px;
-  border-radius: 6px;
+  border-radius: $r-sm;
   background: rgba(0, 0, 0, 0.44);
 
   i {
@@ -494,7 +494,7 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
     height: 148px;
     flex-shrink: 0;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.08);
+    background: $white-08;
     display: grid;
     place-items: center;
     font-size: 52px;
@@ -524,7 +524,7 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
     align-items: center;
     gap: 10px;
     padding: 7px 8px;
-    border-radius: 6px;
+    border-radius: $r-sm;
 
     &:hover { background: $music-hover; }
   }
@@ -539,8 +539,8 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   &-thumb {
     width: 40px;
     height: 40px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.08);
+    border-radius: $r-sm;
+    background: $white-08;
     display: grid;
     place-items: center;
     font-size: 18px;
@@ -689,7 +689,7 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
     border-radius: 7px;
     overflow: hidden;
     flex: 0 0 40px;
-    background: rgba(255, 255, 255, 0.08);
+    background: $white-08;
     display: grid;
     place-items: center;
 
@@ -818,7 +818,7 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(2px);
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: $r-sm;
   white-space: nowrap;
   animation: lyric-fx-in 0.35s ease-out, lyric-fx-glitch 0.9s steps(2) 0.35s 3, lyric-fx-out 0.8s ease-in 5.2s forwards;
 }
@@ -1214,30 +1214,3 @@ $text-tertiary:   rgba(255, 255, 255, 0.25);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .music-shelf {
-    scroll-behavior: auto;
-  }
-
-  .music-card-art,
-  .music-card-play {
-    transition: none;
-  }
-
-  .music-card-equalizer i {
-    animation: none;
-  }
-
-  .music-card:hover .music-card-art,
-  .music-card--active .music-card-art {
-    transform: none;
-  }
-
-  .music-now-playing-disc--spin {
-    animation: none;
-  }
-
-  .lyric-fx-line {
-    animation: none;
-  }
-}

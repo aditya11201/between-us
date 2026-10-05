@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import AppleLogo from "@/assets/icons/preloader/Apple_Logo_Test.svg";
 import startupAudioUrl from "@/assets/audio/apple-mac-startup-soundchime.mp3";
 
@@ -6,17 +6,13 @@ import startupAudioUrl from "@/assets/audio/apple-mac-startup-soundchime.mp3";
 //  BootScreen — Realistic macOS boot animation
 // ══════════════════════════════════════════════════════════════
 
-export default function BootScreen({ onComplete }) {
+export default function BootScreen({ onComplete, autoStart = false }) {
   const [showLogo, setShowLogo] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isStarted, setIsStarted] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const startBootRef = useRef(null);
-
-  const handleStart = useCallback(() => {
-    startBootRef.current?.();
-  }, []);
 
   useEffect(() => {
     const startupAudio = new Audio(startupAudioUrl);
@@ -127,8 +123,11 @@ export default function BootScreen({ onComplete }) {
       if (isUnmounted) return;
 
       setShowLogo(true);
+      if (autoStart) {
+        // Boot from intro: logo already faded in, no click needed.
+        setTimeout(startBoot, 200);
+      }
     }, 150);
-
     startupAudio.addEventListener("ended", releaseProgressGate);
     startupAudio.addEventListener("error", releaseProgressGate);
     startBootRef.current = startBoot;
@@ -145,7 +144,7 @@ export default function BootScreen({ onComplete }) {
       startupAudio.removeEventListener("error", releaseProgressGate);
       startupAudio.pause();
     };
-  }, [onComplete]);
+  }, [onComplete, autoStart]);
 
   return (
     <div
@@ -162,8 +161,8 @@ export default function BootScreen({ onComplete }) {
             showLogo ? "boot-logo--show" : ""
           }`}
           aria-label="Start macOS"
-          disabled={isStarted}
-          onClick={handleStart}
+          onClick={() => startBootRef.current?.()}
+          disabled={isStarted || autoStart}
         >
           <img
             src={AppleLogo}

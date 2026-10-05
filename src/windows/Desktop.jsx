@@ -1,4 +1,4 @@
-import React, { memo, useState, useEffect, useCallback, useMemo } from "react";
+import React, { memo, useState, useEffect, useMemo } from "react";
 import { useDisplaySettings } from "@/core/providers";
 import { RainOverlay } from "./RainOverlay";
 
@@ -53,11 +53,7 @@ export const Desktop = memo(function Desktop({
     transition: 'opacity 0.3s ease',
   }), [wallpaper, isLoaded]);
 
-  const handleContextMenu = useCallback((e) => {
-    if (onContextMenu && typeof onContextMenu === 'function') {
-      onContextMenu(e);
-    }
-  }, [onContextMenu]);
+  const handleContextMenu = (e) => onContextMenu?.(e);
 
   return (
     <div

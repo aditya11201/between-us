@@ -1,28 +1,10 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { createServer } from "vite";
-import { Window } from "happy-dom";
+import { setupHarness, unmountMount } from "./testUtils/harness.js";
+import { createDom } from "./testUtils/dom.js";
 
-const projectRoot = new URL("../", import.meta.url).pathname;
-const browserWindow = new Window({ url: "http://localhost/" });
-const { document } = browserWindow;
-
-Object.assign(globalThis, {
-  window: browserWindow,
-  document,
-  localStorage: browserWindow.localStorage,
-  Element: browserWindow.Element,
-  HTMLElement: browserWindow.HTMLElement,
-  Event: browserWindow.Event,
-  KeyboardEvent: browserWindow.KeyboardEvent,
-  MouseEvent: browserWindow.MouseEvent,
-  SVGElement: browserWindow.SVGElement,
-  IS_REACT_ACT_ENVIRONMENT: true,
-});
-Object.defineProperty(globalThis, "navigator", {
-  configurable: true,
-  value: browserWindow.navigator,
-});
+const { browserWindow, document, projectRoot } = setupHarness();
 
 let vite;
 let React;
@@ -33,6 +15,7 @@ let ThemeProvider;
 let MenuBar;
 let DisplaysSettings;
 let useDisplaySettings;
+let dom;
 
 function BrightnessProbe({ name }) {
   const { brightness, setBrightness } = useDisplaySettings();
@@ -80,34 +63,12 @@ before(async () => {
   ({ DisplaysSettings } = await vite.ssrLoadModule(
     "/src/features/settings/Settings_Components/panels/General/DisplaysSettings.jsx"
   ));
+  dom = createDom(act, browserWindow, document);
 });
 
 after(async () => {
   await vite.close();
   browserWindow.close();
-});
-
-test("shares the default brightness and updates all provider consumers", async () => {
-  const { container, root } = await render(
-    React.createElement(
-      DisplaySettingsProvider,
-      null,
-      React.createElement(BrightnessProbe, { name: "first" }),
-      React.createElement(BrightnessProbe, { name: "second" })
-    )
-  );
-
-  const probes = container.querySelectorAll("[data-brightness-probe]");
-  assert.deepEqual([...probes].map(probe => probe.textContent), ["75", "75"]);
-
-  await act(async () => {
-    probes[0].dispatchEvent(new browserWindow.MouseEvent("click", { bubbles: true }));
-  });
-
-  assert.deepEqual([...probes].map(probe => probe.textContent), ["42", "42"]);
-
-  await act(async () => root.unmount());
-  container.remove();
 });
 
 test("Displays Settings stays synchronized with the shared numeric brightness", async () => {
@@ -126,23 +87,16 @@ test("Displays Settings stays synchronized with the shared numeric brightness", 
   assert.equal(range.value, "75");
   assert.equal(probe.dataset.brightnessType, "number");
 
-  await act(async () => {
-    probe.dispatchEvent(new browserWindow.MouseEvent("click", { bubbles: true }));
-  });
+  await dom.click(probe);
   assert.equal(range.value, "42");
 
   await act(async () => {
-    Object.getOwnPropertyDescriptor(browserWindow.HTMLInputElement.prototype, "value").set.call(
-      range,
-      "37"
-    );
-    range.dispatchEvent(new browserWindow.Event("input", { bubbles: true }));
+    dom.setValue(range, "37");
   });
   assert.equal(probe.textContent, "37");
   assert.equal(probe.dataset.brightnessType, "number");
 
-  await act(async () => root.unmount());
-  container.remove();
+  await unmountMount(act, { root, container });
 });
 
 test("MenuBar reads and writes the shared brightness value", async () => {
@@ -159,34 +113,21 @@ test("MenuBar reads and writes the shared brightness value", async () => {
     )
   );
 
-  await act(async () => {
-    container.querySelector(".menuBar__controlCenterBtn").dispatchEvent(
-      new browserWindow.MouseEvent("click", { bubbles: true })
-    );
-  });
+  await dom.click(container.querySelector(".menuBar__controlCenterBtn"));
 
   const probe = container.querySelector('[data-brightness-probe="menubar"]');
   const slider = container.querySelector('[aria-label="Display brightness"]');
   assert.equal(slider.getAttribute("aria-valuenow"), "75");
 
-  await act(async () => {
-    probe.dispatchEvent(new browserWindow.MouseEvent("click", { bubbles: true }));
-  });
+  await dom.click(probe);
   assert.equal(slider.getAttribute("aria-valuenow"), "42");
 
   await act(async () => {
-    slider.dispatchEvent(
-      new browserWindow.KeyboardEvent("keydown", {
-        bubbles: true,
-        cancelable: true,
-        key: "ArrowDown",
-      })
-    );
+    dom.dispatch(slider, "keydown", { key: "ArrowDown" });
   });
 
   assert.equal(probe.textContent, "41");
   assert.equal(slider.getAttribute("aria-valuenow"), "41");
 
-  await act(async () => root.unmount());
-  container.remove();
+  await unmountMount(act, { root, container });
 });

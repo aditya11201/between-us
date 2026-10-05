@@ -123,7 +123,6 @@ export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
   const wasCompact = useRef(false);
   const [query, setQuery] = useState("");
   const [activeView, setActiveView] = useState("library");
-  const [timelineView, setTimelineView] = useState("all");
   const [sharedAlbumsOpen, setSharedAlbumsOpen] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -137,10 +136,9 @@ export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
     ? null
     : photoSections.find((section) => section.id === activeSectionId);
   const activeLabel = activeSection?.label ?? VIEW_LABELS[activeView] ?? "Photos";
-  const isLibrary = activeView === "library";
   const hasVisiblePhotos = visibleSections.length > 0;
   const hasQuery = query.trim().length > 0;
-  const showHints = isLibrary && !hasQuery;
+  const showHints = activeView === "library" && !hasQuery;
 
   useEffect(() => {
     if (sidebarCollapsed) return undefined;
@@ -326,9 +324,6 @@ export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
               activeView={activeView}
               onSelect={handleViewChange}
             />
-
-            <div className="photos-sidebar__group-title">Utilities</div>
-            <div className="photos-sidebar__group-title">Projects</div>
           </nav>
         </aside>
 
@@ -345,7 +340,7 @@ export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
           className="photos-main"
           inert={isCompact && !sidebarCollapsed}
         >
-          {isLibrary && <h1 className="photos-visually-hidden">Library</h1>}
+          {activeView === "library" && <h1 className="photos-visually-hidden">Library</h1>}
           <div className="photos-toolbar">
             <div className="photos-toolbar__left">
               {sidebarCollapsed && (
@@ -363,27 +358,7 @@ export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
               {driveStatus === "loading" && <span className="photos-drive-status">Loading Drive…</span>}
               {driveStatus === "error" && <span className="photos-drive-status">Drive offline — local only</span>}
             </div>
-            {isLibrary ? (
-              <div className="photos-segmented" role="group" aria-label="Photo timeline">
-                {[
-                  ["years", "Years"],
-                  ["months", "Months"],
-                  ["all", "All Photos"],
-                ].map(([id, label]) => (
-                  <button
-                    type="button"
-                    className="photos-segment"
-                    key={id}
-                    aria-pressed={timelineView === id}
-                    onClick={() => setTimelineView(id)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <h1 className="photos-toolbar__title">{activeLabel}</h1>
-            )}
+            <h1 className="photos-toolbar__title">{activeLabel}</h1>
 
             <label className="photos-search">
               <span className="photos-toolbar__search-label">Search photos</span>

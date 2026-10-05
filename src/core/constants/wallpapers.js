@@ -88,14 +88,3 @@ export const WALLPAPER_GROUPS = [
     ]
   }
 ];
-
-const SEQUOIA_GROUP = 1;
-const TAHOE_GROUP = 2;
-
-// Default Dark Themes (Tahoe Dark)
-export const DEFAULT_WALLPAPER = WALLPAPER_GROUPS[TAHOE_GROUP].wallpapers[3];
-export const WALLPAPERS = WALLPAPER_GROUPS.flatMap(g => g.wallpapers);
-
-export function getWallpaperById(id) {
-  return WALLPAPERS.find(w => w.id === id) || DEFAULT_WALLPAPER;
-}

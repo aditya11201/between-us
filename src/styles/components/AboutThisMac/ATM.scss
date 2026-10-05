@@ -24,7 +24,7 @@
   @include glass-dark(rgba(30, 30, 34, 0.9), 50px, 0.15, true);
   border-radius: 12px;
   overflow: hidden;
-  animation: aboutMacSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: aboutMacSlideIn 0.4s $easing-ease-out;
 }
 
 @keyframes aboutMacSlideIn {
@@ -39,7 +39,7 @@
   padding: 0 14px;
   background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(10px);
-  border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 0.5px solid $white-06;
   position: relative;
 }
 
@@ -67,7 +67,7 @@
   transition: background 0.15s;
 }
 .about-mac-traffic .tl-close {
-  background: #ff5f56;
+  background: $tl-close;
   cursor: pointer;
 }
 .about-mac-traffic .tl-close:hover {
@@ -149,7 +149,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  @include glass-dark(rgba(255, 255, 255, 0.06), 15px, 0.04, false);
+  @include glass-dark($white-06, 15px, 0.04, false);
   border-radius: 8px;
   padding: 14px 16px;
 }
@@ -179,9 +179,9 @@
 .about-mac-btn {
   flex: 1;
   height: 32px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: $r-sm;
+  border: 1px solid $white-06;
+  background: $white-08;
   backdrop-filter: blur(8px);
   color: #f5f5f7;
   font-size: 12px;

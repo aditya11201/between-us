@@ -1,3 +1,5 @@
+import { matchesQuery } from "../../utils/search.js";
+
 export function updatePhotoSelection(selectedIds, photoId, additive) {
   const next = additive ? new Set(selectedIds) : new Set();
 
@@ -15,15 +17,12 @@ export function clearPhotoSelection() {
 }
 
 export function filterPhotoSections(sections, query) {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) return sections;
+  if (!String(query ?? "").trim()) return sections;
 
   return sections
     .map((section) => ({
       ...section,
-      photos: section.photos.filter((photo) =>
-        photo.name.toLowerCase().includes(normalizedQuery),
-      ),
+      photos: section.photos.filter((photo) => matchesQuery(photo.name, query)),
     }))
     .filter((section) => section.photos.length > 0);
 }

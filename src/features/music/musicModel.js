@@ -1,6 +1,8 @@
+import { matchesQuery } from "../../utils/search.js";
+import { clampSliderValue } from "../menubar/MenuBar/sliderMath.js";
+
 export const PLAYER_STORAGE_KEY = "between-us.music.player";
 export const PLAYLISTS_STORAGE_KEY = "between-us.music.playlists";
-
 const DEFAULT_PLAYER_STATE = Object.freeze({
   activeId: null,
   currentTime: 0,
@@ -9,7 +11,7 @@ const DEFAULT_PLAYER_STATE = Object.freeze({
 });
 
 function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
+  return clampSliderValue(value, min, max);
 }
 
 export function validateMusicCatalog(catalog) {
@@ -55,15 +57,13 @@ export function validateMusicCatalog(catalog) {
 export function isPlayable(song) {
   return !!song && typeof song.src === "string" && !!song.src.trim();
 }
-
 export function filterMusicCatalog(catalog, query) {
-  const normalized = String(query ?? "").trim().toLowerCase();
-  if (!normalized) return catalog;
+  if (!String(query ?? "").trim()) return catalog;
 
   return catalog.filter((song) =>
     [song.title, song.artist, song.album, song.genre]
       .filter(Boolean)
-      .some((value) => value.toLowerCase().includes(normalized)),
+      .some((value) => matchesQuery(value, query)),
   );
 }
 

@@ -8,7 +8,6 @@ import {
   useState,
 } from "react";
 import {
-  FiEdit3,
   FiImage,
   FiInfo,
   FiMaximize,
@@ -18,35 +17,15 @@ import {
   FiSearch,
   FiShare2,
   FiSidebar,
-  FiSliders,
-  FiType,
   FiUpload,
   FiX,
 } from "react-icons/fi";
+import { matchesQuery } from "@/utils/search.js";
+import { clampSliderValue } from "@/features/menubar/MenuBar/sliderMath.js";
 import { WindowContext } from "@/windows/AppWindow/AppWindow";
 
-function getPhotoName(photo) {
-  return typeof photo?.name === "string" && photo.name.trim()
-    ? photo.name
-    : "Preview";
-}
-
-function getPhotoUrl(photo) {
-  return typeof photo?.url === "string" ? photo.url.trim() : "";
-}
-
-function getPhotoId(photo) {
-  return typeof photo?.id === "string" && photo.id.trim()
-    ? photo.id
-    : "preview";
-}
-
-function getPhotoMediaType(photo) {
-  return photo?.mediaType === "video" ? "video" : "image";
-}
-
 function clampZoom(value) {
-  return Math.min(4, Math.max(0.25, Number(value.toFixed(2))));
+  return clampSliderValue(Number(value.toFixed(2)), 0.25, 4);
 }
 
 function getImageFiles(fileList) {
@@ -92,7 +71,6 @@ function PreviewIconButton({
   label,
   onClick,
   active = false,
-  disabled = false,
   pressed = false,
   expanded,
   controls,
@@ -107,8 +85,7 @@ function PreviewIconButton({
       aria-pressed={pressed ? active : active || undefined}
       aria-expanded={expanded}
       aria-controls={controls}
-      disabled={disabled}
-      title={disabled ? `${label} unavailable` : label}
+      title={label}
       onClick={onClick}
     >
       <Icon aria-hidden="true" />
@@ -277,10 +254,10 @@ export function PhotoPreviewContent({ photo }) {
   const sidebarId = `${previewInstanceId}-photos-preview-sidebar`;
   const inspectorId = `${previewInstanceId}-photos-preview-inspector`;
   const searchId = `${previewInstanceId}-photos-preview-search`;
-  const photoUrl = getPhotoUrl(photo);
-  const photoName = getPhotoName(photo);
-  const photoId = getPhotoId(photo);
-  const photoMediaType = getPhotoMediaType(photo);
+  const photoUrl = typeof photo?.url === "string" ? photo.url.trim() : "";
+  const photoName = typeof photo?.name === "string" && photo.name.trim() ? photo.name : "Preview";
+  const photoId = typeof photo?.id === "string" && photo.id.trim() ? photo.id : "preview";
+  const photoMediaType = photo?.mediaType === "video" ? "video" : "image";
   const [mediaFailed, setMediaFailed] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
@@ -337,9 +314,8 @@ export function PhotoPreviewContent({ photo }) {
   const activePhoto =
     previewItems.find((item) => item.id === activePhotoId) ?? sourcePhoto;
   const visibleItems = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return previewItems;
-    return previewItems.filter((item) => item.name.toLowerCase().includes(query));
+    if (!searchQuery.trim()) return previewItems;
+    return previewItems.filter((item) => matchesQuery(item.name, searchQuery));
   }, [previewItems, searchQuery]);
   const hasMedia = Boolean(activePhoto.url) && !mediaFailed;
 
@@ -593,10 +569,6 @@ export function PhotoPreviewContent({ photo }) {
         </div>
 
         <div className="photos-preview__toolbar-group photos-preview__toolbar-group--tools">
-          <PreviewIconButton Icon={FiSliders} label="Show Adjustments" disabled />
-          <PreviewIconButton Icon={FiEdit3} label="Show Markup Tools" disabled />
-          <PreviewIconButton Icon={FiEdit3} label="Show Edit Tools" disabled />
-          <PreviewIconButton Icon={FiType} label="Add Text" disabled />
           <PreviewIconButton
             Icon={FiInfo}
             label="Show Info"

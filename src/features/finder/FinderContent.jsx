@@ -5,6 +5,8 @@ import { SidebarIcon } from "./SidebarIcon";
 import { WindowContext } from "@/windows";
 import { useContextMenu } from "@/core/hooks/useContextMenu";
 import { ContextMenu } from "@/ui";
+import { matchesQuery } from "@/utils/search.js";
+import { useDebounce } from "@/utils/performance.js";
 import folderIconPng from "@/assets/icons/desktop/folder_icon.png";
 
 // Оптимизированный рендер SVG иконок
@@ -107,6 +109,33 @@ const FinderSVG = {
   EmptyFolder: FinderSVGEmptyFolder
 };
 
+const COLUMN_WIDTHS = { name: 300, size: 100, modified: 150 };
+
+const FinderEmpty = () => (
+  <div className="finder-empty-state">
+    <div className="finder-empty-icon"><FinderSVG.EmptyFolder /></div>
+    <span>This folder is empty.</span>
+  </div>
+);
+
+const FinderPreviewPanel = ({ file, renderIcon, formatDate, className }) => (
+  <div className={className}>
+    <div className="finder-preview-header">
+      <div className="finder-preview-icon">{renderIcon(file, 64)}</div>
+      <div>
+        <div className="finder-preview-title">{file.name}</div>
+        <div className="finder-preview-type">{file.type.toUpperCase()}</div>
+      </div>
+    </div>
+    <div className="finder-preview-info">
+      <div><strong>Size:</strong> {file.size}</div>
+      <div><strong>Modified:</strong> {formatDate(file.modified)}</div>
+      <div><strong>Kind:</strong> {file.type === "folder" ? "Folder" : file.type === "app" ? "Application" : "Document"}</div>
+    </div>
+    {file.preview && <div className="finder-preview-content">{file.preview}</div>}
+  </div>
+);
+
 const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize, onMaximize }) {
   const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
   const [selectedFile, setSelectedFile] = useState(null);
@@ -114,12 +143,13 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
   const [currentFolder, setCurrentFolder] = useState("macos");
   const [viewMode, setViewMode] = useState("list");
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 150);
   const [activeTab, setActiveTab] = useState(0);
   const { onTitleMouseDown } = useContext(WindowContext);
   const [tabs, setTabs] = useState([
     { id: 0, label: "Macintosh HD", folder: "macos" }
   ]);
-  
+
   // Selection box state - оптимизировано
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionStart, setSelectionStart] = useState(null);
@@ -127,13 +157,7 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
   const fileAreaRef = useRef(null);
   const fileItemsRef = useRef({});
   const rAFRef = useRef(null);
-  const debouncedSearchRef = useRef(null);
-  const columnWidths = useMemo(() => ({
-    name: 300,
-    size: 100,
-    modified: 150
-  }), []);
-
+  const columnWidths = COLUMN_WIDTHS;
   // ─── Selection Box Handlers (оптимизировано с requestAnimationFrame) ───────────────────────────────────────────────
   const handleFileAreaMouseDown = useCallback((e) => {
     if (e.button !== 0) return;
@@ -320,25 +344,6 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
     shared: [],
   }), []);
 
-  // Debounced search для оптимизации
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  
-  useEffect(() => {
-    if (debouncedSearchRef.current) {
-      clearTimeout(debouncedSearchRef.current);
-    }
-    
-    debouncedSearchRef.current = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 150);
-    
-    return () => {
-      if (debouncedSearchRef.current) {
-        clearTimeout(debouncedSearchRef.current);
-      }
-    };
-  }, [searchQuery]);
-
   const getRecents = useCallback(() => {
     const recent = [];
     const addIfRecent = (items) => {
@@ -373,7 +378,7 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
       }
     }
     if (debouncedSearchQuery) {
-      files = files.filter(f => f.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
+      files = files.filter(f => matchesQuery(f.name, debouncedSearchQuery));
     }
     return files;
   }, [currentFolder, debouncedSearchQuery, filesystem, getRecents]);
@@ -666,10 +671,7 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
             {isGridView && (
               <div className="finder-grid-container" onMouseDown={(e) => e.stopPropagation()}>
                 {currentFiles.length === 0 ? (
-                  <div className="finder-empty-state">
-                    <div className="finder-empty-icon"><FinderSVG.EmptyFolder /></div>
-                    <span>This folder is empty.</span>
-                  </div>
+                  <FinderEmpty />
                 ) : (
                   currentFiles.map(file => (
                     <div 
@@ -707,21 +709,7 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
                   ))}
                 </div>
                 {selectedItem && (
-                  <div className="finder-preview-column">
-                    <div className="finder-preview-header">
-                      <div className="finder-preview-icon">{renderIcon(selectedItem, 64)}</div>
-                      <div>
-                        <div className="finder-preview-title">{selectedItem.name}</div>
-                        <div className="finder-preview-type">{selectedItem.type.toUpperCase()}</div>
-                      </div>
-                    </div>
-                    <div className="finder-preview-info">
-                      <div><strong>Size:</strong> {selectedItem.size}</div>
-                      <div><strong>Modified:</strong> {formatDate(selectedItem.modified)}</div>
-                      <div><strong>Kind:</strong> {selectedItem.type === "folder" ? "Folder" : selectedItem.type === "app" ? "Application" : "Document"}</div>
-                    </div>
-                    {selectedItem.preview && <div className="finder-preview-content">{selectedItem.preview}</div>}
-                  </div>
+                  <FinderPreviewPanel file={selectedItem} renderIcon={renderIcon} formatDate={formatDate} className="finder-preview-column" />
                 )}
               </div>
             )}
@@ -731,10 +719,7 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
               <div className="finder-list-wrapper">
                 <div className="finder-list-container">
                   {currentFiles.length === 0 ? (
-                    <div className="finder-empty-state">
-                      <div className="finder-empty-icon"><FinderSVG.EmptyFolder /></div>
-                      <span>This folder is empty.</span>
-                    </div>
+                    <FinderEmpty />
                   ) : (
                     currentFiles.map(file => (
                       <div 
@@ -757,21 +742,7 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
                 </div>
 
                 {selectedItem && (
-                  <div className="finder-preview-panel">
-                    <div className="finder-preview-header">
-                      <div className="finder-preview-icon">{renderIcon(selectedItem, 64)}</div>
-                      <div>
-                        <div className="finder-preview-title">{selectedItem.name}</div>
-                        <div className="finder-preview-type">{selectedItem.type.toUpperCase()}</div>
-                      </div>
-                    </div>
-                    <div className="finder-preview-info">
-                      <div><strong>Size:</strong> {selectedItem.size}</div>
-                      <div><strong>Modified:</strong> {formatDate(selectedItem.modified)}</div>
-                      <div><strong>Kind:</strong> {selectedItem.type === "folder" ? "Folder" : selectedItem.type === "app" ? "Application" : "Document"}</div>
-                    </div>
-                    {selectedItem.preview && <div className="finder-preview-content">{selectedItem.preview}</div>}
-                  </div>
+                  <FinderPreviewPanel file={selectedItem} renderIcon={renderIcon} formatDate={formatDate} className="finder-preview-panel" />
                 )}
               </div>
             )}

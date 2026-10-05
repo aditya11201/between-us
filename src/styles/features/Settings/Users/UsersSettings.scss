@@ -5,7 +5,7 @@ $accent: #007aff;
 $text-primary: #f5f5f7;
 $text-secondary: rgba(255, 255, 255, 0.5);
 $text-tertiary: rgba(255, 255, 255, 0.3);
-$divider: rgba(255, 255, 255, 0.06);
+$divider: vars.$white-06;
 
 // ═══════════════════════════════════════════════════════════════════
 //  USERS & GROUPS SETTINGS
@@ -18,9 +18,9 @@ $divider: rgba(255, 255, 255, 0.06);
     align-items: center;
     gap: 16px;
     padding: 20px;
-    background: rgba(255, 255, 255, 0.04);
+    background: vars.$white-04;
     border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid vars.$white-08;
     margin: 8px 0;
   }
 
@@ -44,7 +44,7 @@ $divider: rgba(255, 255, 255, 0.06);
       position: absolute;
       inset: -4px;
       border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.1);
+      border: 2px solid vars.$white-10;
     }
   }
 
@@ -253,7 +253,7 @@ $divider: rgba(255, 255, 255, 0.06);
     gap: 8px;
     margin-top: 8px;
     padding: 12px;
-    background: rgba(255, 255, 255, 0.04);
+    background: vars.$white-04;
     border-radius: 10px;
   }
 
@@ -261,7 +261,7 @@ $divider: rgba(255, 255, 255, 0.06);
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
+    background: vars.$white-10;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -279,7 +279,7 @@ $divider: rgba(255, 255, 255, 0.06);
     align-items: center;
     gap: 10px;
     padding: 10px;
-    background: rgba(255, 255, 255, 0.04);
+    background: vars.$white-04;
     border-radius: 10px;
     margin-top: 8px;
   }
@@ -288,7 +288,7 @@ $divider: rgba(255, 255, 255, 0.06);
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
+    background: vars.$white-08;
     display: flex;
     align-items: center;
     justify-content: center;

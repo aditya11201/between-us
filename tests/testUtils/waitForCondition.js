@@ -4,14 +4,9 @@ const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 
 export async function waitForCondition(
   condition,
-  {
-    description = "condition",
-    timeout = DEFAULT_TIMEOUT_MS,
-    interval = DEFAULT_INTERVAL_MS,
-    wait = sleep,
-  } = {},
+  { description = "condition", wait = sleep } = {},
 ) {
-  const deadline = Date.now() + timeout;
+  const deadline = Date.now() + DEFAULT_TIMEOUT_MS;
   let lastError;
 
   while (true) {
@@ -27,10 +22,29 @@ export async function waitForCondition(
         ? ` Last error: ${lastError.message}`
         : "";
       throw new Error(
-        `Timed out after ${timeout}ms waiting for ${description}.${detail}`,
+        `Timed out after ${DEFAULT_TIMEOUT_MS}ms waiting for ${description}.${detail}`,
       );
     }
 
-    await wait(Math.min(interval, remaining));
+    await wait(Math.min(DEFAULT_INTERVAL_MS, remaining));
   }
+}
+
+export async function waitForPreviewState(act, container, predicate, description) {
+  await waitForCondition(
+    async () => {
+      let matches = false;
+      await act(async () => {
+        await Promise.resolve();
+        matches = predicate(container);
+      });
+      return matches;
+    },
+    {
+      description,
+      wait: (delay) => act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }),
+    },
+  );
 }

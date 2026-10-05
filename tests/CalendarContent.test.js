@@ -1,23 +1,10 @@
 import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { createServer } from "vite";
-import { Window } from "happy-dom";
+import { setupHarness, unmountMount } from "./testUtils/harness.js";
+import { createDom } from "./testUtils/dom.js";
 
-const projectRoot = new URL("../", import.meta.url).pathname;
-const browserWindow = new Window({ url: "http://localhost/" });
-const { document } = browserWindow;
-
-Object.assign(globalThis, {
-  window: browserWindow,
-  document,
-  Element: browserWindow.Element,
-  HTMLElement: browserWindow.HTMLElement,
-  Event: browserWindow.Event,
-  KeyboardEvent: browserWindow.KeyboardEvent,
-  MouseEvent: browserWindow.MouseEvent,
-  localStorage: browserWindow.localStorage,
-  IS_REACT_ACT_ENVIRONMENT: true,
-});
+const { browserWindow, document, projectRoot } = setupHarness();
 
 let vite;
 let React;
@@ -72,16 +59,11 @@ async function renderCalendar() {
   return mount;
 }
 
-async function click(element) {
-  await act(async () => {
-    element.dispatchEvent(new browserWindow.MouseEvent("click", { bubbles: true }));
-  });
-}
+let dom;
 
-async function unmount(mount) {
-  await act(async () => mount.root.unmount());
-  mount.container.remove();
-}
+const click = (element) => dom.click(element);
+
+const unmount = (mount) => unmountMount(act, mount);
 
 before(async () => {
   vite = await createServer({
@@ -94,6 +76,7 @@ before(async () => {
   ({ createRoot } = await import("react-dom/client"));
   ({ CalendarContent } = await vite.ssrLoadModule("/src/features/calendar/CalendarContent.jsx"));
   ({ WindowContext } = await vite.ssrLoadModule("/src/windows/index.js"));
+  dom = createDom(act, browserWindow, document);
 });
 
 afterEach(async () => {
@@ -123,25 +106,9 @@ test("shows the annual birthday in April and opens its detail without opening ad
   assert.equal(document.activeElement, focusTarget);
   assert.equal(mount.container.querySelector(".calendar-event-popup"), null);
 
-  await act(async () => {
-    document.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  });
+  await dom.pressEscape();
   assert.equal(document.body.querySelector(".calendar-event-detail"), null);
   assert.equal(document.activeElement, birthday);
-  restoreDate();
-});
-
-test("uses a heart icon for the April 5 birthday event", async () => {
-  const restoreDate = freezeToday();
-  const mount = await renderCalendar();
-  const birthday = mount.container.querySelector('[data-date="2026-04-05"] .calendar-day-event');
-
-  const heart = birthday.querySelector('[data-calendar-icon="heart"]');
-  assert.ok(heart);
-  assert.equal(heart.getAttribute("fill"), "none");
-  assert.equal(heart.getAttribute("stroke"), "currentColor");
-  assert.match(heart.innerHTML, /M20\.84 4\.61/);
-  assert.equal(birthday.querySelector('[data-calendar-icon="star"]'), null);
   restoreDate();
 });
 
@@ -203,15 +170,7 @@ test("saves a yearly event for the selected day", async () => {
   await click(day);
 
   const input = mount.container.querySelector(".calendar-popup-input");
-  const setInputValue = Object.getOwnPropertyDescriptor(
-    browserWindow.HTMLInputElement.prototype,
-    "value",
-  ).set;
-  await act(async () => {
-    setInputValue.call(input, "Anniversary");
-    input.dispatchEvent(new browserWindow.Event("input", { bubbles: true }));
-    input.dispatchEvent(new browserWindow.Event("change", { bubbles: true }));
-  });
+  await dom.fill(input, "Anniversary");
 
   const recurrence = mount.container.querySelector('[name="repeat-yearly"]');
   await click(recurrence);

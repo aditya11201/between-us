@@ -1,3 +1,5 @@
+@use "../../base/variables" as *;
+
 .app-window {
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -21,7 +23,7 @@
   }
 
   &:not(.app-window--dragging):not(.app-window--resizing) {
-    transition: transform 0.08s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.08s $easing-ease-out;
   }
   
   &--inactive {
@@ -76,24 +78,16 @@
     }
     
     &--close {
-      background: #ff5f57;
+      background: $tl-close;
     }
     
     &--minimize {
-      background: #ffbd2e;
+      background: $tl-min;
     }
     
     &--zoom {
-      background: #28c840;
+      background: $tl-zoom;
     }
   }
 }
 
-.resize-handle {
-  touch-action: none;
-  contain: strict;
-  
-  &:active {
-    cursor: se-resize;
-  }
-}

@@ -26,15 +26,10 @@ export function ThemeProvider({ children }) {
     setIsLightTheme(prev => !prev);
   }, []);
 
-  const setTheme = useCallback((isLight) => {
-    setIsLightTheme(isLight);
-  }, []);
-
   const value = useMemo(() => ({
     isLightTheme,
     toggleTheme,
-    setTheme,
-  }), [isLightTheme, toggleTheme, setTheme]);
+  }), [isLightTheme, toggleTheme]);
 
   return (
     <ThemeContext.Provider value={value}>

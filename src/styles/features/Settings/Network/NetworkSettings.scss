@@ -1,3 +1,5 @@
+@use "../../../base/variables" as *;
+
 .network-settings-wrapper {
   display: flex;
   flex-direction: column;
@@ -8,7 +10,7 @@
 .sr-icon-badge {
   width: 26px;
   height: 26px;
-  border-radius: 6px;
+  border-radius: $r-sm;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -31,7 +33,7 @@
 .sr-icon-badge {
   width: 26px;
   height: 26px;
-  border-radius: 6px;
+  border-radius: $r-sm;
   display: flex;
   align-items: center;
   justify-content: center;
