@@ -47,10 +47,10 @@ code, pre, [class*="terminal"], [class*="code"], [class*="Terminal"] {
   font-family: var(--monospace-font-family);
 }
 
-.system-font {
-  font-family: var(--system-font-family) !important;
-}
-.monospace-font {
-  font-family: var(--monospace-font-family) !important;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 

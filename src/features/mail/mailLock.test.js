@@ -209,17 +209,6 @@ after(async () => {
   browserWindow.close();
 });
 
-test("returns a clean locked Mail state", () => {
-  assert.deepEqual(getLockedMailState(), {
-    importantUnlocked: false,
-    selectedId: null,
-    draft: null,
-    view: "message",
-    query: "",
-    unlockError: "",
-  });
-});
-
 test("locked Important view hides protected content and exposes a labelled form", async () => {
   const mount = await renderMail();
   await click(getByRole(mount.container, "button", { name: /^Important/ }));

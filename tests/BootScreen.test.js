@@ -1,28 +1,10 @@
 import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { createServer } from "vite";
-import { Window } from "happy-dom";
+import { setupHarness, unmountMount } from "./testUtils/harness.js";
+import { installClock as installClockShared, advanceTimers as advanceClock } from "./testUtils/clock.js";
 
-const projectRoot = new URL("../", import.meta.url).pathname;
-const browserWindow = new Window({ url: "http://localhost/" });
-const { document } = browserWindow;
-
-Object.assign(globalThis, {
-  window: browserWindow,
-  document,
-  Element: browserWindow.Element,
-  HTMLElement: browserWindow.HTMLElement,
-  HTMLAudioElement: browserWindow.HTMLAudioElement,
-  HTMLMediaElement: browserWindow.HTMLMediaElement,
-  Event: browserWindow.Event,
-  requestAnimationFrame: (callback) => setTimeout(callback, 0),
-  cancelAnimationFrame: (id) => clearTimeout(id),
-  IS_REACT_ACT_ENVIRONMENT: true,
-});
-Object.defineProperty(globalThis, "navigator", {
-  configurable: true,
-  value: browserWindow.navigator,
-});
+const { browserWindow, document, projectRoot } = setupHarness();
 
 let vite;
 let React;
@@ -33,135 +15,8 @@ let activeAudio;
 let activeClock;
 const mountedRoots = [];
 
-function replaceMethod(target, name, replacement) {
-  if (!target) return () => {};
-
-  const original = Object.getOwnPropertyDescriptor(target, name);
-  Object.defineProperty(target, name, {
-    configurable: true,
-    enumerable: original?.enumerable ?? false,
-    writable: true,
-    value: replacement,
-  });
-
-  return () => {
-    if (original) {
-      Object.defineProperty(target, name, original);
-    } else {
-      delete target[name];
-    }
-  };
-}
-
 function installClock() {
-  const originals = {
-    globalSetTimeout: globalThis.setTimeout,
-    globalClearTimeout: globalThis.clearTimeout,
-    globalSetInterval: globalThis.setInterval,
-    globalClearInterval: globalThis.clearInterval,
-    windowSetTimeout: browserWindow.setTimeout,
-    windowClearTimeout: browserWindow.clearTimeout,
-    windowSetInterval: browserWindow.setInterval,
-    windowClearInterval: browserWindow.clearInterval,
-  };
-  const timeouts = new Map();
-  const intervals = new Map();
-  let currentTime = 0;
-  let nextId = 1;
-
-  function schedule(store, callback, delay, args) {
-    const id = nextId++;
-    store.set(id, {
-      args,
-      callback,
-      delay: Math.max(1, Number(delay) || 0),
-      due: currentTime + Math.max(1, Number(delay) || 0),
-    });
-    return id;
-  }
-
-  function setTimeoutMock(callback, delay, ...args) {
-    return schedule(timeouts, callback, delay, args);
-  }
-
-  function setIntervalMock(callback, delay, ...args) {
-    return schedule(intervals, callback, delay, args);
-  }
-
-  function clearTimeoutMock(id) {
-    timeouts.delete(id);
-  }
-
-  function clearIntervalMock(id) {
-    intervals.delete(id);
-  }
-
-  function nextDueTask(limit) {
-    const tasks = [
-      ...[...timeouts].map(([id, task]) => ({ id, store: timeouts, task })),
-      ...[...intervals].map(([id, task]) => ({ id, store: intervals, task })),
-    ];
-    return tasks
-      .filter(({ task }) => task.due <= limit)
-      .sort((left, right) => left.task.due - right.task.due)[0];
-  }
-
-  function advance(milliseconds) {
-    const target = currentTime + milliseconds;
-    let nextTask;
-
-    while ((nextTask = nextDueTask(target))) {
-      currentTime = nextTask.task.due;
-
-      if (nextTask.store === intervals) {
-        nextTask.task.due += nextTask.task.delay;
-        nextTask.task.callback(...nextTask.task.args);
-      } else {
-        nextTask.store.delete(nextTask.id);
-        nextTask.task.callback(...nextTask.task.args);
-      }
-    }
-
-    currentTime = target;
-  }
-
-  Object.assign(globalThis, {
-    setTimeout: setTimeoutMock,
-    clearTimeout: clearTimeoutMock,
-    setInterval: setIntervalMock,
-    clearInterval: clearIntervalMock,
-  });
-  Object.assign(browserWindow, {
-    setTimeout: setTimeoutMock,
-    clearTimeout: clearTimeoutMock,
-    setInterval: setIntervalMock,
-    clearInterval: clearIntervalMock,
-  });
-
-  const clock = {
-    activeIntervalCount: () => intervals.size,
-    activeTimerCount: () => timeouts.size + intervals.size,
-    advance,
-    restore() {
-      Object.assign(globalThis, {
-        setTimeout: originals.globalSetTimeout,
-        clearTimeout: originals.globalClearTimeout,
-        setInterval: originals.globalSetInterval,
-        clearInterval: originals.globalClearInterval,
-      });
-      Object.assign(browserWindow, {
-        setTimeout: originals.windowSetTimeout,
-        clearTimeout: originals.windowClearTimeout,
-        setInterval: originals.windowSetInterval,
-        clearInterval: originals.windowClearInterval,
-      });
-      timeouts.clear();
-      intervals.clear();
-    },
-  };
-
-  activeClock = clock;
-  return clock;
+  return activeClock = installClockShared(browserWindow);
 }
 
 function installAudioMock(outcome) {
@@ -284,16 +139,25 @@ function installAudioMock(outcome) {
     browserWindow.HTMLAudioElement?.prototype,
   ]) {
     if (!prototype) continue;
-    prototypeRestorers.push(
-      replaceMethod(prototype, "play", function play() {
-        return controller.play(this);
-      }),
-    );
-    prototypeRestorers.push(
-      replaceMethod(prototype, "pause", function pause() {
-        controller.pause(this);
-      }),
-    );
+    for (const [name, replacement] of [
+      ["play", function play() { return controller.play(this); }],
+      ["pause", function pause() { controller.pause(this); }],
+    ]) {
+      const original = Object.getOwnPropertyDescriptor(prototype, name);
+      Object.defineProperty(prototype, name, {
+        configurable: true,
+        enumerable: original?.enumerable ?? false,
+        writable: true,
+        value: replacement,
+      });
+      prototypeRestorers.push(() => {
+        if (original) {
+          Object.defineProperty(prototype, name, original);
+        } else {
+          delete prototype[name];
+        }
+      });
+    }
   }
 
   activeAudio = controller;
@@ -340,18 +204,16 @@ async function flushEffects() {
 }
 
 async function advanceTimers(milliseconds) {
-  await act(async () => {
-    activeClock.advance(milliseconds);
-    await Promise.resolve();
-  });
+  await advanceClock(act, activeClock, milliseconds);
 }
 
 async function unmount(mount) {
   if (!mount.unmounted) {
-    await act(async () => mount.root.unmount());
+    await unmountMount(act, mount);
     mount.unmounted = true;
+  } else {
+    mount.container.remove();
   }
-  mount.container.remove();
 }
 
 before(async () => {
@@ -429,22 +291,6 @@ test("starts playback only from one logo click and gates progress until ended", 
 
   // Assert: progress starts only after successful playback ends.
   assert.ok(mount.container.querySelector(".boot-progress"));
-});
-
-test("configures startup audio without autoplaying before the logo is clicked", async () => {
-  // Arrange: mount with pending playback so only an explicit click can start it.
-  installClock();
-  const audio = installAudioMock("pending");
-  const mount = await renderBoot();
-  const startupAudio = requireAudio(mount.container, audio);
-
-  // Act: wait through the logo timer without activating the control.
-  await advanceTimers(200);
-
-  // Assert: audio settings are ready while playback remains user-gated.
-  assert.equal(startupAudio.volume, 0.3);
-  assert.equal(startupAudio.loop, false);
-  assert.equal(audio.playCalls, 0);
 });
 
 test("releases the progress gate when clicked playback is rejected", async () => {

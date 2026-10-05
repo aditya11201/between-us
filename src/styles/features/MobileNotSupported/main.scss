@@ -97,17 +97,17 @@ $font-ui    : -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display"
   transition       : background-color 0.15s ease-out, transform 0.1s;
   
   &.tl-close {
-    background     : #ff5f57;
+    background     : $tl-close;
     cursor         : pointer;
   }
   
   &.tl-min {
-    background     : #ffbd2e;
+    background     : $tl-min;
     cursor         : pointer;
   }
   
   &.tl-max {
-    background     : #28c840;
+    background     : $tl-zoom;
     cursor         : pointer;
   }
   
@@ -139,7 +139,7 @@ $font-ui    : -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display"
   width          : 60px;
   height         : 60px;
   border-radius  : 14px;
-  background     : rgba(255, 255, 255, 0.1);
+  background     : $white-10;
   border         : 1px solid $color-border-lighter;
   box-shadow     : 0 4px 12px rgba(0, 0, 0, 0.2);
   display        : flex;
@@ -178,7 +178,7 @@ $font-ui    : -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display"
 
 // ── Блок с характеристиками ──────────────────────────
 .mns-features-box {
-  background     : rgba(255, 255, 255, 0.04);
+  background     : $white-04;
   border-radius  : 10px;
   border         : 1px solid $color-border-light;
   margin-bottom  : 18px;
@@ -193,7 +193,7 @@ $font-ui    : -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display"
   transition     : background 0.2s;
   
   &:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: $white-06;
   }
   
   & + & { border-top: 1px solid $color-border-light; }

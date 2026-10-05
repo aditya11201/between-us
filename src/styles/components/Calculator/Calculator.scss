@@ -1,6 +1,9 @@
+@use "../../base/variables" as *;
+@use "../../base/mixins" as *;
+
 .calculator {
   width: 250px;
-  
+
   background: #242424;
   display: flex;
   flex-direction: column;
@@ -9,7 +12,7 @@
   border-radius: 10px;
   overflow: hidden;
   position: relative;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  @include top-highlight(0.1);
 }
 
 .calculator__header {
@@ -37,12 +40,12 @@
 }
 
 .traffic-light--close {
-  background-color: #ff5f56;
+  background-color: $tl-close;
 }
 .traffic-light--close:active { background-color: #bf4942; }
 
 .traffic-light--minimize {
-  background-color: #ffbd2e;
+  background-color: $tl-min;
 }
 .traffic-light--minimize:active { background-color: #bf8e22; }
 
@@ -144,7 +147,7 @@
 /* Светлая тема */
 .light-theme .calculator {
   background: #f3f3f3;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  @include top-highlight(0.5);
 }
 
 .light-theme .calculator__value {

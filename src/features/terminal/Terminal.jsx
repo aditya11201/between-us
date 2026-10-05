@@ -97,16 +97,8 @@ export function TerminalContent({ openApp }) {
   // ─── ХЕЛПЕРЫ ДЛЯ КОМАНД ──────────────────────────────────────────
 
   const openAppHelper = (appName) => {
-    const appMap = {
-      finder: "finder",
-      settings: "settings",
-      notes: "notes",
-      terminal: "terminal",
-      music: "music",
-      safari: "safari",
-    };
-    const appId = appMap[appName.toLowerCase()];
-    if (appId && openApp) {
+    const appId = String(appName ?? "").toLowerCase();
+    if (["finder", "settings", "notes", "terminal", "music", "safari"].includes(appId) && openApp) {
       openApp(appId);
       return `Opening ${appName}...`;
     } else {

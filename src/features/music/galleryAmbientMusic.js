@@ -1,3 +1,5 @@
+import { clampSliderValue } from "../menubar/MenuBar/sliderMath.js";
+
 export const GALLERY_AMBIENT = Object.freeze({
   TRIGGER_MS: 30_000,
   FADE_IN_MS: 12_000,
@@ -45,7 +47,7 @@ export function computeFadeVolume(elapsedMs, durationMs, target) {
 export function clampVolume(value, fallback = GALLERY_AMBIENT.TARGET_VOLUME) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
-  return Math.min(1, Math.max(0, numeric));
+  return clampSliderValue(numeric, 0, 1);
 }
 // Stall watchdog decision (pure): recover only when the session should still
 // be audible — browser/media stall with the gallery still open. Never fires

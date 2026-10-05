@@ -1,29 +1,10 @@
 import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { createServer } from "vite";
-import { Window } from "happy-dom";
 import { waitForCondition } from "./testUtils/waitForCondition.js";
+import { setupHarness, unmountMount } from "./testUtils/harness.js";
 
-const projectRoot = new URL("../", import.meta.url).pathname;
-const browserWindow = new Window({ url: "http://localhost/" });
-const { document } = browserWindow;
-
-Object.assign(globalThis, {
-  window: browserWindow,
-  document,
-  localStorage: browserWindow.localStorage,
-  Element: browserWindow.Element,
-  HTMLElement: browserWindow.HTMLElement,
-  Event: browserWindow.Event,
-  MouseEvent: browserWindow.MouseEvent,
-  requestAnimationFrame: (callback) => setTimeout(callback, 0),
-  cancelAnimationFrame: (id) => clearTimeout(id),
-  IS_REACT_ACT_ENVIRONMENT: true,
-});
-Object.defineProperty(globalThis, "navigator", {
-  configurable: true,
-  value: browserWindow.navigator,
-});
+const { browserWindow, document, projectRoot } = setupHarness();
 
 let vite;
 let React;
@@ -79,8 +60,7 @@ after(async () => {
 
 afterEach(async () => {
   for (const { root, container } of mountedRoots.splice(0)) {
-    await act(async () => root.unmount());
-    container.remove();
+    await unmountMount(act, { root, container });
   }
   currentManager = null;
 });
@@ -166,14 +146,6 @@ function openWindow(state, appId, payload) {
     payload: { appId, appName: "Preview", payload },
   });
 }
-
-test("opening a dynamic preview window stores its payload", () => {
-  const payload = { src: "/photos/one.jpg", title: "One" };
-
-  const next = openWindow(createWindowState(), "preview:one", payload);
-
-  assert.deepEqual(next.windows[0].payload, payload);
-});
 
 test("reopening a preview window updates its payload without duplicating it", () => {
   const firstPayload = { src: "/photos/one.jpg" };

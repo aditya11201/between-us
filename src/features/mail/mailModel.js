@@ -1,3 +1,5 @@
+import { matchesQuery } from "../../utils/search.js";
+
 function updateMessage(messages, id, update) {
   const current = messages.find((message) => message.id === id);
   if (!current) return messages;
@@ -8,19 +10,16 @@ function updateMessage(messages, id, update) {
 }
 
 export function getVisibleMessages(messages, { mailboxId, categoryId, query, unreadOnly }) {
-  const normalizedQuery = query.trim().toLowerCase();
-
   return messages.filter((message) => {
     const mailboxMatch = mailboxId === "flagged"
       ? message.flagged === true
       : message.mailbox === mailboxId;
     const categoryMatch = !categoryId || message.category === categoryId;
     const unreadMatch = !unreadOnly || message.unread;
-    const textMatch = !normalizedQuery || [
-      message.sender,
-      message.subject,
-      message.preview,
-    ].join(" ").toLowerCase().includes(normalizedQuery);
+    const textMatch = !String(query ?? "").trim() || matchesQuery(
+      [message.sender, message.subject, message.preview].join(" "),
+      query,
+    );
 
     return mailboxMatch && categoryMatch && unreadMatch && textMatch;
   });

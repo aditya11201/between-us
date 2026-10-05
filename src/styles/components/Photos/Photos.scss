@@ -1,3 +1,5 @@
+@use "../../base/variables" as *;
+
 .photos-app {
   --photos-app-bg: #1c1c1c;
   --photos-sidebar-bg: #1f1f1f;
@@ -8,7 +10,7 @@
   --photos-text-muted: rgba(255, 255, 255, 0.42);
   --photos-hover: rgba(255, 255, 255, 0.07);
   --photos-selected: #2783de;
-  --photos-segment-bg: rgba(255, 255, 255, 0.06);
+  --photos-segment-bg: $white-06;
   --photos-segment-active: rgba(255, 255, 255, 0.16);
   --photos-field-bg: rgba(255, 255, 255, 0.07);
   display: flex;
@@ -34,7 +36,7 @@
   --photos-preview-text: #ffffff;
   --photos-preview-text-secondary: rgba(255, 255, 255, 0.68);
   --photos-preview-text-muted: rgba(255, 255, 255, 0.58);
-  --photos-preview-control-bg: rgba(255, 255, 255, 0.06);
+  --photos-preview-control-bg: $white-06;
   --photos-preview-control-hover: rgba(255, 255, 255, 0.12);
   --photos-preview-control-active: rgba(10, 132, 255, 0.24);
   --photos-preview-accent: #0a84ff;
@@ -149,15 +151,15 @@
 }
 
 .photos-preview__traffic-light--close {
-  --photos-preview-light-color: #ff5f57;
+  --photos-preview-light-color: $tl-close;
 }
 
 .photos-preview__traffic-light--minimize {
-  --photos-preview-light-color: #ffbd2e;
+  --photos-preview-light-color: $tl-min;
 }
 
 .photos-preview__traffic-light--zoom {
-  --photos-preview-light-color: #28c840;
+  --photos-preview-light-color: $tl-zoom;
 }
 
 .photos-preview__title {
@@ -369,7 +371,7 @@
   background: var(--photos-preview-panel-bg);
   border: 1px solid var(--photos-preview-border);
   border-radius: 16px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 $white-06;
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
   display: flex;
@@ -516,7 +518,7 @@
   width: min(232px, calc(100% - 16px));
   border: 1px solid var(--photos-preview-border);
   border-radius: 16px;
-  box-shadow: -18px 18px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: -18px 18px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 $white-06;
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
 }
@@ -760,15 +762,15 @@
 }
 
 .photos-window-header__traffic-light--close {
-  background: #ff5f57;
+  background: $tl-close;
 }
 
 .photos-window-header__traffic-light--minimize {
-  background: #ffbd2e;
+  background: $tl-min;
 }
 
 .photos-window-header__traffic-light--maximize {
-  background: #28c840;
+  background: $tl-zoom;
 }
 
 .photos-window-header__title {
@@ -824,7 +826,7 @@
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: $r-sm;
   color: var(--photos-text-secondary);
   background: transparent;
   cursor: pointer;
@@ -869,7 +871,7 @@
   min-height: 28px;
   padding: 5px 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: $r-sm;
   color: var(--photos-text);
   background: transparent;
   cursor: pointer;
@@ -996,7 +998,7 @@
 .photos-segment {
   padding: 4px 12px;
   border: 0;
-  border-radius: 6px;
+  border-radius: $r-sm;
   color: var(--photos-text-secondary);
   background: transparent;
   cursor: pointer;
@@ -1444,16 +1446,3 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .photos-app *,
-  .photos-app *::before,
-  .photos-app *::after,
-  .photos-preview,
-  .photos-preview *,
-  .photos-preview::before,
-  .photos-preview::after,
-  .photos-preview *::before,
-  .photos-preview *::after {
-    transition: none !important;
-  }
-}

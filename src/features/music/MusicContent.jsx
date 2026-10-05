@@ -60,6 +60,7 @@ import {
   serializePlayerState,
 } from "./musicModel.js";
 import { getActiveLyricIndex, parseLRC } from "./lyricsParser.js";
+import { matchesQuery } from "@/utils/search.js";
 
 function formatTime(sec) {
   if (!sec || Number.isNaN(sec)) return "0:00";
@@ -286,6 +287,16 @@ const CollectionCard = memo(function CollectionCard({ artwork, title, subtitle, 
     </article>
   );
 });
+
+function MusicEmpty({ Icon, message, sub, capitalize = false }) {
+  return (
+    <div className="music-empty" role="status">
+      <Icon className="music-empty-icon" />
+      <p style={capitalize ? { textTransform: "capitalize" } : undefined}>{message}</p>
+      {sub && <p className="music-empty-sub">{sub}</p>}
+    </div>
+  );
+}
 
 function TrackRow({ index, song, isActive, isPlaying, badge, onPlay, action }) {
   return (
@@ -958,11 +969,7 @@ export function MusicContent() {
                 onToggle={(id) => handleCardSelect(id, filteredLibrary.filter(isPlayable))}
               />
             ) : (
-              <div className="music-empty" role="status">
-                <FaMusic className="music-empty-icon" />
-                <p>{searchQuery ? "No songs match your search" : "Your library is empty"}</p>
-                <p className="music-empty-sub">Add bundled audio and artwork under src/content/music.</p>
-              </div>
+              <MusicEmpty Icon={FaMusic} message={searchQuery ? "No songs match your search" : "Your library is empty"} sub="Add bundled audio and artwork under src/content/music." />
             )}
           </section>
         );
@@ -976,9 +983,9 @@ export function MusicContent() {
             : VIT_U_ALBUM;
           return { album: { ...meta, artwork: tracks.find((track) => track.artwork)?.artwork ?? "" }, tracks };
         });
-        const albumQuery = searchQuery.trim().toLowerCase();
-        const visibleCurated = curatedEntries.filter(({ album, tracks }) => !albumQuery
-          || album.title.toLowerCase().includes(albumQuery)
+        const hasAlbumQuery = searchQuery.trim().length > 0;
+        const visibleCurated = curatedEntries.filter(({ album, tracks }) => !hasAlbumQuery
+          || matchesQuery(album.title, searchQuery)
           || tracks.length > 0);
         const openCurated = curatedEntries.find(({ album }) => album.id === openAlbumId) ?? null;
         const selected = albums.find((album) => album.key === selectedAlbumKey);
@@ -1058,10 +1065,7 @@ export function MusicContent() {
                   ))}
                 </ol>
               ) : (
-                <div className="music-empty" role="status">
-                  <FaMusic className="music-empty-icon" />
-                  <p>No songs match your search</p>
-                </div>
+                <MusicEmpty Icon={FaMusic} message="No songs match your search" />
               )}
             </div>
           );
@@ -1094,10 +1098,7 @@ export function MusicContent() {
                 })}
               </div>
             ) : (
-              <div className="music-empty" role="status">
-                <FaCompactDisc className="music-empty-icon" />
-                <p>No albums match your search</p>
-              </div>
+              <MusicEmpty Icon={FaCompactDisc} message="No albums match your search" />
             )}
           </section>
         );
@@ -1135,10 +1136,7 @@ export function MusicContent() {
                 ))}
               </div>
             ) : (
-              <div className="music-empty" role="status">
-                <FaUserFriends className="music-empty-icon" />
-                <p>No artists match your search</p>
-              </div>
+              <MusicEmpty Icon={FaUserFriends} message="No artists match your search" />
             )}
           </section>
         );
@@ -1157,10 +1155,7 @@ export function MusicContent() {
                 ))}
               </div>
             ) : (
-              <div className="music-empty" role="status">
-                <FaClock className="music-empty-icon" />
-                <p>{searchQuery ? "No songs match your search" : "No recently added songs"}</p>
-              </div>
+              <MusicEmpty Icon={FaClock} message={searchQuery ? "No songs match your search" : "No recently added songs"} />
             )}
           </section>
         );
@@ -1203,10 +1198,7 @@ export function MusicContent() {
                   ))}
                 </div>
               ) : (
-                <div className="music-empty" role="status">
-                  <FaList className="music-empty-icon" />
-                  <p>No songs in this playlist yet</p>
-                </div>
+                <MusicEmpty Icon={FaList} message="No songs in this playlist yet" />
               )}
               {candidates.length > 0 && (
                 <div className="music-playlist-form">
@@ -1226,11 +1218,11 @@ export function MusicContent() {
             </section>
           );
         }
-        const query = searchQuery.trim().toLowerCase();
+        const query = searchQuery.trim();
         const visiblePlaylists = playlists.flatMap((playlist) => {
           const all = getPlaylistSongs(playlist, librarySongs);
           if (!query) return [{ playlist, songs: all }];
-          if (playlist.name.toLowerCase().includes(query)) return [{ playlist, songs: all }];
+          if (matchesQuery(playlist.name, searchQuery)) return [{ playlist, songs: all }];
           const matched = filterMusicCatalog(all, searchQuery);
           return matched.length ? [{ playlist, songs: matched }] : [];
         });
@@ -1263,10 +1255,7 @@ export function MusicContent() {
                 ))}
               </div>
             ) : (
-              <div className="music-empty" role="status">
-                <FaList className="music-empty-icon" />
-                <p>{searchQuery ? "No playlists match your search" : "No playlists yet"}</p>
-              </div>
+              <MusicEmpty Icon={FaList} message={searchQuery ? "No playlists match your search" : "No playlists yet"} />
             )}
           </section>
         );
@@ -1274,11 +1263,7 @@ export function MusicContent() {
 
       case "radio":
         return (
-          <div className="music-empty">
-            <FaCompactDisc className="music-empty-icon" />
-            <p style={{ textTransform: "capitalize" }}>{activeSection}</p>
-            <p className="music-empty-sub">This section will be available in future updates.</p>
-          </div>
+          <MusicEmpty Icon={FaCompactDisc} message={activeSection} sub="This section will be available in future updates." capitalize />
         );
       default:
         return null;

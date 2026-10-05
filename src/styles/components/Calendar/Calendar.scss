@@ -1,10 +1,10 @@
 @use "../../base/variables" as *;
 
 .calendar {
+  font-family: var(--system-font-family);
   display: flex;
   flex-direction: column;
   height: 100%;
-  font-family: var(--system-font-family);
   background: rgba(255, 255, 255, 0.98);
   overflow: hidden;
 
@@ -42,13 +42,13 @@
     }
 
     &--close {
-      background: #ff5f57;
+      background: $tl-close;
     }
     &--minimize {
-      background: #ffbd2e;
+      background: $tl-min;
     }
     &--zoom {
-      background: #28c840;
+      background: $tl-zoom;
     }
   }
 
@@ -63,7 +63,7 @@
 
   &-toolbar-btn {
     padding: 6px 14px;
-    border-radius: 6px;
+    border-radius: $r-sm;
     border: 1px solid rgba(0, 0, 0, 0.1);
     background: rgba(255, 255, 255, 0.8);
     color: rgba(0, 0, 0, 0.8);
@@ -81,7 +81,7 @@
   &-view-switcher {
     display: flex;
     background: rgba(0, 0, 0, 0.05);
-    border-radius: 6px;
+    border-radius: $r-sm;
     padding: 3px;
     gap: 2px;
   }
@@ -112,7 +112,7 @@
     display: flex;
     align-items: center;
     background: rgba(0, 0, 0, 0.05);
-    border-radius: 6px;
+    border-radius: $r-sm;
     padding: 6px 10px;
     gap: 6px;
   }
@@ -159,7 +159,7 @@
   &-create-btn {
     width: 100%;
     padding: 8px;
-    border-radius: 6px;
+    border-radius: $r-sm;
     border: none;
     background: rgba(0, 122, 255, 0.1);
     color: #007aff;
@@ -196,7 +196,7 @@
     align-items: center;
     gap: 8px;
     padding: 6px 8px;
-    border-radius: 6px;
+    border-radius: $r-sm;
     cursor: pointer;
     transition: background 0.12s;
 
@@ -356,7 +356,7 @@
   &-nav-btn {
     width: 28px;
     height: 28px;
-    border-radius: 6px;
+    border-radius: $r-sm;
     border: 1px solid rgba(0, 0, 0, 0.1);
     background: rgba(255, 255, 255, 0.8);
     color: rgba(0, 0, 0, 0.7);
@@ -375,7 +375,7 @@
 
   &-today-btn {
     padding: 6px 14px;
-    border-radius: 6px;
+    border-radius: $r-sm;
     border: 1px solid rgba(0, 0, 0, 0.1);
     background: rgba(255, 255, 255, 0.8);
     color: rgba(0, 0, 0, 0.8);

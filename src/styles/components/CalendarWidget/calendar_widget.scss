@@ -1,21 +1,4 @@
-.calendar-widget-container {
-  position: absolute;
-  top: 80px;
-  right: 80px;
-  z-index: 100;
-  animation: widgetFadeIn 0.3s ease-out;
-}
-
-@keyframes widgetFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
+@use "../../base/variables" as *;
 
 .calendar-widget {
   width: 260px;
@@ -24,11 +7,10 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 22px;
-  box-shadow: 
+  box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.3),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
+    0 0 0 1px $white-10;
   padding: 18px 20px 22px;
-  font-family: var(--system-font-family);
   display: flex;
   flex-direction: column;
 

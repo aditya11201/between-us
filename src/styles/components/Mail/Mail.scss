@@ -1,3 +1,5 @@
+@use "../../base/variables" as *;
+
 .mail,
 .mail * {
   box-sizing: border-box;
@@ -12,12 +14,12 @@
   --mail-surface: #1e1e1e;
   --mail-border: rgba(255, 255, 255, 0.12);
   --mail-border-strong: rgba(255, 255, 255, 0.18);
-  --mail-row-divider: rgba(255, 255, 255, 0.06);
+  --mail-row-divider: $white-06;
   --mail-text: #fff;
   --mail-text-secondary: rgba(255, 255, 255, 0.72);
   --mail-text-tertiary: rgba(255, 255, 255, 0.44);
   --mail-text-muted: rgba(255, 255, 255, 0.3);
-  --mail-hover: rgba(255, 255, 255, 0.06);
+  --mail-hover: $white-06;
   --mail-selected: rgba(255, 255, 255, 0.11);
   --mail-selected-message: rgba(39, 131, 222, 0.16);
   --mail-field: rgba(255, 255, 255, 0.07);
@@ -207,15 +209,15 @@
 }
 
 .mail .mail__traffic-light--close {
-  background: #ff5f57;
+  background: $tl-close;
 }
 
 .mail .mail__traffic-light--minimize {
-  background: #febc2e;
+  background: $tl-min;
 }
 
 .mail .mail__traffic-light--maximize {
-  background: #28c840;
+  background: $tl-zoom;
 }
 
 .mail__icon-button {
@@ -289,7 +291,7 @@
   gap: 7px;
   padding: 0 6px;
   border: 0;
-  border-radius: 6px;
+  border-radius: $r-sm;
   color: var(--mail-text-secondary);
   cursor: pointer;
   text-align: left;
@@ -509,7 +511,7 @@
   height: 24px;
   padding: 0 12px;
   border: 0;
-  border-radius: 6px;
+  border-radius: $r-sm;
   background: var(--mail-field);
   color: var(--mail-text);
   cursor: pointer;
@@ -628,7 +630,7 @@
   width: 13px;
   height: 13px;
   flex: none;
-  color: #febc2e;
+  color: $tl-min;
 }
 
 .mail__empty-list {
@@ -720,7 +722,7 @@
   flex: 0 1 210px;
   min-width: 0;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: $r-sm;
   background: var(--mail-field);
   color: var(--mail-text-tertiary);
 }
@@ -787,7 +789,7 @@
   width: 100%;
   padding: 7px 9px;
   border: 1px solid var(--mail-border);
-  border-radius: 6px;
+  border-radius: $r-sm;
   outline: 0;
   background: var(--mail-field);
   color: var(--mail-text);
@@ -932,16 +934,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mail__nav-caret,
-  .mail__download-bar span,
-  .mail__menu,
-  .mail__traffic-light,
-  .mail__message,
-  .mail-icon {
-    transition: none;
-  }
-}
 
 .mail-icon {
   position: relative;
@@ -1037,12 +1029,6 @@
   transform-origin: top center;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mail-icon__flap,
-  .mail-icon__shadow {
-    transition: none;
-  }
-}
 
 .mail__lock-backdrop {
   position: absolute;
@@ -1094,7 +1080,7 @@
   box-sizing: border-box;
   padding: 7px 9px;
   border: 1px solid var(--mail-border);
-  border-radius: 6px;
+  border-radius: $r-sm;
   outline: 0;
   background: var(--mail-field);
   color: var(--mail-text);
@@ -1102,7 +1088,7 @@
 
 .mail__lock-error {
   margin: 8px 0 0;
-  color: #ff5f57;
+  color: $tl-close;
   font-size: 12px;
 }
 

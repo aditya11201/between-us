@@ -1,5 +1,6 @@
 import React, { useState, useContext, useMemo, useCallback, memo } from "react";
 import { WindowContext } from "@/windows";
+import { matchesQuery } from "@/utils/search.js";
 import { MENU_SECTIONS, PANELS } from "./SettingsContent/constants.jsx";
 import { SettingsSidebar } from "./SettingsContent/components";
 import { AboutPanel } from "./SettingsContent/panels/AboutPanel";
@@ -19,7 +20,7 @@ const SettingsContent = memo(function SettingsContent({ currentWallpaper, onWall
 
   const filteredSections = useMemo(() =>
     MENU_SECTIONS
-      .map(section => ({ ...section, items: section.items.filter(item => item.label.toLowerCase().includes(searchQuery.toLowerCase())) }))
+      .map(section => ({ ...section, items: section.items.filter(item => matchesQuery(item.label, searchQuery)) }))
       .filter(section => section.items.length > 0),
     [searchQuery]
   );

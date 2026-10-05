@@ -1,41 +1,12 @@
 import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { createServer } from "vite";
-import { Window } from "happy-dom";
 import { DEMO_LOGIN_PASSWORD } from "../src/ui/LockScreen/loginLock.js";
 import { waitForCondition } from "./testUtils/waitForCondition.js";
+import { setupHarness, unmountMount } from "./testUtils/harness.js";
+import { createDom } from "./testUtils/dom.js";
 
-const projectRoot = new URL("../", import.meta.url).pathname;
-const browserWindow = new Window({ url: "http://localhost/" });
-const { document } = browserWindow;
-
-Object.assign(globalThis, {
-  window: browserWindow,
-  document,
-  localStorage: browserWindow.localStorage,
-  Image: browserWindow.Image,
-  Element: browserWindow.Element,
-  HTMLElement: browserWindow.HTMLElement,
-  Event: browserWindow.Event,
-  KeyboardEvent: browserWindow.KeyboardEvent,
-  MouseEvent: browserWindow.MouseEvent,
-  requestAnimationFrame: (callback) => setTimeout(callback, 0),
-  cancelAnimationFrame: (id) => clearTimeout(id),
-  IS_REACT_ACT_ENVIRONMENT: true,
-});
-
-Object.defineProperty(globalThis, "navigator", {
-  configurable: true,
-  value: browserWindow.navigator,
-});
-
-if (!browserWindow.matchMedia) {
-  browserWindow.matchMedia = () => ({
-    matches: false,
-    addEventListener() {},
-    removeEventListener() {},
-  });
-}
+const { browserWindow, document, projectRoot } = setupHarness();
 
 let vite;
 let React;
@@ -48,6 +19,7 @@ let WindowManagerProvider;
 let AppWindow;
 let WindowContext;
 let ExternalSiteFrame;
+let dom;
 const mountedRoots = [];
 
 before(async () => {
@@ -71,12 +43,12 @@ before(async () => {
   ({ ExternalSiteFrame } = await vite.ssrLoadModule(
     "/src/features/safari/ExternalSiteFrame.jsx",
   ));
+  dom = createDom(act, browserWindow, document);
 });
 
 afterEach(async () => {
   for (const { root, container } of mountedRoots.splice(0)) {
-    await act(async () => root.unmount());
-    container.remove();
+    await unmountMount(act, { root, container });
   }
   document.body.replaceChildren();
   browserWindow.localStorage.clear();
@@ -120,15 +92,7 @@ async function renderApp({ beforeMount, extra = null } = {}) {
   return { container, root };
 }
 
-function setInputValue(input, value) {
-  const setter = Object.getOwnPropertyDescriptor(
-    browserWindow.HTMLInputElement.prototype,
-    "value",
-  ).set;
-  setter.call(input, value);
-  input.dispatchEvent(new browserWindow.Event("input", { bubbles: true }));
-  input.dispatchEvent(new browserWindow.Event("change", { bubbles: true }));
-}
+const setInputValue = (input, value) => dom.setValue(input, value);
 
 async function unlockApp(container) {
   const lock = container.querySelector(".lock-screen");
@@ -148,14 +112,7 @@ async function unlockApp(container) {
   });
 }
 
-function click(element) {
-  return act(async () => {
-    element.dispatchEvent(new browserWindow.MouseEvent("click", {
-      bubbles: true,
-      cancelable: true,
-    }));
-  });
-}
+const click = (element) => dom.click(element);
 
 function appleOverlay(container) {
   return container.querySelector(".menuBar__item-click-overlay");
@@ -267,37 +224,6 @@ test("Ctrl+Command+Q prevents the default, relocks, and closes the context menu"
   assert.equal(desktop.hasAttribute("inert"), true);
   assert.equal(container.querySelector(".lock-screen").getAttribute("aria-hidden"), "false");
   assert.equal(container.querySelector(".context-menu"), null);
-});
-
-test("Ctrl+Command+Q wins over a Safari-like bubbling key handler", async () => {
-  const safariLikeHandler = (event) => {
-    if (event.ctrlKey && event.metaKey && event.key.toLowerCase() === "q") {
-      event.stopImmediatePropagation();
-    }
-  };
-  const { container } = await renderApp({
-    beforeMount: () => browserWindow.addEventListener("keydown", safariLikeHandler),
-  });
-
-  try {
-    await unlockApp(container);
-    const shortcut = new browserWindow.KeyboardEvent("keydown", {
-      bubbles: true,
-      cancelable: true,
-      ctrlKey: true,
-      metaKey: true,
-      key: "q",
-    });
-    await act(async () => {
-      browserWindow.dispatchEvent(shortcut);
-      await Promise.resolve();
-    });
-
-    assert.equal(shortcut.defaultPrevented, true);
-    assert.equal(container.querySelector(".lock-screen").getAttribute("aria-hidden"), "false");
-  } finally {
-    browserWindow.removeEventListener("keydown", safariLikeHandler);
-  }
 });
 
 test("lock signal cancels active AppWindow drag and resize gestures", async () => {

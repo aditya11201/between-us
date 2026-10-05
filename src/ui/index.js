@@ -1,4 +1,4 @@
-// UI компоненты — общие переиспользуемые компоненты
+export { default as IntroScreen } from './IntroScreen/IntroScreen';
 export { default as BootScreen } from './BootScreen/BootScreen';
 export { ContextMenu } from './ContextMenu/ContextMenu';
 export { WindowLoading } from './Loaders/WindowLoading';

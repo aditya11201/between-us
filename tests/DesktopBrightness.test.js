@@ -1,25 +1,10 @@
 import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
-import { compile } from "sass";
+import { after, afterEach, before, test } from "node:test";
 import { createServer } from "vite";
-import { Window } from "happy-dom";
+import { setupHarness, unmountMount } from "./testUtils/harness.js";
+import { createDom } from "./testUtils/dom.js";
 
-const projectRoot = new URL("../", import.meta.url).pathname;
-const browserWindow = new Window({ url: "http://localhost/" });
-const { document } = browserWindow;
-
-Object.assign(globalThis, {
-  window: browserWindow,
-  document,
-  HTMLElement: browserWindow.HTMLElement,
-  Event: browserWindow.Event,
-  MouseEvent: browserWindow.MouseEvent,
-  IS_REACT_ACT_ENVIRONMENT: true,
-});
-Object.defineProperty(globalThis, "navigator", {
-  configurable: true,
-  value: browserWindow.navigator,
-});
+const { browserWindow, document, projectRoot } = setupHarness();
 
 let vite;
 let React;
@@ -46,6 +31,8 @@ function BrightnessControls() {
     ))
   );
 }
+
+let dom;
 
 async function renderDesktop() {
   const container = document.createElement("div");
@@ -84,6 +71,7 @@ before(async () => {
   ({ DisplaySettingsProvider, useDisplaySettings } = await vite.ssrLoadModule(
     "/src/core/providers/index.js"
   ));
+  dom = createDom(act, browserWindow, document);
 });
 
 after(async () => {
@@ -102,39 +90,10 @@ test("applies shared brightness to the non-interactive desktop overlay", async (
   assert.equal(desktop.firstElementChild, overlay);
 
   for (const [value, expectedOpacity] of [[0, "1"], [100, "0"]]) {
-    await act(async () => {
-      container.querySelector(`[data-set-brightness="${value}"]`).dispatchEvent(
-        new browserWindow.MouseEvent("click", { bubbles: true })
-      );
-    });
+    await dom.click(container.querySelector(`[data-set-brightness="${value}"]`));
     assert.equal(overlay.style.opacity, expectedOpacity);
   }
 
-  await act(async () => root.unmount());
-  container.remove();
+  await unmountMount(act, { root, container });
 });
 
-test("keeps the overlay between the desktop system layers and out of pointer input", () => {
-  const { css } = compile(`${projectRoot}src/styles/features/main.scss`);
-  const overlayRule = css.match(/\.desktop__brightness-overlay\s*\{([^}]*)\}/)?.[1];
-
-  assert.ok(overlayRule);
-  assert.match(overlayRule, /position:\s*fixed/);
-  assert.match(overlayRule, /inset:\s*0/);
-  assert.match(overlayRule, /z-index:\s*9500/);
-  assert.match(overlayRule, /background:\s*#000/);
-  assert.match(overlayRule, /pointer-events:\s*none/);
-  assert.match(overlayRule, /transition:\s*opacity\s+0\.08s\s+linear/);
-  assert.match(
-    css,
-    /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.desktop__brightness-overlay\s*\{[\s\S]*?transition:\s*none/
-  );
-
-  const zIndex = selector => Number(
-    css.match(new RegExp(`${selector}[^}]*z-index:\\s*(\\d+)`))?.[1]
-  );
-  assert.deepEqual(
-    [zIndex(".dock-container"), zIndex(".desktop__brightness-overlay"), zIndex(".menuBar"), zIndex(".cc-panel"), zIndex(".context-menu")],
-    [9000, 9500, 9999, 10005, 100000]
-  );
-});

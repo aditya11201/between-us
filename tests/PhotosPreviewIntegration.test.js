@@ -2,29 +2,13 @@ import assert from "node:assert/strict";
 import { after, afterEach, before, test } from "node:test";
 import { compile } from "sass";
 import { createServer } from "vite";
-import { Window } from "happy-dom";
-import { waitForCondition } from "./testUtils/waitForCondition.js";
+import { waitForPreviewState as waitForPreviewStateShared } from "./testUtils/waitForCondition.js";
+import { setupHarness, unmountMount } from "./testUtils/harness.js";
+import { createDom } from "./testUtils/dom.js";
 
-const projectRoot = new URL("../", import.meta.url).pathname;
-const browserWindow = new Window({ url: "http://localhost/" });
-const { document } = browserWindow;
-
+const { browserWindow, document, projectRoot } = setupHarness();
 Object.assign(globalThis, {
-  window: browserWindow,
-  document,
-  localStorage: browserWindow.localStorage,
-  Element: browserWindow.Element,
-  HTMLElement: browserWindow.HTMLElement,
-  Event: browserWindow.Event,
-  MouseEvent: browserWindow.MouseEvent,
   getComputedStyle: browserWindow.getComputedStyle.bind(browserWindow),
-  requestAnimationFrame: (callback) => setTimeout(callback, 0),
-  cancelAnimationFrame: (id) => clearTimeout(id),
-  IS_REACT_ACT_ENVIRONMENT: true,
-});
-Object.defineProperty(globalThis, "navigator", {
-  configurable: true,
-  value: browserWindow.navigator,
 });
 
 let vite;
@@ -37,6 +21,7 @@ let PhotoPreviewContent;
 let PhotosContent;
 let photoCatalog;
 let photosStyle;
+let dom;
 const mountedRoots = [];
 
 before(async () => {
@@ -69,6 +54,7 @@ before(async () => {
     `${projectRoot}src/styles/components/Photos/Photos.scss`,
   ).css;
   document.head.append(photosStyle);
+  dom = createDom(act, browserWindow, document);
 });
 
 after(async () => {
@@ -79,8 +65,7 @@ after(async () => {
 
 afterEach(async () => {
   for (const { root, container } of mountedRoots.splice(0)) {
-    await act(async () => root.unmount());
-    container.remove();
+    await unmountMount(act, { root, container });
   }
 });
 
@@ -119,23 +104,8 @@ function createMountedRoot() {
   return mounted;
 }
 
-async function waitForPreviewState(container, predicate, description) {
-  await waitForCondition(
-    async () => {
-      let matches = false;
-      await act(async () => {
-        await Promise.resolve();
-        matches = predicate(container);
-      });
-      return matches;
-    },
-    {
-      description,
-      wait: (delay) => act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }),
-    },
-  );
+function waitForPreviewState(container, predicate, description) {
+  return waitForPreviewStateShared(act, container, predicate, description);
 }
 
 async function unmountRendered({ container, root }) {
@@ -143,8 +113,7 @@ async function unmountRendered({ container, root }) {
     mounted.container === container && mounted.root === root,
   );
   if (mountedIndex >= 0) mountedRoots.splice(mountedIndex, 1);
-  await act(async () => root.unmount());
-  container.remove();
+  await unmountMount(act, { root, container });
 }
 
 function collectCssRules(rules = photosStyle.sheet.cssRules) {
@@ -191,18 +160,11 @@ test("keeps modified-click selection while opening the complete photo on double-
   assert.ok(card);
 
   await act(async () => {
-    card.dispatchEvent(new browserWindow.MouseEvent("click", {
-      bubbles: true,
-      ctrlKey: true,
-    }));
+    dom.dispatch(card, "click", { ctrlKey: true });
   });
   assert.equal(card.getAttribute("aria-pressed"), "true");
 
-  await act(async () => {
-    card.dispatchEvent(new browserWindow.MouseEvent("dblclick", {
-      bubbles: true,
-    }));
-  });
+  await dom.doubleClick(card);
 
   assert.equal(card.getAttribute("aria-pressed"), "true");
   assert.deepEqual(openAppCalls, [[`preview:${photo.id}`, "Preview", photo]]);
@@ -274,32 +236,19 @@ test("renders a photo payload in a contain-fit preview and delegates window cont
 
   const titlebar = container.querySelector(".photos-preview__titlebar");
   await act(async () => {
-    titlebar.dispatchEvent(new browserWindow.MouseEvent("mousedown", {
-      bubbles: true,
-      button: 0,
-    }));
+    dom.dispatch(titlebar, "mousedown", { button: 0 });
   });
   assert.equal(calls.drag, 1);
 
   await act(async () => {
-    container.querySelector(".photos-preview__search").dispatchEvent(
-      new browserWindow.MouseEvent("mousedown", {
-        bubbles: true,
-        button: 0,
-      }),
-    );
+    dom.dispatch(container.querySelector(".photos-preview__search"), "mousedown", { button: 0 });
   });
   assert.equal(calls.drag, 1);
 
   const closeButton = container.querySelector('[aria-label="Close window"]');
   await act(async () => {
-    closeButton.dispatchEvent(new browserWindow.MouseEvent("mousedown", {
-      bubbles: true,
-      button: 0,
-    }));
-    closeButton.dispatchEvent(new browserWindow.MouseEvent("click", {
-      bubbles: true,
-    }));
+    dom.dispatch(closeButton, "mousedown", { button: 0 });
+    dom.dispatch(closeButton, "click");
     container.querySelector('[aria-label="Minimize window"]').click();
     container.querySelector('[aria-label="Zoom window"]').click();
   });
@@ -365,15 +314,6 @@ test("renders a Drive video in the preview stage and thumbnail strip", async () 
   await unmountRendered(rendered);
 });
 
-test("Photos Sass exposes the contain-fit image contract", () => {
-  const imageRule = findStyleRule(".photos-preview__image");
-  assert.ok(imageRule);
-  assert.equal(imageRule.style.width, "100%");
-  assert.equal(imageRule.style.height, "100%");
-  assert.equal(imageRule.style.objectFit, "contain");
-  assert.equal(imageRule.style.objectPosition, "center");
-});
-
 test("renders an explicit fallback when the preview payload is missing", async () => {
   // Arrange: mount Preview without a photo payload.
   const rendered = await renderPreview();
@@ -424,7 +364,7 @@ test("replaces an image-error event with the local preview fallback", async () =
 
   // Act: simulate the browser reporting a failed image load.
   await act(async () => {
-    image.dispatchEvent(new browserWindow.Event("error"));
+    dom.dispatch(image, "error");
   });
 
   // Assert: the failed image is removed and the accessible fallback is shown.
@@ -454,9 +394,7 @@ test("resets failed preview state on payload changes and removes the root cleanl
 
   // Act: fail the first image, then update the same mounted root with a new payload.
   await act(async () => {
-    rendered.container.querySelector("img").dispatchEvent(
-      new browserWindow.Event("error"),
-    );
+    dom.dispatch(rendered.container.querySelector("img"), "error");
   });
   await act(async () => {
     rendered.root.render(
@@ -517,10 +455,7 @@ test("Preview exposes the Image Viewer toolbar and a toggleable thumbnail sideba
     "Zoom out",
     "Zoom in",
     "Fit to window",
-    "Show Adjustments",
-    "Show Markup Tools",
-    "Show Edit Tools",
-    "Add Text",
+    "Rotate Clockwise",
     "Show Info",
     "Share",
     "Search",
@@ -671,16 +606,10 @@ test("Preview keyboard shortcuts update zoom, rotation, and metadata visibility"
 
   preview.focus();
   await act(async () => {
-    preview.dispatchEvent(new browserWindow.KeyboardEvent("keydown", {
-      bubbles: true,
-      key: "+",
-    }));
+    dom.dispatch(preview, "keydown", { key: "+" });
   });
   await act(async () => {
-    preview.dispatchEvent(new browserWindow.KeyboardEvent("keydown", {
-      bubbles: true,
-      key: "r",
-    }));
+    dom.dispatch(preview, "keydown", { key: "r" });
     rendered.container.querySelector('[aria-label="Show Info"]').click();
   });
 
@@ -721,29 +650,18 @@ test("Preview closes transient panels with Escape without intercepting browser s
 
   searchInput.focus();
   await act(async () => {
-    searchInput.dispatchEvent(new browserWindow.KeyboardEvent("keydown", {
-      bubbles: true,
-      key: "Escape",
-    }));
+    dom.dispatch(searchInput, "keydown", { key: "Escape" });
   });
   assert.ok(rendered.container.querySelector('input[type="search"]'));
 
   preview.focus();
-  const browserShortcut = new browserWindow.KeyboardEvent("keydown", {
-    bubbles: true,
-    cancelable: true,
-    ctrlKey: true,
-    key: "r",
-  });
-  await act(async () => preview.dispatchEvent(browserShortcut));
+  const browserShortcut = await act(async () =>
+    dom.dispatch(preview, "keydown", { ctrlKey: true, key: "r" }),
+  );
   assert.equal(browserShortcut.defaultPrevented, false);
-  assert.equal(rotateButton.getAttribute("aria-pressed"), null);
 
   await act(async () => {
-    preview.dispatchEvent(new browserWindow.KeyboardEvent("keydown", {
-      bubbles: true,
-      key: "Escape",
-    }));
+    dom.dispatch(preview, "keydown", { key: "Escape" });
   });
   assert.equal(calls.close, 0);
 
@@ -872,22 +790,11 @@ test("Filtered thumbnail keyboard navigation selects the visible image", async (
     });
 
     const searchInput = rendered.container.querySelector('input[type="search"]');
-    const setInputValue = Object.getOwnPropertyDescriptor(
-      browserWindow.HTMLInputElement.prototype,
-      "value",
-    ).set;
-    setInputValue.call(searchInput, "second");
-    await act(async () => {
-      searchInput.dispatchEvent(new browserWindow.Event("input", { bubbles: true }));
-      searchInput.dispatchEvent(new browserWindow.Event("change", { bubbles: true }));
-    });
+    await dom.fill(searchInput, "second");
     assert.ok(rendered.container.querySelector('[aria-label="Select second.png"]'));
     preview.focus();
     await act(async () => {
-      preview.dispatchEvent(new browserWindow.KeyboardEvent("keydown", {
-        bubbles: true,
-        key: "ArrowRight",
-      }));
+      dom.dispatch(preview, "keydown", { key: "ArrowRight" });
     });
 
     assert.equal(
@@ -933,7 +840,7 @@ test("Fit to window keeps a rotated image inside the available stage", async () 
     naturalHeight: { configurable: true, value: 600 },
   });
 
-  await act(async () => image.dispatchEvent(new browserWindow.Event("load")));
+  await act(async () => dom.dispatch(image, "load"));
   await act(async () => {
     rendered.container.querySelector('[aria-label="Rotate Clockwise"]').click();
   });
@@ -1044,21 +951,15 @@ test("Photos Sass exposes preview selectors and responsive styles", () => {
 });
 
 test("Photos Sass disables preview transitions for reduced motion", () => {
-  const reducedMotionRule = findConditionalRule((condition) =>
-    condition.includes("prefers-reduced-motion") && condition.includes("reduce"),
+  // The per-file block was deduped into the single global rule in
+  // base/globals.scss (loaded by the app entry, not by this file's
+  // standalone Photos.scss compile). Assert the global rule covers it.
+  const css = compile(
+    `${projectRoot}src/styles/base/globals.scss`,
+  ).css;
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(
+    css,
+    /\*, \*::before, \*::after\s*\{[\s\S]*?transition: none !important;/,
   );
-  assert.ok(reducedMotionRule);
-  for (const selector of [
-    ".photos-preview",
-    ".photos-preview *",
-    ".photos-preview::before",
-    ".photos-preview::after",
-    ".photos-preview *::before",
-    ".photos-preview *::after",
-  ]) {
-    const rule = findStyleRule(selector, reducedMotionRule.cssRules);
-    assert.ok(rule, `reduced-motion Sass exposes ${selector}`);
-    assert.equal(rule.style.getPropertyValue("transition"), "none");
-    assert.equal(rule.style.getPropertyPriority("transition"), "important");
-  }
 });

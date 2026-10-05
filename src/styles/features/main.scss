@@ -19,6 +19,7 @@
 @use "./MobileNotSupported/main";
 
 // ─── 4. SYSTEM APPS ────────────────────────────────────────────────
+@use "IntroScreen";
 @use "BootScreen";
 @use "LockScreen";
 @use "Finder";
@@ -43,7 +44,6 @@
 body {
   margin: 0;
   background: $color-bg-body;
-  font-family: var(--system-font-family);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -90,11 +90,6 @@ body.light-theme {
 .desktop__rain { position: fixed; inset: 0; z-index: 50; pointer-events: none; } .desktop__rain canvas { width: 100%; height: 100%; display: block; } .desktop__rain-vignette { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 160px 45px rgba(0, 0, 0, 0.65); }
 
 
-@media (prefers-reduced-motion: reduce) {
-  .desktop__brightness-overlay {
-    transition: none;
-  }
-}
 
 .window {
   contain: layout style paint;
@@ -133,4 +128,10 @@ body.light-theme {
   align-items: center;
   justify-content: center;
   z-index: 10;
+  touch-action: none;
+  contain: strict;
+
+  &:active {
+    cursor: se-resize;
+  }
 }

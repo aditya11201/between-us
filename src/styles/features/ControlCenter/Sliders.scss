@@ -1,3 +1,5 @@
+@use "../../base/variables" as *;
+
 // ─── TEXT COLORS (Dark) ────────────────────────────────────────────
 $text-primary: rgba(255, 255, 255, 0.95);
 $text-secondary: rgba(255, 255, 255, 0.55);
@@ -40,7 +42,7 @@ $shadow-light: 0 12px 30px rgba(0, 0, 0, 0.15), 0 0 0 0.5px rgba(255, 255, 255, 
 .cc-slider-bar {
   width: 100%;
   height: 24px; // Правильная толщина капсулы macOS
-  background: rgba(255, 255, 255, 0.1);
+  background: $white-10;
   border-radius: 12px;
   position: relative;
   cursor: pointer;
