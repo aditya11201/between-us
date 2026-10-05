@@ -134,6 +134,38 @@ export function createStage(canvas, THREE) {
   });
   const dust = new THREE.Points(dustGeometry, dustMaterial);
   scene.add(dust);
+  const htc = document.createElement("canvas");
+  htc.width = 128;
+  htc.height = 128;
+  const htx = htc.getContext("2d");
+  htx.font = "90px Georgia";
+  htx.textAlign = "center";
+  htx.textBaseline = "middle";
+  htx.fillStyle = "#ffffff";
+  htx.fillText("♥", 64, 67);
+  const heartTexture = new THREE.CanvasTexture(htc);
+  const floatingHearts = [];
+  for (let i = 0; i < 12; i++) {
+    const m = new THREE.SpriteMaterial({
+      map: heartTexture,
+      color: i % 2 ? BLUE : WARM,
+      transparent: true,
+      opacity: 0.11,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const s = new THREE.Sprite(m);
+    s.userData = {
+      x: (Math.random() - 0.5) * 25,
+      y: (Math.random() - 0.5) * 17,
+      z: -5 + Math.random() * 4,
+      speed: 0.28 + Math.random() * 0.18,
+      phase: Math.random() * Math.PI * 2,
+      size: 0.045 + Math.random() * 0.045,
+    };
+    scene.add(s);
+    floatingHearts.push(s);
+  }
   const clock = new THREE.Clock();
   const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
   let dragX = null;
