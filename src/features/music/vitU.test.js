@@ -3,18 +3,18 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { compile } from "sass";
-import { VIT_U_ALBUM, VIT_U_TRACKS } from "./vitU.js";
+import { VIT_U_PLAYLIST, VIT_U_TRACKS } from "./vitU.js";
 
 const contentSource = readFileSync(new URL("./MusicContent.jsx", import.meta.url), "utf8");
 const styleSource = compile(
   fileURLToPath(new URL("../../styles/components/Musics/Music.scss", import.meta.url)),
 ).css;
 
-test("keeps the vit u album identity", () => {
-  assert.equal(VIT_U_ALBUM.id, "vit-u");
-  assert.equal(VIT_U_ALBUM.title, "vit u");
-  assert.equal(VIT_U_ALBUM.spotifyUrl, "https://open.spotify.com/playlist/0o45Hi4AIm48q2Y66aCxYJ");
-  assert.notEqual(VIT_U_ALBUM.description.trim(), "");
+test("keeps the vit u playlist identity", () => {
+  assert.equal(VIT_U_PLAYLIST.id, "vit-u");
+  assert.equal(VIT_U_PLAYLIST.title, "vit u");
+  assert.equal(VIT_U_PLAYLIST.spotifyUrl, "https://open.spotify.com/playlist/0o45Hi4AIm48q2Y66aCxYJ");
+  assert.notEqual(VIT_U_PLAYLIST.description.trim(), "");
 });
 
 test("keeps 50 ordered tracks with explicit flags on nine rows", () => {
@@ -48,10 +48,9 @@ test("keeps 50 ordered tracks with explicit flags on nine rows", () => {
   assert.equal(VIT_U_TRACKS[49].title, "Sick Feeling");
 });
 
-test("pins the vit u Albums template wiring", () => {
-  assert.match(contentSource, /VIT_U_TRACKS/);
-  assert.match(contentSource, /VIT_U_ALBUM/);
-  assert.match(contentSource, /openAlbumId/);
+test("pins the vit u Playlists template wiring", () => {
+  assert.match(contentSource, /VIT_U_PLAYLIST/);
+  assert.match(contentSource, /case "playlists"/);
   assert.match(contentSource, /music-shelf--grid/);
   assert.match(styleSource, /\.music-album-tracks/);
   assert.match(contentSource, /Audio coming soon/);

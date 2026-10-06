@@ -7,7 +7,7 @@
 // - Wire into musicCatalog.js later; reuse the ids below as catalog ids.
 // Source: private "vit u" playlist (pupipu and Ramadhan, 50 songs, about 3 hr).
 // Album cells truncated by the Spotify UI were resolved to full names via web search.
-export const VIT_U_ALBUM = {
+export const VIT_U_PLAYLIST = {
   id: "vit-u",
   title: "vit u",
   spotifyUrl: "https://open.spotify.com/playlist/0o45Hi4AIm48q2Y66aCxYJ",
