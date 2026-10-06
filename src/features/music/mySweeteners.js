@@ -5,7 +5,7 @@
 // - Per-track audio: src/content/music/My Sweeteners/<NN> - <Artist> - <Title>.wasm (mp4)
 // - Per-track artwork: src/content/music/My Sweeteners/<NN> - <Artist> - <Title>.webp
 // - Wire into musicCatalog.js later; reuse the ids below as catalog ids.
-export const MY_SWEETENERS_ALBUM = {
+export const MY_SWEETENERS_PLAYLIST = {
   id: "my-sweeteners",
   title: "My Sweeteners",
   spotifyUrl: "https://open.spotify.com/playlist/102WG5C4Ohu8j3mQ81vM9E",

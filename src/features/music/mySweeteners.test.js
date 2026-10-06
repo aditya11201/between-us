@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { compile } from "sass";
 import {
-  MY_SWEETENERS_ALBUM,
+  MY_SWEETENERS_PLAYLIST,
   MY_SWEETENERS_TRACKS,
 } from "./mySweeteners.js";
 
@@ -13,11 +13,11 @@ const styleSource = compile(
   fileURLToPath(new URL("../../styles/components/Musics/Music.scss", import.meta.url)),
 ).css;
 
-test("keeps the My Sweeteners album identity", () => {
-  assert.equal(MY_SWEETENERS_ALBUM.id, "my-sweeteners");
-  assert.equal(MY_SWEETENERS_ALBUM.title, "My Sweeteners");
+test("keeps the My Sweeteners playlist identity", () => {
+  assert.equal(MY_SWEETENERS_PLAYLIST.id, "my-sweeteners");
+  assert.equal(MY_SWEETENERS_PLAYLIST.title, "My Sweeteners");
   assert.equal(
-    MY_SWEETENERS_ALBUM.description,
+    MY_SWEETENERS_PLAYLIST.description,
     "This playlist is a timeline of my heart. Every song marks exactly what I felt for you in that moment. If you ever wonder how I felt, just look at the date, press play, and listen.",
   );
 });
@@ -46,9 +46,13 @@ test("keeps 34 ordered tracks with explicit flags on 24, 26, and 27", () => {
   assert.equal(MY_SWEETENERS_TRACKS[33].title, "Take A Chance With Me");
 });
 
-test("pins the Albums template wiring", () => {
-  assert.match(contentSource, /case "albums"/);
-  assert.match(contentSource, /MY_SWEETENERS_TRACKS/);
+test("pins the Playlists template wiring", () => {
+  assert.match(contentSource, /case "playlists"/);
+  assert.match(contentSource, /MY_SWEETENERS_PLAYLIST/);
+  assert.match(contentSource, /its-about-you/);
+  assert.match(contentSource, /It's About You/);
+  assert.match(contentSource, /case "songs"/);
+  assert.match(contentSource, /aria-label="Songs"/);
   assert.match(styleSource, /\.music-album-tracks/);
 });
 

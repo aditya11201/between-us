@@ -36,8 +36,8 @@ import {
   MUSIC_LOCAL_EVENT,
   ambientState,
 } from "./galleryAmbientMusic";
-import { MY_SWEETENERS_ALBUM, MY_SWEETENERS_TRACKS } from "./mySweeteners.js";
-import { VIT_U_ALBUM, VIT_U_TRACKS } from "./vitU.js";
+import { MY_SWEETENERS_PLAYLIST } from "./mySweeteners.js";
+import { VIT_U_PLAYLIST } from "./vitU.js";
 import {
   PLAYER_STORAGE_KEY,
   PLAYLISTS_STORAGE_KEY,
@@ -62,6 +62,11 @@ import {
 import { getActiveLyricIndex, parseLRC } from "./lyricsParser.js";
 import { matchesQuery } from "@/utils/search.js";
 
+// ponytail: stored ids validate against the full library (5 playable + 84
+// templates) so playlist entries and resume position survive for template
+// songs once their audio lands.
+const FULL_MUSIC_LIBRARY = [...MUSIC_CATALOG, ...TEMPLATE_SONGS];
+
 function formatTime(sec) {
   if (!sec || Number.isNaN(sec)) return "0:00";
   const m = Math.floor(sec / 60);
@@ -70,11 +75,11 @@ function formatTime(sec) {
 }
 
 const getInitialPlayerState = () => {
-  if (typeof window === "undefined") return restorePlayerState(null, MUSIC_CATALOG);
+  if (typeof window === "undefined") return restorePlayerState(null, FULL_MUSIC_LIBRARY);
   try {
     const restored = restorePlayerState(
       window.localStorage.getItem(PLAYER_STORAGE_KEY),
-      MUSIC_CATALOG,
+      FULL_MUSIC_LIBRARY,
     );
     // ponytail: the ambient track is gallery-timed, never restored — IDM
     // grabs the audio when a persisted activeId auto-loads it on next boot.
@@ -83,7 +88,7 @@ const getInitialPlayerState = () => {
     }
     return restored;
   } catch {
-    return restorePlayerState(null, MUSIC_CATALOG);
+    return restorePlayerState(null, FULL_MUSIC_LIBRARY);
   }
 };
 // ponytail: the ambient track is gallery-timed, never restored — IDM grabs
@@ -112,145 +117,6 @@ function isCurrentAudioSource(audio, expectedSource, audioRef, audioSourceRef) {
     && currentSource.generation === expectedSource.generation;
 }
 
-const SongCard = memo(function SongCard({ song, isActive, isPlaying, onSelect, onToggle }) {
-  const [artworkFailed, setArtworkFailed] = useState(false);
-
-  return (
-    <article
-      className={`music-card${isActive ? " music-card--active" : ""}${isPlaying ? " music-card--playing" : ""}`}
-    >
-      <button
-        type="button"
-        className="music-card-main"
-        aria-label={`${isPlaying ? "Pause" : "Play"} ${song.title} by ${song.artist}`}
-        aria-pressed={isPlaying}
-        onClick={() => onSelect(song.id)}
-      >
-        <div className="music-card-art">
-          {artworkFailed ? (
-            <div className="music-card-art-fallback" aria-hidden="true">
-              <FaCompactDisc />
-            </div>
-          ) : (
-            <img
-              src={song.artwork}
-              alt={`${song.title} artwork`}
-              onError={() => setArtworkFailed(true)}
-              loading="lazy"
-              draggable={false}
-            />
-          )}
-          {isPlaying && (
-            <span className="music-card-equalizer" aria-hidden="true">
-              <i /><i /><i />
-            </span>
-          )}
-        </div>
-        <div className="music-card-meta">
-          <strong>{song.title}</strong>
-          {song.explicit && <span className="music-card-explicit">E</span>}
-          <span>{song.artist}</span>
-        </div>
-      </button>
-      <button
-        type="button"
-        className="music-card-play"
-        aria-label={`${isPlaying ? "Pause" : "Play"} ${song.title}`}
-        aria-pressed={isPlaying}
-        onClick={() => onToggle(song.id)}
-      >
-        {isPlaying ? <FaPause /> : <FaPlay />}
-      </button>
-    </article>
-  );
-});
-
-function MusicShelf({ songs, gridMode, activeId, isPlaying, onSelect, onToggle }) {
-  const shelfRef = useRef(null);
-  const [navigation, setNavigation] = useState({ previous: false, next: false });
-
-  const updateNavigation = useCallback(() => {
-    const shelf = shelfRef.current;
-    if (!shelf || gridMode) {
-      setNavigation({ previous: false, next: false });
-      return;
-    }
-    setNavigation({
-      previous: shelf.scrollLeft > 4,
-      next: shelf.scrollLeft < shelf.scrollWidth - shelf.clientWidth - 4,
-    });
-  }, [gridMode]);
-
-  useEffect(() => {
-    const shelf = shelfRef.current;
-    if (!shelf) return undefined;
-    updateNavigation();
-    shelf.addEventListener("scroll", updateNavigation, { passive: true });
-    window.addEventListener("resize", updateNavigation);
-    const resizeObserver = typeof ResizeObserver === "function"
-      ? new ResizeObserver(updateNavigation)
-      : null;
-    resizeObserver?.observe(shelf);
-    return () => {
-      shelf.removeEventListener("scroll", updateNavigation);
-      window.removeEventListener("resize", updateNavigation);
-      resizeObserver?.disconnect();
-    };
-  }, [songs.length, gridMode, updateNavigation]);
-
-  const scrollShelf = (direction) => {
-    const shelf = shelfRef.current;
-    shelf?.scrollBy({
-      left: direction * (shelf?.clientWidth || 0) * 0.85,
-      behavior: typeof window !== "undefined"
-        && typeof window.matchMedia === "function"
-        && window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
-    });
-  };
-
-  return (
-    <div className="music-shelf-wrap">
-      {!gridMode && navigation.previous && (
-        <button
-          type="button"
-          className="music-shelf-arrow music-shelf-arrow--previous"
-          onClick={() => scrollShelf(-1)}
-          aria-label="Scroll songs left"
-        >
-          <FaChevronLeft />
-        </button>
-      )}
-      <div
-        ref={shelfRef}
-        className={`music-shelf${gridMode ? " music-shelf--grid" : ""}`}
-        aria-label="Song list"
-      >
-        {songs.map((song) => (
-          <SongCard
-            key={song.id}
-            song={song}
-            isActive={song.id === activeId}
-            isPlaying={song.id === activeId && isPlaying}
-            onSelect={onSelect}
-            onToggle={onToggle}
-          />
-        ))}
-      </div>
-      {!gridMode && navigation.next && (
-        <button
-          type="button"
-          className="music-shelf-arrow music-shelf-arrow--next"
-          onClick={() => scrollShelf(1)}
-          aria-label="Scroll songs right"
-        >
-          <FaChevronRight />
-        </button>
-      )}
-    </div>
-  );
-}
 
 const CollectionCard = memo(function CollectionCard({ artwork, title, subtitle, label, onOpen, note }) {
   const [artworkFailed, setArtworkFailed] = useState(false);
@@ -343,8 +209,6 @@ export function MusicContent() {
   const [repeat, setRepeat] = useState("none");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSection, setActiveSection] = useState("songs");
-  const [openAlbumId, setOpenAlbumId] = useState(null);
-  const [gridMode, setGridMode] = useState(false);
   const [playbackError, setPlaybackError] = useState(null);
   const [lyricFx, setLyricFx] = useState({ armed: false, songId: null });
   const [sourceLoadRequest, setSourceLoadRequest] = useState(0);
@@ -353,11 +217,11 @@ export function MusicContent() {
   const [selectedAlbumKey, setSelectedAlbumKey] = useState(null);
   const [selectedArtistKey, setSelectedArtistKey] = useState(null);
   const [playlists, setPlaylists] = useState(() => {
-    if (typeof window === "undefined") return restorePlaylists(null, MUSIC_CATALOG);
+    if (typeof window === "undefined") return restorePlaylists(null, FULL_MUSIC_LIBRARY);
     try {
-      return restorePlaylists(window.localStorage.getItem(PLAYLISTS_STORAGE_KEY), MUSIC_CATALOG);
+      return restorePlaylists(window.localStorage.getItem(PLAYLISTS_STORAGE_KEY), FULL_MUSIC_LIBRARY);
     } catch {
-      return restorePlaylists(null, MUSIC_CATALOG);
+      return restorePlaylists(null, FULL_MUSIC_LIBRARY);
     }
   });
   const [selectedPlaylistId, setSelectedPlaylistId] = useState(null);
@@ -944,50 +808,30 @@ export function MusicContent() {
 
   const renderMainContent = () => {
     switch (activeSection) {
-      case "songs":
+      case "songs": {
+        const visible = searchQuery ? filteredLibrary : librarySongs;
+        const playableContext = visible.filter(isPlayable);
         return (
-          <section className="music-library" aria-label="It's About You">
+          <section className="music-library" aria-label="Songs">
             <header className="music-library-header">
-              <h1>It's About You</h1>
-              <button
-                type="button"
-                className="music-see-all"
-                onClick={() => setGridMode((value) => !value)}
-                aria-pressed={gridMode}
-              >
-                {gridMode ? "See Less" : "See All"}
-                {gridMode ? <FaChevronLeft /> : <FaChevronRight />}
-              </button>
+              <h1>Songs</h1>
+              <p>{`${visible.length} songs`}</p>
             </header>
-            {filteredLibrary.filter(isPlayable).length ? (
-              <MusicShelf
-                songs={filteredLibrary.filter(isPlayable)}
-                gridMode={gridMode}
-                activeId={activeId}
-                isPlaying={effectivePlaying}
-                onSelect={(id) => handleCardSelect(id, filteredLibrary.filter(isPlayable))}
-                onToggle={(id) => handleCardSelect(id, filteredLibrary.filter(isPlayable))}
-              />
+            {visible.length ? (
+              <div className="music-track-list">
+                {visible.map((song, index) => (
+                  <TrackRow key={song.id} index={index} song={song} isActive={song.id === activeId} isPlaying={song.id === activeId && effectivePlaying} badge={isPlayable(song) ? null : "Soon"} onPlay={() => handleCardSelect(song.id, playableContext)} action={null} />
+                ))}
+              </div>
             ) : (
               <MusicEmpty Icon={FaMusic} message={searchQuery ? "No songs match your search" : "Your library is empty"} sub="Add bundled audio and artwork under src/content/music." />
             )}
           </section>
         );
+      }
       case "albums": {
         const visible = searchQuery ? filteredLibrary : librarySongs;
         const albums = groupAlbums(visible.filter(isPlayable));
-        const curatedEntries = ["My Sweeteners", "vit u"].map((collection) => {
-          const tracks = filteredLibrary.filter((song) => song.collection === collection);
-          const meta = collection === "My Sweeteners"
-            ? MY_SWEETENERS_ALBUM
-            : VIT_U_ALBUM;
-          return { album: { ...meta, artwork: tracks.find((track) => track.artwork)?.artwork ?? "" }, tracks };
-        });
-        const hasAlbumQuery = searchQuery.trim().length > 0;
-        const visibleCurated = curatedEntries.filter(({ album, tracks }) => !hasAlbumQuery
-          || matchesQuery(album.title, searchQuery)
-          || tracks.length > 0);
-        const openCurated = curatedEntries.find(({ album }) => album.id === openAlbumId) ?? null;
         const selected = albums.find((album) => album.key === selectedAlbumKey);
         if (selected) {
           return (
@@ -1006,96 +850,16 @@ export function MusicContent() {
             </section>
           );
         }
-        const renderCuratedAlbum = (album, tracks) => {
-          const albumTracks = tracks;
-          const playableTracks = albumTracks.filter(isPlayable);
-          return (
-            <div key={album.id}>
-              <button type="button" className="music-album-back" onClick={() => setOpenAlbumId(null)}>
-                <FaChevronLeft /> Albums
-              </button>
-              <div className="music-album">
-                <div className="music-album-cover" aria-hidden="true">
-                  <FaCompactDisc />
-                </div>
-                <div className="music-album-info">
-                  <h2>{album.title}</h2>
-                  <p>{album.description}</p>
-                  <span>{`${tracks.length} songs`}</span>
-                  {playableTracks.length === 0 && (
-                    <span className="music-album-template-note">Audio coming soon — tracklist template only</span>
-                  )}
-                </div>
-              </div>
-              {playableTracks.length > 0 && (
-                <button
-                  type="button"
-                  className="music-play-all-btn"
-                  onClick={() => handleCardSelect(playableTracks[0].id, playableTracks)}
-                >
-                  Play All
-                </button>
-              )}
-              {albumTracks.length ? (
-                <ol className="music-album-tracks">
-                  {albumTracks.map((track) => (
-                    <li key={track.id} className={`music-album-row${isPlayable(track) ? "" : " music-album-row--template"}`}>
-                      <button
-                        type="button"
-                        className="music-album-hit"
-                        disabled={!isPlayable(track)}
-                        onClick={() => handleCardSelect(track.id, playableTracks)}
-                        aria-label={`${isPlayable(track) ? "Play" : "Coming soon"} ${track.title} by ${track.artist}`}
-                      >
-                        <span className="music-album-num">{tracks.indexOf(track) + 1}</span>
-                        <span className="music-album-thumb" aria-hidden="true">
-                          <FaCompactDisc />
-                        </span>
-                        <span className="music-album-meta">
-                          <span className="music-album-title">
-                            {track.title}
-                            {track.explicit ? <span className="music-album-explicit">E</span> : null}
-                            {!isPlayable(track) && <span className="music-album-soon">Soon</span>}
-                          </span>
-                          <span className="music-album-sub">{`${track.artist} • ${track.album}`}</span>
-                        </span>
-                        <span className="music-album-duration">{track.duration}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <MusicEmpty Icon={FaMusic} message="No songs match your search" />
-              )}
-            </div>
-          );
-        };
         return (
           <section className="music-library" aria-label="Albums">
             <header className="music-library-header">
               <h1>Albums</h1>
             </header>
-            {openCurated ? (
-              renderCuratedAlbum(openCurated.album, openCurated.tracks)
-            ) : albums.length || visibleCurated.length ? (
+            {albums.length ? (
               <div className="music-shelf music-shelf--grid" aria-label="Album list">
                 {albums.map((album) => (
                   <CollectionCard key={album.key} artwork={album.artwork} title={album.name} subtitle={`${album.artist} • ${album.count} songs`} label="Album" onOpen={() => setSelectedAlbumKey(album.key)} />
                 ))}
-                {visibleCurated.map(({ album, tracks }) => {
-                  const playableCount = tracks.filter(isPlayable).length;
-                  return (
-                    <CollectionCard
-                      key={album.id}
-                      artwork={album.artwork}
-                      title={album.title}
-                      subtitle={`${tracks.length} songs`}
-                      label="Album"
-                      note={playableCount === 0 ? "Audio coming soon" : `${playableCount} playable`}
-                      onOpen={() => setOpenAlbumId(album.id)}
-                    />
-                  );
-                })}
               </div>
             ) : (
               <MusicEmpty Icon={FaCompactDisc} message="No albums match your search" />
@@ -1161,7 +925,83 @@ export function MusicContent() {
         );
       }
       case "playlists": {
-        const selected = playlists.find((playlist) => playlist.id === selectedPlaylistId);
+        // ponytail: built-ins render above user lists and stay locked — no
+        // rename/delete/add/remove controls, same detail UI as before.
+        const builtIns = [
+          { playlist: { id: "its-about-you", title: "It's About You", description: "Every song saved in this library, in one place." }, songs: filteredLibrary.filter((song) => !song.collection), builtIn: true },
+          ...[MY_SWEETENERS_PLAYLIST, VIT_U_PLAYLIST].map((meta) => {
+            const tracks = filteredLibrary.filter((song) => song.collection === meta.title);
+            return {
+              playlist: { ...meta, name: meta.title, songIds: tracks.map((track) => track.id) },
+              songs: tracks,
+              builtIn: true,
+            };
+          }),
+        ];
+        const selectedEntry = builtIns.find(({ playlist }) => playlist.id === selectedPlaylistId) ?? null;
+        const selected = selectedEntry?.playlist ?? playlists.find((playlist) => playlist.id === selectedPlaylistId);
+        if (selectedEntry) {
+          const { playlist, songs: entrySongs } = selectedEntry;
+          const playableTracks = entrySongs.filter(isPlayable);
+          return (
+            <section className="music-library" aria-label={playlist.title}>
+              <button type="button" className="music-detail-back" onClick={() => { setSelectedPlaylistId(null); setRenameError(null); }}>‹ Playlists</button>
+              <div className="music-album">
+                <div className="music-album-cover" aria-hidden="true">
+                  <FaCompactDisc />
+                </div>
+                <div className="music-album-info">
+                  <h2>{playlist.title}</h2>
+                  <p>{playlist.description}</p>
+                  <span>{`${entrySongs.length} songs`}</span>
+                  {playableTracks.length === 0 && (
+                    <span className="music-album-template-note">Audio coming soon — tracklist template only</span>
+                  )}
+                </div>
+              </div>
+              {playableTracks.length > 0 && (
+                <button
+                  type="button"
+                  className="music-play-all-btn"
+                  onClick={() => handleCardSelect(playableTracks[0].id, playableTracks)}
+                >
+                  Play All
+                </button>
+              )}
+              {entrySongs.length ? (
+                <ol className="music-album-tracks">
+                  {entrySongs.map((track) => (
+                    <li key={track.id} className={`music-album-row${isPlayable(track) ? "" : " music-album-row--template"}`}>
+                      <button
+                        type="button"
+                        className="music-album-hit"
+                        disabled={!isPlayable(track)}
+                        onClick={() => handleCardSelect(track.id, playableTracks)}
+                        aria-label={`${isPlayable(track) ? "Play" : "Coming soon"} ${track.title} by ${track.artist}`}
+                      >
+                        <span className="music-album-num">{entrySongs.indexOf(track) + 1}</span>
+                        <span className="music-album-thumb" aria-hidden="true">
+                          <FaCompactDisc />
+                        </span>
+                        <span className="music-album-meta">
+                          <span className="music-album-title">
+                            {track.title}
+                            {track.explicit ? <span className="music-album-explicit">E</span> : null}
+                            {!isPlayable(track) && <span className="music-album-soon">Soon</span>}
+                          </span>
+                          <span className="music-album-sub">{`${track.artist} • ${track.album}`}</span>
+                        </span>
+                        {track.duration && <span className="music-album-duration">{track.duration}</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <MusicEmpty Icon={FaMusic} message="No songs match your search" />
+              )}
+            </section>
+          );
+        }
         if (selected) {
           const detailSongs = getPlaylistSongs(selected, librarySongs);
           const candidates = librarySongs.filter((song) => !selected.songIds.includes(song.id));
@@ -1219,6 +1059,9 @@ export function MusicContent() {
           );
         }
         const query = searchQuery.trim();
+        const visibleBuiltIns = builtIns.filter(({ playlist, songs }) => !query
+          || matchesQuery(playlist.title, searchQuery)
+          || songs.length > 0);
         const visiblePlaylists = playlists.flatMap((playlist) => {
           const all = getPlaylistSongs(playlist, librarySongs);
           if (!query) return [{ playlist, songs: all }];
@@ -1245,8 +1088,19 @@ export function MusicContent() {
               }}>New Playlist</button>
             </div>
             {playlistError && <p className="music-inline-error" role="alert">{playlistError}</p>}
-            {visiblePlaylists.length ? (
+            {visibleBuiltIns.length || visiblePlaylists.length ? (
               <div className="music-shelf music-shelf--grid" aria-label="Playlist list">
+                {visibleBuiltIns.map(({ playlist, songs: entrySongs }) => {
+                  const playableCount = entrySongs.filter(isPlayable).length;
+                  const note = entrySongs.some((track) => track.collection)
+                    ? (playableCount === 0 ? "Audio coming soon" : `${playableCount} playable`)
+                    : undefined;
+                  return (
+                    <div key={playlist.id} className="music-playlist-card">
+                      <CollectionCard artwork={entrySongs.find((track) => track.artwork)?.artwork ?? ""} title={playlist.title} subtitle={`${entrySongs.length} songs`} label="Playlist" note={note} onOpen={() => { setSelectedPlaylistId(playlist.id); setRenameError(null); }} />
+                    </div>
+                  );
+                })}
                 {visiblePlaylists.map(({ playlist, songs: playlistSongs }) => (
                   <div key={playlist.id} className="music-playlist-card">
                     <CollectionCard artwork={playlistSongs[0]?.artwork} title={playlist.name} subtitle={`${playlistSongs.length} songs`} label="Playlist" onOpen={() => { setSelectedPlaylistId(playlist.id); setRenameDraft(playlist.name); setRenameError(null); setAddSongId(""); }} />
@@ -1425,7 +1279,7 @@ export function MusicContent() {
                 type="button"
                 key={id}
                 className={`music-sidebar-item${activeSection === id ? " active" : ""}`}
-                onClick={() => { setActiveSection(id); setSelectedAlbumKey(null); setSelectedArtistKey(null); setSelectedPlaylistId(null); setOpenAlbumId(null); }}
+                onClick={() => { setActiveSection(id); setSelectedAlbumKey(null); setSelectedArtistKey(null); setSelectedPlaylistId(null); }}
               >
                 <span className="music-sidebar-icon">{icon}</span>
                 <span className="music-sidebar-label">{label}</span>
@@ -1438,7 +1292,7 @@ export function MusicContent() {
             <button
               type="button"
               className={`music-sidebar-item${activeSection === "radio" ? " active" : ""}`}
-              onClick={() => { setActiveSection("radio"); setSelectedAlbumKey(null); setSelectedArtistKey(null); setSelectedPlaylistId(null); setOpenAlbumId(null); }}
+              onClick={() => { setActiveSection("radio"); setSelectedAlbumKey(null); setSelectedArtistKey(null); setSelectedPlaylistId(null); }}
             >
               <span className="music-sidebar-icon"><FaPodcast /></span>
               <span className="music-sidebar-label">Radio</span>
