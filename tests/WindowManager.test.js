@@ -13,7 +13,6 @@ let createRoot;
 let getNextWindowZIndexState;
 let APP_WINDOW_Z_INDEX_MAX;
 let windowReducer;
-let INITIAL_POSITIONS;
 let WindowManagerProvider;
 let useWindowManager;
 let currentManager;
@@ -48,9 +47,6 @@ before(async () => {
     WindowManagerProvider,
     useWindowManager,
   } = await vite.ssrLoadModule("/src/core/providers/WindowManagerProvider.jsx"));
-  ({ INITIAL_POSITIONS } = await vite.ssrLoadModule(
-    "/src/core/constants/positions.jsx"
-  ));
 });
 
 after(async () => {
@@ -140,10 +136,10 @@ function createWindowState(overrides = {}) {
   };
 }
 
-function openWindow(state, appId, payload) {
+function openWindow(state, appId, payload, viewport = { width: 1024, height: 768 }) {
   return windowReducer(state, {
     type: "OPEN",
-    payload: { appId, appName: "Preview", payload },
+    payload: { appId, appName: "Preview", payload, viewport },
   });
 }
 
@@ -181,18 +177,17 @@ test("reopening a minimized preview window clears its minimized state", () => {
   assert.equal(reopened.activeWin, "preview:one");
 });
 
-test("dynamic preview windows use the preview initial position", () => {
-  const next = openWindow(createWindowState(), "preview:one", { src: "/photos/one.jpg" });
+test("dynamic preview windows use the centered preview size", () => {
+  const next = openWindow(
+    createWindowState(),
+    "preview:one",
+    { src: "/photos/one.jpg" },
+  );
   const preview = next.windows[0];
 
   assert.deepEqual(
     { x: preview.x, y: preview.y, width: preview.width, height: preview.height },
-    {
-      x: INITIAL_POSITIONS.preview.x,
-      y: INITIAL_POSITIONS.preview.y,
-      width: INITIAL_POSITIONS.preview.w,
-      height: INITIAL_POSITIONS.preview.h,
-    },
+    { x: 152, y: 78, width: 720, height: 560 },
   );
 });
 
@@ -256,6 +251,60 @@ test("public openApp keeps ordinary calls payload-free", async () => {
   assert.deepEqual(state.openApps, ["finder"]);
   assert.equal(state.windows[0].id, "finder");
   assert.equal(state.windows[0].payload, undefined);
+});
+
+test("public openApp centers and caps windows to the current viewport", async () => {
+  const container = await renderWindowManager();
+  const setViewport = (width, height) => {
+    Object.defineProperty(browserWindow, "innerWidth", { configurable: true, value: width });
+    Object.defineProperty(browserWindow, "innerHeight", { configurable: true, value: height });
+  };
+
+  try {
+    setViewport(1440, 900);
+    await act(async () => currentManager.openApp("photos", "Photos"));
+    let state = await waitForWindowManagerState(
+      container,
+      ({ windows }) => windows[0]?.id === "photos",
+      "centered Photos window on a desktop viewport",
+    );
+    assert.deepEqual(
+      {
+        x: state.windows[0].x,
+        y: state.windows[0].y,
+        width: state.windows[0].width,
+        height: state.windows[0].height,
+      },
+      { x: 230, y: 99, width: 980, height: 650 },
+    );
+
+    await act(async () => currentManager.closeWindow("photos"));
+    await waitForWindowManagerState(
+      container,
+      ({ windows }) => windows.length === 0,
+      "closed Photos before changing viewport",
+    );
+
+    setViewport(812, 375);
+    await act(async () => currentManager.openApp("photos", "Photos"));
+    state = await waitForWindowManagerState(
+      container,
+      ({ windows }) => windows[0]?.id === "photos",
+      "viewport-sized Photos window on a small landscape display",
+    );
+    assert.deepEqual(
+      {
+        x: state.windows[0].x,
+        y: state.windows[0].y,
+        width: state.windows[0].width,
+        height: state.windows[0].height,
+      },
+      { x: 24, y: 44, width: 764, height: 235 },
+    );
+  } finally {
+    delete browserWindow.innerWidth;
+    delete browserWindow.innerHeight;
+  }
 });
 
 test("public maximizeWindow restores the saved rectangle on the second call", async () => {

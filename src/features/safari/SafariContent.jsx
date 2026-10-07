@@ -739,7 +739,7 @@ function PageRenderer({ command, onNavigate }) {
 
 export function SafariContent({ onClose, onMinimize, onZoom }) {
   // Получаем функцию для перетаскивания окна из контекста
-  const { onTitleMouseDown } = useContext(WindowContext);
+  const { onTitlePointerDown } = useContext(WindowContext);
 
   const [tabs, setTabs] = useState(() => [
     createSafariTab(1, "Start Page", "", true)
@@ -1124,7 +1124,7 @@ export function SafariContent({ onClose, onMinimize, onZoom }) {
         {/* Весь верхний блок тулбара становится перетаскиваемой областью */}
         <div 
           className="sf__toolbar-top"
-          onMouseDown={(e) => !e.target.closest('.sf__tl, .sf__icon-btn, .sf__nav-btn, .sf__address-input, .sf__refresh-btn') && onTitleMouseDown(e)}
+          onPointerDown={(e) => !e.target.closest('.sf__tl, .sf__icon-btn, .sf__nav-btn, .sf__address-input, .sf__refresh-btn') && onTitlePointerDown(e)}
         >
           <div className="sf__toolbar-left">
             <div className="sf__tl-group">

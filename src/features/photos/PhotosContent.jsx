@@ -117,7 +117,7 @@ function PhotosNavItem({
 }
 
 export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
-  const { onTitleMouseDown } = useContext(WindowContext);
+  const { onTitlePointerDown } = useContext(WindowContext);
   const photosAppRef = useRef(null);
   const showSidebarButtonRef = useRef(null);
   const wasCompact = useRef(false);
@@ -210,8 +210,8 @@ export function PhotosContent({ onClose, onMinimize, onMaximize, openApp }) {
     >
       <header
         className="photos-window-header"
-        onMouseDown={(event) => {
-          if (!event.target.closest("button, input")) onTitleMouseDown?.(event);
+        onPointerDown={(event) => {
+          if (!event.target.closest("button, input")) onTitlePointerDown?.(event);
         }}
       >
         <div className="photos-window-header__lights">

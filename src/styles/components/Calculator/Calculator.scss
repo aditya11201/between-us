@@ -2,7 +2,8 @@
 @use "../../base/mixins" as *;
 
 .calculator {
-  width: 250px;
+  width: 100%;
+  height: 100%;
 
   background: #242424;
   display: flex;
@@ -10,7 +11,8 @@
   box-sizing: border-box;
   font-family: var(--system-font-family);
   border-radius: 10px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   position: relative;
   @include top-highlight(0.1);
 }

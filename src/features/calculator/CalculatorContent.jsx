@@ -20,7 +20,7 @@ const CalculatorButton = memo(function CalculatorButton({
 });
 
 export function CalculatorContent({ onClose, onMinimize }) {
-  const { onTitleMouseDown } = useContext(WindowContext);
+  const { onTitlePointerDown } = useContext(WindowContext);
   const [display, setDisplay] = useState('0');
   const [previousValue, setPreviousValue] = useState(null);
   const [operation, setOperation] = useState(null);
@@ -163,7 +163,7 @@ export function CalculatorContent({ onClose, onMinimize }) {
     <div className="calculator">
       <div 
         className="calculator__header" 
-        onMouseDown={(e) => !e.target.closest('button') && onTitleMouseDown?.(e)}
+        onPointerDown={(e) => !e.target.closest('button') && onTitlePointerDown?.(e)}
       >
         <button className="traffic-light traffic-light--close" onClick={onClose} type="button" />
         <button className="traffic-light traffic-light--minimize" onClick={onMinimize} type="button" />

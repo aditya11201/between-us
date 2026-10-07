@@ -138,21 +138,22 @@ export function AppContent() {
  * AppInner — управление boot screen
  */
 function AppInner() {
-  const isMobile = useMobileCheck();
+  const isSmallPortrait = useMobileCheck();
   const [introComplete, setIntroComplete] = useState(false);
   const [bootComplete, setBootComplete] = useState(false);
   
+  if (isSmallPortrait && !bootComplete) return <MobileNotSupported />;
   if (!introComplete) return <IntroScreen onComplete={() => setIntroComplete(true)} />;
   if (!bootComplete) return <BootScreen autoStart onComplete={() => setBootComplete(true)} />;
-  if (isMobile) return <MobileNotSupported />;
 
   return (
     <ThemeProvider>
       <DisplaySettingsProvider>
         <WindowManagerProvider>
-          <main role="main" aria-label="macOS Desktop Environment">
+          <main role="main" aria-label="macOS Desktop Environment" inert={isSmallPortrait}>
             <AppContent />
           </main>
+          {isSmallPortrait && <MobileNotSupported />}
         </WindowManagerProvider>
       </DisplaySettingsProvider>
     </ThemeProvider>
