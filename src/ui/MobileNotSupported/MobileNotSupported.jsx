@@ -3,24 +3,23 @@ import React, { useState } from "react";
 const FEATURES = [
   {
     icon: "🌄",
-    title: "Для большого экрана",
-    desc: "Интерфейс macOS воссоздан для разрешения от 1024 px",
+    title: "Landscape orientation",
+    desc: "Rotate your device to landscape to continue.",
   },
   {
     icon: "✨",
-    title: "Живая атмосфера",
-    desc: "Матовое стекло, мягкие тени и плавные анимации",
+    title: "A lively atmosphere",
+    desc: "Frosted glass, soft shadows, and smooth animations",
   },
   {
     icon: "🖥️",
-    title: "Настоящие приложения",
-    desc: "Finder, Терминал, Notes, Dock — всё как на Mac",
+    title: "Real apps",
+    desc: "Finder, Terminal, Notes, and the Dock, just like on a Mac",
   },
 ];
 
 export default function MobileNotSupported() {
   const [copied, setCopied] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -36,7 +35,7 @@ export default function MobileNotSupported() {
         {/* ── Заголовок окна ── */}
         <div className="mns-titlebar">
           <div className="mns-traffic">
-            <div className="tl tl-close" title="Доступно только на ПК" />
+            <div className="tl tl-close" title="Desktop only" />
             <div className="tl tl-min" />
             <div className="tl tl-max" />
           </div>
@@ -51,12 +50,10 @@ export default function MobileNotSupported() {
               <span className="mns-app-icon-inner">🏔️</span>
             </div>
             <div className="mns-hero-text">
-              <h1 className="mns-title">Откройте на большом экране</h1>
+              <h1 className="mns-title">Rotate your device</h1>
               <p className="mns-subtitle">A personal macOS-inspired experience</p>
               <p className="mns-description">
-                Between Us — это персональная среда в стиле macOS прямо в браузере.
-                На телефоне ей тесно. Возьмите ноутбук или компьютер, чтобы
-                погрузиться в атмосферу настоящего Mac.
+                Between Us works on smaller screens in landscape orientation.
               </p>
             </div>
           </div>
@@ -81,18 +78,16 @@ export default function MobileNotSupported() {
             <button
               className={`mns-btn ${copied ? "mns-btn--success" : "mns-btn--primary"}`}
               onClick={handleCopyLink}
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
             >
               {copied ? (
                 <>
                   <span className="mns-btn-icon">✅</span>
-                  <span>Ссылка скопирована!</span>
+                  <span>Link copied</span>
                 </>
               ) : (
                 <>
                   <span className="mns-btn-icon">📋</span>
-                  <span>Скопировать ссылку</span>
+                  <span>Copy link</span>
                 </>
               )}
             </button>

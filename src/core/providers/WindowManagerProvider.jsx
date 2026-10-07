@@ -1,5 +1,9 @@
 import { createContext, useContext, useMemo, useCallback, useRef, useReducer, useLayoutEffect } from "react";
-import { INITIAL_POSITIONS } from "@/core/constants/positions";
+import {
+  DOCK_HEIGHT,
+  getInitialWindowBounds,
+  MENU_BAR_HEIGHT,
+} from "@/core/constants/positions";
 
 const WindowManagerContext = createContext(null);
 
@@ -43,7 +47,7 @@ const WINDOW_ACTIONS = {
 export function windowReducer(state, action) {
   switch (action.type) {
     case WINDOW_ACTIONS.OPEN: {
-      const { appId, appName, position } = action.payload;
+      const { appId, appName, position, viewport } = action.payload;
       const { payload } = action.payload;
       const existing = state.windows.find(w => w.id === appId);
       if (existing) {
@@ -67,8 +71,7 @@ export function windowReducer(state, action) {
         };
       }
       
-      const baseAppId = appId.split(":")[0];
-      const p = position || INITIAL_POSITIONS[appId] || INITIAL_POSITIONS[baseAppId] || { x: 120, y: 80, w: 600, h: 420 };
+      const p = position || getInitialWindowBounds(appId, viewport?.width, viewport?.height);
       const nextZIndexState = getNextWindowZIndexState(state.windows, state.zCounter);
       const newZIndex = nextZIndexState.zIndex;
       
@@ -124,9 +127,8 @@ export function windowReducer(state, action) {
       const win = state.windows.find(w => w.id === appId);
       if (!win) return state;
 
-      const DOCK_HEIGHT = 80;
-      const MENUBAR_HEIGHT = 28;
-      const isMaximized = win.x === 0 && win.y === MENUBAR_HEIGHT;
+      
+      const isMaximized = win.x === 0 && win.y === MENU_BAR_HEIGHT;
 
       if (isMaximized) {
         const saved = windowStates[appId];
@@ -154,9 +156,9 @@ export function windowReducer(state, action) {
               ? { 
                   ...w, 
                   x: 0, 
-                  y: MENUBAR_HEIGHT, 
-                  width: window.innerWidth, 
-                  height: window.innerHeight - MENUBAR_HEIGHT - DOCK_HEIGHT 
+                  y: MENU_BAR_HEIGHT,
+                  width: window.innerWidth,
+                  height: window.innerHeight - MENU_BAR_HEIGHT - DOCK_HEIGHT
                 }
               : w
           ),
@@ -251,7 +253,13 @@ export function WindowManagerProvider({ children }) {
   }, []);
 
   const openApp = useCallback((appId, appName, payload) => {
-    const actionPayload = { appId, appName };
+    const actionPayload = {
+      appId,
+      appName,
+      viewport: typeof window === "undefined"
+        ? undefined
+        : { width: window.innerWidth, height: window.innerHeight },
+    };
     if (payload !== undefined) actionPayload.payload = payload;
 
     if (state.minimizedApps.has(appId)) {

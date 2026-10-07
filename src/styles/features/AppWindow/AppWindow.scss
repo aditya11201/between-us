@@ -36,17 +36,6 @@
     display: none;
   }
   
-  &--fixed-size {
-    width: fit-content !important;
-    height: fit-content !important;
-    min-width: 200px;
-    min-height: 150px;
-    
-    .app-window__content {
-      width: 100%;
-      height: 100%;
-    }
-  }
 }
 
 .app-window__title-bar {

@@ -8,9 +8,9 @@ Between Us preserves a desktop-style macOS-inspired simulation as a personal bro
 
 ## Features
 
-- Windowed desktop interactions
+- App windows open centered at viewport-safe sizes and support mouse/touch dragging and resizing
 - Finder, Safari, Terminal, Music, and Settings experiences
-- Responsive fallback for unsupported mobile layouts
+- Below 1024 px, portrait shows a rotate-to-landscape prompt; landscape keeps the desktop workspace available
 
 ## Local setup
 

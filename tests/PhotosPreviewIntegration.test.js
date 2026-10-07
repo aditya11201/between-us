@@ -15,6 +15,7 @@ let vite;
 let React;
 let act;
 let createRoot;
+let AppWindow;
 let WindowContext;
 let PhotoCard;
 let PhotoPreviewContent;
@@ -33,7 +34,7 @@ before(async () => {
 
   ({ default: React, act } = await import("react"));
   ({ createRoot } = await import("react-dom/client"));
-  ({ WindowContext } = await vite.ssrLoadModule(
+  ({ AppWindow, WindowContext } = await vite.ssrLoadModule(
     "/src/windows/AppWindow/AppWindow.jsx",
   ));
   ({ PhotoPreviewContent } = await vite.ssrLoadModule(
@@ -75,9 +76,25 @@ function createWindowControls() {
     onMinimize: () => {},
     onZoom: () => {},
     onFocus: () => {},
-    onTitleMouseDown: () => {},
+    onTitlePointerDown: () => {},
   };
 }
+
+const pointerEvent = (type, clientX, clientY) => {
+  const event = new browserWindow.MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    button: 0,
+    clientX,
+    clientY,
+  });
+  Object.defineProperties(event, {
+    pointerId: { value: 1 },
+    pointerType: { value: "touch" },
+    isPrimary: { value: true },
+  });
+  return event;
+};
 
 async function renderPreview(photo, controls = createWindowControls()) {
   const { container, root } = createMountedRoot();
@@ -219,7 +236,7 @@ test("renders a photo payload in a contain-fit preview and delegates window cont
     onMinimize: () => { calls.minimize += 1; },
     onZoom: () => { calls.zoom += 1; },
     onFocus: () => {},
-    onTitleMouseDown: () => { calls.drag += 1; },
+    onTitlePointerDown: () => { calls.drag += 1; },
   };
   const photo = {
     id: "favorites/sunset.webp",
@@ -236,18 +253,18 @@ test("renders a photo payload in a contain-fit preview and delegates window cont
 
   const titlebar = container.querySelector(".photos-preview__titlebar");
   await act(async () => {
-    dom.dispatch(titlebar, "mousedown", { button: 0 });
+    dom.dispatch(titlebar, "pointerdown", { button: 0 });
   });
   assert.equal(calls.drag, 1);
 
   await act(async () => {
-    dom.dispatch(container.querySelector(".photos-preview__search"), "mousedown", { button: 0 });
+    dom.dispatch(container.querySelector(".photos-preview__search"), "pointerdown", { button: 0 });
   });
   assert.equal(calls.drag, 1);
 
   const closeButton = container.querySelector('[aria-label="Close window"]');
   await act(async () => {
-    dom.dispatch(closeButton, "mousedown", { button: 0 });
+    dom.dispatch(closeButton, "pointerdown", { button: 0 });
     dom.dispatch(closeButton, "click");
     container.querySelector('[aria-label="Minimize window"]').click();
     container.querySelector('[aria-label="Zoom window"]').click();
@@ -962,4 +979,67 @@ test("Photos Sass disables preview transitions for reduced motion", () => {
     css,
     /\*, \*::before, \*::after\s*\{[\s\S]*?transition: none !important;/,
   );
+});
+
+test("drags the oversized Photos window within a small landscape viewport", async () => {
+  Object.defineProperty(browserWindow, "innerWidth", {
+    configurable: true,
+    value: 812,
+  });
+
+  try {
+    const { container, root } = createMountedRoot();
+    await act(async () => {
+      root.render(
+        React.createElement(
+          AppWindow,
+          {
+            win: { id: "photos", x: 120, y: 64, width: 980, height: 650, zIndex: 101 },
+            isActive: true,
+            onClose: () => {},
+            onMinimize: () => {},
+            onFocus: () => {},
+          },
+          React.createElement(PhotosContent, {
+            onClose: () => {},
+            onMinimize: () => {},
+            onMaximize: () => {},
+            openApp: () => {},
+          }),
+        ),
+      );
+    });
+
+    const appWindow = container.querySelector(".app-window");
+    appWindow.getBoundingClientRect = () => ({
+      left: 120,
+      top: 64,
+      width: 980,
+      height: 650,
+    });
+    const titlebar = container.querySelector(".photos-window-header");
+
+    await act(async () => {
+      titlebar.dispatchEvent(pointerEvent("pointerdown", 140, 80));
+      document.dispatchEvent(pointerEvent("pointermove", 220, 80));
+    });
+    assert.equal(appWindow.style.transform, "translate3d(200px, 64px, 0)");
+
+    await act(async () => {
+      document.dispatchEvent(pointerEvent("pointermove", 2000, 80));
+    });
+    assert.equal(appWindow.style.transform, "translate3d(732px, 64px, 0)");
+
+    await act(async () => {
+      document.dispatchEvent(pointerEvent("pointermove", -1000, 80));
+    });
+    assert.equal(appWindow.style.transform, "translate3d(-168px, 64px, 0)");
+
+    await act(async () => {
+      document.dispatchEvent(pointerEvent("pointerup", -1000, 80));
+    });
+    assert.equal(appWindow.style.transform, "translate3d(-168px, 64px, 0)");
+  } finally {
+    delete browserWindow.innerWidth;
+  }
 });

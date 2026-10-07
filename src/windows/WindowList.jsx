@@ -22,11 +22,7 @@ const WindowItem = memo(function WindowItem({ winId, setWallpaper }) {
   const isActive = activeWin === winId;
   // Защита: проверяем тип minimizedApps
   const isMinimized = minimizedApps instanceof Set ? minimizedApps.has(winId) : minimizedApps.includes?.(winId);
-  
-  // Приложения с фиксированным размером (без resize)
-  const fixedSizeApps = ['calculator'];
-  const allowResize = !fixedSizeApps.includes(winId);
-  
+
   // Мемоизация callback-функций
   const handleClose = useCallback(() => closeWindow(winId), [closeWindow, winId]);
   const handleMinimize = useCallback(() => minimizeWindow(winId), [minimizeWindow, winId]);
@@ -52,7 +48,6 @@ const WindowItem = memo(function WindowItem({ winId, setWallpaper }) {
       onMinimize={handleMinimize}
       onFocus={handleFocus}
       onZoom={handleZoom}
-      allowResize={allowResize}
     >
       {appContent}
     </AppWindow>

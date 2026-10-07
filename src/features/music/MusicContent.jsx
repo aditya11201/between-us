@@ -196,7 +196,7 @@ function TrackRow({ index, song, isActive, isPlaying, badge, onPlay, action }) {
 }
 
 export function MusicContent() {
-  const { onClose, onMinimize, onZoom, onTitleMouseDown } = useContext(WindowContext);
+  const { onClose, onMinimize, onZoom, onTitlePointerDown } = useContext(WindowContext);
   const songs = MUSIC_CATALOG;
   const [initialPlayerState] = useState(getInitialPlayerState);
   const [activeId, setActiveId] = useState(initialPlayerState.activeId);
@@ -1130,9 +1130,9 @@ export function MusicContent() {
 
       <div
         className="music-header"
-        onMouseDown={(event) => (
+        onPointerDown={(event) => (
           !event.target.closest(".music-tl, .music-ctrl-btn, .music-volume-slider")
-          && onTitleMouseDown(event)
+          && onTitlePointerDown(event)
         )}
       >
         <div className="music-traffic-lights">

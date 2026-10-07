@@ -248,7 +248,7 @@ export function PhotoPreviewContent({ photo }) {
     onClose,
     onMinimize,
     onZoom,
-    onTitleMouseDown,
+    onTitlePointerDown,
   } = useContext(WindowContext);
   const previewInstanceId = useId().replace(/:/g, "");
   const sidebarId = `${previewInstanceId}-photos-preview-sidebar`;
@@ -510,9 +510,9 @@ export function PhotoPreviewContent({ photo }) {
     >
       <header
         className="photos-preview__titlebar"
-        onMouseDown={(event) => {
+        onPointerDown={(event) => {
           if (!event.target?.closest?.("button, input, .photos-preview__search")) {
-            onTitleMouseDown?.(event);
+            onTitlePointerDown?.(event);
           }
         }}
       >

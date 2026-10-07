@@ -1,11 +1,17 @@
 import React, { useState, useRef, useLayoutEffect, useEffect, memo, useMemo, useCallback } from "react";
+import {
+  DOCK_HEIGHT,
+  MENU_BAR_HEIGHT,
+  MIN_WINDOW_HEIGHT,
+  MIN_WINDOW_WIDTH,
+} from "@/core/constants/positions";
 
 const defaultWindowContextValue = {
   onClose: () => {},
   onMinimize: () => {},
   onZoom: () => {},
   onFocus: () => {},
-  onTitleMouseDown: () => {},
+  onTitlePointerDown: () => {},
 };
 
 export const WindowContext = React.createContext(defaultWindowContextValue);
@@ -46,21 +52,15 @@ export const AppWindow = memo(function AppWindow({
   isMinimized = false,
   children,
   onZoom = null,
-  allowResize = true,
 }, ref) {
   const [pos, setPos] = useState(() => ({ x: win.x, y: win.y }));
   
   const hasCustomSize = win.width !== undefined || win.w !== undefined || win.height !== undefined || win.h !== undefined;
   
-  const [size, setSize] = useState(() => {
-    if (!hasCustomSize && !allowResize) {
-      return { width: null, height: null };
-    }
-    return { 
-      width: win.width ?? win.w ?? 600, 
-      height: win.height ?? win.h ?? 420 
-    };
-  });
+  const [size, setSize] = useState(() => ({
+    width: win.width ?? win.w ?? 600,
+    height: win.height ?? win.h ?? 420,
+  }));
   const [isMaximized, setIsMaximized] = useState(false);
   const [prevRect, setPrevRect] = useState(null);
 
@@ -112,7 +112,7 @@ export const AppWindow = memo(function AppWindow({
   useLayoutEffect(() => {
     if ((win.x !== posRef.current.x || win.y !== posRef.current.y) && !dragging.current) {
       setPos({ x: win.x, y: win.y });
-      setIsMaximized(win.x === 0 && win.y === 28);
+      setIsMaximized(win.x === 0 && win.y === MENU_BAR_HEIGHT);
     }
     
     // Обновляем размеры только если они явно указаны
@@ -146,19 +146,20 @@ export const AppWindow = memo(function AppWindow({
         width: sizeRef.current.width, 
         height: sizeRef.current.height 
       });
-      setPos({ x: 0, y: 28 }); 
-      setSize({ 
-        width: window.innerWidth, 
-        height: window.innerHeight - 28 - 80 
+      setPos({ x: 0, y: MENU_BAR_HEIGHT });
+      setSize({
+        width: window.innerWidth,
+        height: window.innerHeight - MENU_BAR_HEIGHT - DOCK_HEIGHT,
       });
       setIsMaximized(true);
     }
   }, []);
 
-  const onTitleMouseDown = useCallback((e) => {
+  const onTitlePointerDown = useCallback((e) => {
     if (e.button !== 0 || isMaximized) return;
     if (e.target.closest('button')) return;
-    
+
+    const pointerId = e.pointerId;
     onFocusRef.current();
     dragging.current = true;
 
@@ -168,17 +169,21 @@ export const AppWindow = memo(function AppWindow({
     if (windowRef.current) {
       windowRef.current.classList.add('app-window--dragging');
       windowRef.current.style.willChange = 'transform';
-
       windowRef.current.style.transition = 'none';
       windowRef.current.style.pointerEvents = 'none';
     }
 
-    let lastX = rect.left;
-    let lastY = rect.top;
     const windowWidth = rect.width;
-    
+    const clampX = (x) => {
+      const minX = Math.min(0, window.innerWidth - windowWidth);
+      const maxX = windowWidth > window.innerWidth
+        ? Math.max(0, window.innerWidth - 80)
+        : window.innerWidth - windowWidth;
+      return Math.max(minX, Math.min(maxX, x));
+    };
     let onMove;
     let onUp;
+    let onCancel;
     const cancelDrag = () => {
       dragging.current = false;
 
@@ -190,16 +195,17 @@ export const AppWindow = memo(function AppWindow({
         windowRef.current.style.transform = `translate3d(${posRef.current.x}px, ${posRef.current.y}px, 0)`;
       }
 
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onCancel);
       if (dragCleanupRef.current === cancelDrag) dragCleanupRef.current = null;
     };
 
     onMove = (ev) => {
-      if (!dragging.current) return;
-      
-      const newX = Math.max(0, Math.min(window.innerWidth - windowWidth, ev.clientX - offset.current.x));
-      const newY = Math.max(28, ev.clientY - offset.current.y);
+      if (!dragging.current || ev.pointerId !== pointerId) return;
+
+      const newX = clampX(ev.clientX - offset.current.x);
+      const newY = Math.max(MENU_BAR_HEIGHT, ev.clientY - offset.current.y);
 
       if (windowRef.current && dragging.current) {
         windowRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
@@ -207,69 +213,72 @@ export const AppWindow = memo(function AppWindow({
     };
 
     onUp = (ev) => {
-      if (!dragging.current) return;
+      if (!dragging.current || ev.pointerId !== pointerId) return;
 
-      const finalX = Math.max(0, Math.min(window.innerWidth - windowWidth, ev.clientX - offset.current.x));
-      const finalY = Math.max(28, ev.clientY - offset.current.y);
+      const finalX = clampX(ev.clientX - offset.current.x);
+      const finalY = Math.max(MENU_BAR_HEIGHT, ev.clientY - offset.current.y);
 
       cancelDrag();
       setPos({ x: finalX, y: finalY });
     };
 
+    onCancel = (ev) => {
+      if (ev.pointerId === pointerId) cancelDrag();
+    };
+
     dragCleanupRef.current = cancelDrag;
 
-    document.addEventListener("mousemove", onMove, { passive: true });
-    document.addEventListener("mouseup", onUp, { passive: true });
+    document.addEventListener("pointermove", onMove, { passive: true });
+    document.addEventListener("pointerup", onUp, { passive: true });
+    document.addEventListener("pointercancel", onCancel, { passive: true });
     e.preventDefault();
   }, [isMaximized]);
 
-  const onResizeMouseDown = useCallback((e) => {
+  const onResizePointerDown = useCallback((e) => {
+    if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     onFocusRef.current();
 
+    const pointerId = e.pointerId;
     resizing.current = true;
     startSize.current = { width: sizeRef.current.width, height: sizeRef.current.height };
     const startX = e.clientX;
     const startY = e.clientY;
 
     if (windowRef.current) {
-      windowRef.current.classList.add('app-window--resizing');
-      windowRef.current.style.willChange = 'width, height';
-
-      windowRef.current.style.transition = 'none';
-      windowRef.current.style.pointerEvents = 'none';
+      windowRef.current.classList.add("app-window--resizing");
+      windowRef.current.style.willChange = "width, height";
+      windowRef.current.style.transition = "none";
     }
 
-    let lastW = startSize.current.width;
-    let lastH = startSize.current.height;
-    
     let onMove;
     let onUp;
+    let onCancel;
     const cancelResize = () => {
       resizing.current = false;
 
       if (windowRef.current) {
-        windowRef.current.classList.remove('app-window--resizing');
-        windowRef.current.style.willChange = '';
-        windowRef.current.style.transition = '';
-        windowRef.current.style.pointerEvents = '';
+        windowRef.current.classList.remove("app-window--resizing");
+        windowRef.current.style.willChange = "";
+        windowRef.current.style.transition = "";
         windowRef.current.style.width = `${sizeRef.current.width}px`;
         windowRef.current.style.height = `${sizeRef.current.height}px`;
       }
 
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onCancel);
       if (resizeCleanupRef.current === cancelResize) resizeCleanupRef.current = null;
     };
 
     onMove = (ev) => {
-      if (!resizing.current) return;
-      
+      if (!resizing.current || ev.pointerId !== pointerId) return;
+
       const deltaX = ev.clientX - startX;
       const deltaY = ev.clientY - startY;
-      const newWidth = Math.max(250, startSize.current.width + deltaX);
-      const newHeight = Math.max(200, startSize.current.height + deltaY);
+      const newWidth = Math.max(MIN_WINDOW_WIDTH, startSize.current.width + deltaX);
+      const newHeight = Math.max(MIN_WINDOW_HEIGHT, startSize.current.height + deltaY);
 
       if (windowRef.current && resizing.current) {
         windowRef.current.style.width = `${newWidth}px`;
@@ -277,20 +286,24 @@ export const AppWindow = memo(function AppWindow({
       }
     };
 
-    onUp = () => {
-      if (!resizing.current) return;
+    onUp = (ev) => {
+      if (!resizing.current || ev.pointerId !== pointerId) return;
       const committedWidth = parseFloat(windowRef.current?.style.width) || sizeRef.current.width;
       const committedHeight = parseFloat(windowRef.current?.style.height) || sizeRef.current.height;
-      resizing.current = false;
 
       cancelResize();
       setSize({ width: committedWidth, height: committedHeight });
     };
 
+    onCancel = (ev) => {
+      if (ev.pointerId === pointerId) cancelResize();
+    };
+
     resizeCleanupRef.current = cancelResize;
 
-    document.addEventListener("mousemove", onMove, { passive: true });
-    document.addEventListener("mouseup", onUp, { passive: true });
+    document.addEventListener("pointermove", onMove, { passive: true });
+    document.addEventListener("pointerup", onUp, { passive: true });
+    document.addEventListener("pointercancel", onCancel, { passive: true });
   }, []);
 
   const contextValue = useMemo(() => ({
@@ -298,8 +311,8 @@ export const AppWindow = memo(function AppWindow({
     onMinimize,
     onZoom: handleZoom,
     onFocus,
-    onTitleMouseDown,
-  }), [onClose, onMinimize, handleZoom, onFocus, onTitleMouseDown]);
+    onTitlePointerDown,
+  }), [onClose, onMinimize, handleZoom, onFocus, onTitlePointerDown]);
 
   const memoizedChildren = useMemo(() => children, [children]);
 
@@ -311,7 +324,6 @@ export const AppWindow = memo(function AppWindow({
           "app-window",
           isActive ? "app-window--active" : "app-window--inactive",
           isMinimized ? "app-window--minimized" : "",
-          !allowResize ? "app-window--fixed-size" : "",
         ].filter(Boolean).join(" ")}
         onContextMenu={(e) => e.stopPropagation()}
         onMouseDown={onFocus}
@@ -331,19 +343,17 @@ export const AppWindow = memo(function AppWindow({
           {memoizedChildren}
         </div>
 
-        {allowResize && (
-          <div 
-            className="resize-handle" 
-            onMouseDown={onResizeMouseDown}
-            style={{ touchAction: "none" }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14">
-              <path d="M14 0 L14 14 L0 14" fill="none" stroke="white" strokeWidth="1" opacity="0.6" />
-              <path d="M10 14 L14 10" stroke="white" strokeWidth="1" opacity="0.6" />
-              <path d="M6 14 L14 6" stroke="white" strokeWidth="1" opacity="0.4" />
-            </svg>
-          </div>
-        )}
+        <div
+          className="resize-handle"
+          onPointerDown={onResizePointerDown}
+          style={{ touchAction: "none" }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14">
+            <path d="M14 0 L14 14 L0 14" fill="none" stroke="white" strokeWidth="1" opacity="0.6" />
+            <path d="M10 14 L14 10" stroke="white" strokeWidth="1" opacity="0.6" />
+            <path d="M6 14 L14 6" stroke="white" strokeWidth="1" opacity="0.4" />
+          </svg>
+        </div>
       </div>
     </WindowContext.Provider>
   );

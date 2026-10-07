@@ -113,14 +113,29 @@ async function unlockApp(container) {
 }
 
 const click = (element) => dom.click(element);
+const pointerEvent = (type, clientX, clientY, pointerType = "touch") => {
+  const event = new browserWindow.MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    button: 0,
+    clientX,
+    clientY,
+  });
+  Object.defineProperties(event, {
+    pointerId: { value: 1 },
+    pointerType: { value: pointerType },
+    isPrimary: { value: true },
+  });
+  return event;
+};
 
 function appleOverlay(container) {
   return container.querySelector(".menuBar__item-click-overlay");
 }
 
 function GestureHandle() {
-  const { onTitleMouseDown } = React.useContext(WindowContext);
-  return React.createElement("div", { "data-gesture-handle": true, onMouseDown: onTitleMouseDown });
+  const { onTitlePointerDown } = React.useContext(WindowContext);
+  return React.createElement("div", { "data-gesture-handle": true, onPointerDown: onTitlePointerDown });
 }
 
 async function renderAppWindow() {
@@ -233,19 +248,9 @@ test("lock signal cancels active AppWindow drag and resize gestures", async () =
 
   await act(async () => {
     container.querySelector("[data-gesture-handle]").dispatchEvent(
-      new browserWindow.MouseEvent("mousedown", {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-        clientX: 120,
-        clientY: 140,
-      }),
+      pointerEvent("pointerdown", 120, 140),
     );
-    browserWindow.document.dispatchEvent(new browserWindow.MouseEvent("mousemove", {
-      bubbles: true,
-      clientX: 300,
-      clientY: 320,
-    }));
+    browserWindow.document.dispatchEvent(pointerEvent("pointermove", 300, 320));
   });
   assert.equal(appWindow.classList.contains("app-window--dragging"), true);
   assert.notEqual(appWindow.style.transform, initialTransform);
@@ -255,33 +260,24 @@ test("lock signal cancels active AppWindow drag and resize gestures", async () =
   assert.equal(appWindow.style.transform, initialTransform);
 
   await act(async () => {
-    browserWindow.document.dispatchEvent(new browserWindow.MouseEvent("mousemove", {
-      bubbles: true,
-      clientX: 500,
-      clientY: 520,
-    }));
-    browserWindow.document.dispatchEvent(new browserWindow.MouseEvent("mouseup", {
-      bubbles: true,
-      clientX: 500,
-      clientY: 520,
-    }));
+    browserWindow.document.dispatchEvent(pointerEvent("pointermove", 500, 520));
+    browserWindow.document.dispatchEvent(pointerEvent("pointerup", 500, 520));
   });
   assert.equal(appWindow.style.transform, initialTransform);
+  await act(async () => {
+    container.querySelector("[data-gesture-handle]").dispatchEvent(
+      pointerEvent("pointerdown", 120, 140, "mouse"),
+    );
+    browserWindow.document.dispatchEvent(pointerEvent("pointermove", 300, 320, "mouse"));
+    browserWindow.document.dispatchEvent(pointerEvent("pointerup", 300, 320, "mouse"));
+  });
+  assert.notEqual(appWindow.style.transform, initialTransform);
+  assert.equal(appWindow.classList.contains("app-window--dragging"), false);
 
   const resizeHandle = container.querySelector(".resize-handle");
   await act(async () => {
-    resizeHandle.dispatchEvent(new browserWindow.MouseEvent("mousedown", {
-      bubbles: true,
-      cancelable: true,
-      button: 0,
-      clientX: 500,
-      clientY: 300,
-    }));
-    browserWindow.document.dispatchEvent(new browserWindow.MouseEvent("mousemove", {
-      bubbles: true,
-      clientX: 700,
-      clientY: 500,
-    }));
+    resizeHandle.dispatchEvent(pointerEvent("pointerdown", 500, 300, "touch"));
+    browserWindow.document.dispatchEvent(pointerEvent("pointermove", 700, 500, "touch"));
   });
   assert.equal(appWindow.classList.contains("app-window--resizing"), true);
   assert.equal(appWindow.style.width, "700px");
@@ -293,19 +289,33 @@ test("lock signal cancels active AppWindow drag and resize gestures", async () =
   assert.equal(appWindow.style.height, "300px");
 
   await act(async () => {
-    browserWindow.document.dispatchEvent(new browserWindow.MouseEvent("mousemove", {
-      bubbles: true,
-      clientX: 900,
-      clientY: 800,
-    }));
-    browserWindow.document.dispatchEvent(new browserWindow.MouseEvent("mouseup", {
-      bubbles: true,
-      clientX: 900,
-      clientY: 800,
-    }));
+    browserWindow.document.dispatchEvent(pointerEvent("pointermove", 900, 800, "touch"));
+    browserWindow.document.dispatchEvent(pointerEvent("pointerup", 900, 800, "touch"));
   });
   assert.equal(appWindow.style.width, "500px");
   assert.equal(appWindow.style.height, "300px");
+});
+
+test("AppWindow commits touch resizes in both directions", async () => {
+  const { container } = await renderAppWindow();
+  const appWindow = container.querySelector(".app-window");
+  const resizeHandle = container.querySelector(".resize-handle");
+
+  await act(async () => {
+    resizeHandle.dispatchEvent(pointerEvent("pointerdown", 500, 300, "touch"));
+    browserWindow.document.dispatchEvent(pointerEvent("pointermove", 700, 500, "touch"));
+    browserWindow.document.dispatchEvent(pointerEvent("pointerup", 700, 500, "touch"));
+  });
+  assert.equal(appWindow.style.width, "700px");
+  assert.equal(appWindow.style.height, "500px");
+
+  await act(async () => {
+    resizeHandle.dispatchEvent(pointerEvent("pointerdown", 700, 500, "touch"));
+    browserWindow.document.dispatchEvent(pointerEvent("pointermove", 600, 400, "touch"));
+    browserWindow.document.dispatchEvent(pointerEvent("pointerup", 600, 400, "touch"));
+  });
+  assert.equal(appWindow.style.width, "600px");
+  assert.equal(appWindow.style.height, "400px");
 });
 
 test("same-origin Safari iframe Ctrl+Command+Q bridges to the parent lock handler", async () => {

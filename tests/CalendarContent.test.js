@@ -50,7 +50,7 @@ async function renderCalendar() {
     root.render(
       React.createElement(
         WindowContext.Provider,
-        { value: { onClose() {}, onMinimize() {}, onZoom() {}, onTitleMouseDown() {} } },
+        { value: { onClose() {}, onMinimize() {}, onZoom() {}, onTitlePointerDown() {} } },
         React.createElement(CalendarContent),
       ),
     );

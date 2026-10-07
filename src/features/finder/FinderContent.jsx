@@ -145,7 +145,7 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 150);
   const [activeTab, setActiveTab] = useState(0);
-  const { onTitleMouseDown } = useContext(WindowContext);
+  const { onTitlePointerDown } = useContext(WindowContext);
   const [tabs, setTabs] = useState([
     { id: 0, label: "Macintosh HD", folder: "macos" }
   ]);
@@ -539,7 +539,7 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
 
         {/* ── SIDEBAR ── */}
         <div className="finder-sidebar">
-          <div className="finder-traffic-lights" onMouseDown={(e) => !e.target.closest('.finder-traffic-light') && onTitleMouseDown(e)}>
+          <div className="finder-traffic-lights" onPointerDown={(e) => !e.target.closest('.finder-traffic-light') && onTitlePointerDown(e)}>
             <button className="finder-traffic-light finder-traffic-light--close" onClick={onClose} title="Close" />
             <button className="finder-traffic-light finder-traffic-light--minimize" onClick={onMinimize} title="Minimize" />
             <button className="finder-traffic-light finder-traffic-light--maximize" onClick={onMaximize} title="Maximize" />
@@ -590,7 +590,7 @@ const FinderContent = memo(function FinderContent({ openApp, onClose, onMinimize
 
         {/* ── RIGHT PANEL ── */}
         <div className="finder-right">
-          <div className="finder-toolbar" onMouseDown={(e) => !e.target.closest('button, input, .finder-tab, .finder-tab-add') && onTitleMouseDown(e)}>
+          <div className="finder-toolbar" onPointerDown={(e) => !e.target.closest('button, input, .finder-tab, .finder-tab-add') && onTitlePointerDown(e)}>
             <div className="finder-toolbar-nav">
               <button className="finder-toolbar-button" onClick={() => navigateToFolder("macos")}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 19l-7-7 7-7"/></svg>

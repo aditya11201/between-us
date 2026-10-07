@@ -2,7 +2,7 @@ import React, { useState, useContext } from "react";
 import { WindowContext } from "@/windows";
 
 export function NotesContent() {
-  const { onClose, onMinimize, onZoom, onTitleMouseDown } = useContext(WindowContext);
+  const { onClose, onMinimize, onZoom, onTitlePointerDown } = useContext(WindowContext);
 
   const initialNotes = [
     {
@@ -53,7 +53,7 @@ Tell me your dreams, your desires, and your fears, and I promise I’ll be right
   return (
     <div className="notes">
       {/* ── Custom Title Bar ── */}
-      <div className="notes-titlebar" onMouseDown={(e) => !e.target.closest('.notes-traffic-light') && onTitleMouseDown(e)}>
+      <div className="notes-titlebar" onPointerDown={(e) => !e.target.closest('.notes-traffic-light') && onTitlePointerDown(e)}>
         <div className="notes-traffic-lights">
           <button
             className="notes-traffic-light notes-traffic-light--close"

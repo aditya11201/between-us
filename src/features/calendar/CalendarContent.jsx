@@ -56,7 +56,7 @@ const isCalendar = (calendar) => (
 );
 
 export function CalendarContent() {
-  const { onClose, onMinimize, onZoom, onTitleMouseDown } = useContext(WindowContext);
+  const { onClose, onMinimize, onZoom, onTitlePointerDown } = useContext(WindowContext);
 
   const today = new Date();
   const [currentDate, setCurrentDate] = useState(today);
@@ -405,7 +405,7 @@ export function CalendarContent() {
   return (
     <div className="calendar">
       {/* ── Title Bar ── */}
-      <div className="calendar-titlebar" onMouseDown={(e) => !e.target.closest('.calendar-traffic-light') && onTitleMouseDown(e)}>
+      <div className="calendar-titlebar" onPointerDown={(e) => !e.target.closest('.calendar-traffic-light') && onTitlePointerDown(e)}>
         <div className="calendar-traffic-lights">
           <button className="calendar-traffic-light calendar-traffic-light--close" onClick={onClose} />
           <button className="calendar-traffic-light calendar-traffic-light--minimize" onClick={onMinimize} />

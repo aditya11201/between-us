@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
 
-export function useMobileCheck(breakpoint = 1024) {
-  const query = `(max-width: ${breakpoint}px)`;
-  const [isMobile, setIsMobile] = useState(() =>
+export function useMobileCheck(breakpoint = 1023) {
+  const query = `(max-width: ${breakpoint}px) and (orientation: portrait)`;
+  const [showLandscapePrompt, setShowLandscapePrompt] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia(query).matches : false,
   );
 
   useEffect(() => {
     const mql = window.matchMedia(query);
-    const onChange = (e) => setIsMobile(e.matches);
-    setIsMobile(mql.matches);
+    const onChange = (e) => setShowLandscapePrompt(e.matches);
+    setShowLandscapePrompt(mql.matches);
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
   }, [query]);
 
-  return isMobile;
+  return showLandscapePrompt;
 }

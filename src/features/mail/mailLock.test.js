@@ -134,7 +134,7 @@ async function renderMail({ onClose, onMinimize, active = false } = {}) {
         React.createElement(ManagerProbe),
         React.createElement(
           WindowContext.Provider,
-          { value: { onTitleMouseDown() {} } },
+          { value: { onTitlePointerDown() {} } },
           React.createElement(MailContent, {
             onClose: () => {
               callbacks.close += 1;

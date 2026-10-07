@@ -125,7 +125,7 @@ function renderFormattedInline(text) {
 }
 
 export function MailContent({ onClose, onMinimize, onMaximize }) {
-  const { onTitleMouseDown } = useContext(WindowContext);
+  const { onTitlePointerDown } = useContext(WindowContext);
   const { windows, activeWin } = useWindowManager();
   const mailRef = useRef(null);
   const wasNarrow = useRef(false);
@@ -427,8 +427,8 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
     >
       <header
         className="mail__window-header"
-        onMouseDown={(event) => {
-          if (!event.target.closest(".mail__traffic-light")) onTitleMouseDown(event);
+        onPointerDown={(event) => {
+          if (!event.target.closest(".mail__traffic-light")) onTitlePointerDown(event);
         }}
       >
         <div className="mail__traffic-lights">
@@ -514,8 +514,8 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
         <aside className="mail__sidebar" aria-label="Mailboxes">
         <header
           className="mail__titlebar"
-          onMouseDown={(event) => {
-            if (!event.target.closest("button")) onTitleMouseDown(event);
+          onPointerDown={(event) => {
+            if (!event.target.closest("button")) onTitlePointerDown(event);
           }}
         >
           <button
