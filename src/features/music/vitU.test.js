@@ -17,12 +17,12 @@ test("keeps the vit u playlist identity", () => {
   assert.notEqual(VIT_U_PLAYLIST.description.trim(), "");
 });
 
-test("keeps 50 ordered tracks with explicit flags on nine rows", () => {
-  assert.equal(VIT_U_TRACKS.length, 50);
+test("keeps 49 vit u tracks with explicit flags on nine rows", () => {
+  assert.equal(VIT_U_TRACKS.length, 49);
   const ids = VIT_U_TRACKS.map((track) => track.id);
-  assert.equal(new Set(ids).size, 50);
-  ids.forEach((id, index) => {
-    assert.match(id, new RegExp(`^vit-u-${String(index + 1).padStart(2, "0")}-`));
+  assert.equal(new Set(ids).size, 49);
+  ids.forEach((id) => {
+    assert.match(id, /^vit-u-\d{2}-/);
   });
   for (const track of VIT_U_TRACKS) {
     for (const field of ["title", "artist", "album", "duration"]) {
@@ -45,7 +45,7 @@ test("keeps 50 ordered tracks with explicit flags on nine rows", () => {
     "vit-u-49-always",
   ]);
   assert.equal(VIT_U_TRACKS[0].title, "drop dead");
-  assert.equal(VIT_U_TRACKS[49].title, "Sick Feeling");
+  assert.equal(VIT_U_TRACKS[48].title, "Sick Feeling");
 });
 
 test("pins the vit u Playlists template wiring", () => {

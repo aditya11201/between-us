@@ -60,7 +60,6 @@ export const VIT_U_TRACKS = [
   { id: "vit-u-43-less", src: "", artwork: "", addedAt: "", title: "less", artist: "Olivia Rodrigo", album: "you seem pretty sad for a girl so in love", duration: "3:13", explicit: false },
   { id: "vit-u-44-stop-waiting", src: "", artwork: "", addedAt: "", title: "Stop Waiting", artist: "Cigarettes After Sex", album: "Bubblegum", duration: "6:02", explicit: false },
   { id: "vit-u-45-i-dont-want-to-miss-a-thing", src: "", artwork: "", addedAt: "", title: "I Don't Want To Miss A Thing - From the Touchstone film, \"Armageddon\"", artist: "Aerosmith", album: "I Don't Want To Miss A Thing - From the Touchstone film, \"Armageddon\"", duration: "4:59", explicit: false },
-  { id: "vit-u-46-merry-christmas-please-dont-call", src: "", artwork: "", addedAt: "", title: "Merry Christmas, Please Don't Call", artist: "Bleachers", album: "Merry Christmas, Please Don't Call", duration: "3:22", explicit: false },
   { id: "vit-u-47-all-too-well-sad-girl-autumn-version", src: "", artwork: "", addedAt: "", title: "All Too Well (Sad Girl Autumn Version)", artist: "Taylor Swift", album: "All Too Well (Sad Girl Autumn Version)", duration: "9:58", explicit: true },
   { id: "vit-u-48-the-1", src: "", artwork: "", addedAt: "", title: "the 1", artist: "Taylor Swift", album: "folklore", duration: "3:30", explicit: true },
   { id: "vit-u-49-always", src: "", artwork: "", addedAt: "", title: "Always", artist: "Daniel Caesar", album: "NEVER ENOUGH", duration: "3:45", explicit: true },
