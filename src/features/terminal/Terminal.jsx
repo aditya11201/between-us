@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { WindowContext } from "@/windows";
-import { VscTerminalBash } from "react-icons/vsc";
 import { MUSIC_CATALOG } from "@/features/music/musicCatalog.js";
 import { useMusicPlayer } from "@/features/music/MusicContent.jsx";
 import { resolveSongQuery } from "@/features/music/musicModel.js";
@@ -649,10 +648,6 @@ export function TerminalContent({ openApp }) {
           <button className="terminal-btn terminal-btn--close" onClick={onClose} />
           <button className="terminal-btn terminal-btn--minimize" onClick={onMinimize} />
           <button className="terminal-btn terminal-btn--zoom" onClick={onZoom} />
-        </div>
-        <div className="terminal-window-title">
-          <VscTerminalBash className="terminal-header-icon" />
-          <span>user11201 — zsh — 80×24</span>
         </div>
       </div>
 
