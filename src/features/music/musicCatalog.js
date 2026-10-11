@@ -14,6 +14,9 @@ import untilIFoundYouAudio from "@/content/music/Stephen Sanchez - Until I Found
 import untilIFoundYouArtwork from "@/content/music/Stephen Sanchez - Until I Found You.webp";
 import untilIFoundYouLyrics from "@/content/music/stephen-sanchez-until-i-found-you.lrc?raw";
 import manguAudio from "@/content/music/Fourtwnty - Mangu (Orchestral Cover).wasm?url";
+import bleachersAudio from "@/content/music/Bleachers - Merry Christmas, Please Don_t Call.wasm?url";
+import bleachersArtwork from "@/content/music/Bleachers - Merry Christmas, Please Don_t Call.webp";
+import bleachersLyrics from "@/content/music/bleachers-merry-christmas-please-dont-call.lrc?raw";
 
 const catalog = [
   {
@@ -80,6 +83,21 @@ const catalog = [
     mimeType: "audio/mp4",
     explicit: false,
     addedAt: "2026-09-30",
+  },
+  {
+    id: "vit-u-46-merry-christmas-please-dont-call",
+    title: "Merry Christmas, Please Don't Call",
+    artist: "Bleachers",
+    album: "Merry Christmas, Please Don't Call",
+    genre: "Pop",
+    src: bleachersAudio,
+    artwork: bleachersArtwork,
+    mimeType: "audio/mp4",
+    lyrics: bleachersLyrics,
+    explicit: false,
+    duration: "3:22",
+    collection: "vit u",
+    addedAt: "2026-10-10",
   },
 ];
 export const MUSIC_CATALOG = validateMusicCatalog(catalog);
