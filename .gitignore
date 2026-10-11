@@ -13,6 +13,6 @@ docs/superpowers/
 interview/
 lockscreen-reference.html
 untitled.md
-
+AUDIT-IDENTITAS.md
 # Private Important-mail plaintext (never commit — encrypted copy lives in public/)
 private/mail.json
