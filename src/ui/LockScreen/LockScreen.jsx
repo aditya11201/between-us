@@ -243,7 +243,7 @@ export function LockScreen({ isLocked = true, onUnlock }) {
           <div className="avatar" aria-hidden="true">
             <img src={profileAvatar} alt="" />
           </div>
-          <div className="user-name">My Pwetty Cutie Princess Sassy</div>
+          <div className="user-name">user11201</div>
           <div className={`pass-pill${isShaking ? " shake" : ""}`} ref={passPillRef}>
             <input
               id="password"

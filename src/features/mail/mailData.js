@@ -126,7 +126,7 @@ export const INITIAL_MESSAGES = [
     id: "sent-example",
     mailbox: "sent",
     category: "primary",
-    sender: "You",
+    sender: "user11201",
     time: "09:40",
     subject: "Project update",
     preview: "A local sent-message fixture for the Sent mailbox.",

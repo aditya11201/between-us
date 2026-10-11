@@ -25,8 +25,8 @@ export const iCloudSettings = () => {
             </svg>
           </div>
           <div className="apple-id-info-card">
-            <span className="apple-id-name">ghost</span>
-            <span className="apple-id-email">ghost@icloud.com</span>
+            <span className="apple-id-name">user11201</span>
+            <span className="apple-id-email">user11201@icloud.com</span>
           </div>
         </div>
       </SettingsGroup>

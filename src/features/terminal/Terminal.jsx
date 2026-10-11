@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { WindowContext } from "@/windows";
-import { VscTerminalBash } from "react-icons/vsc";
 import { MUSIC_CATALOG } from "@/features/music/musicCatalog.js";
 import { useMusicPlayer } from "@/features/music/MusicContent.jsx";
 import { resolveSongQuery } from "@/features/music/musicModel.js";
@@ -167,8 +166,8 @@ export function TerminalContent({ openApp }) {
       };
     }
 
-    if (cmd === "pwd") return { clear: false, lines: ["/Users/you"] };
-    if (cmd === "whoami") return { clear: false, lines: ["you"] };
+    if (cmd === "pwd") return { clear: false, lines: ["/Users/user11201"] };
+    if (cmd === "whoami") return { clear: false, lines: ["user11201"] };
 
     if (cmd === "uname") {
       if (args[0] === "-a") {
@@ -239,12 +238,12 @@ export function TerminalContent({ openApp }) {
         clear: false,
         lines: [
           "",
-          " \x1b[38;5;39m                                     ,\x1b[0m                          \x1b[32myou\x1b[0m@\x1b[36mbetween-us\x1b[0m",
+          " \x1b[38;5;39m                                     ,\x1b[0m                          \x1b[32muser11201\x1b[0m@\x1b[36mbetween-us\x1b[0m",
           " \x1b[38;5;39m                                    ;o\\\\\x1b[0m                         ─────────────────────────────",
           " \x1b[38;5;45m                                    ;Ob`.\x1b[0m                       OS:          \x1b[37mBetween Us 1.0.0\x1b[0m",
           " \x1b[38;5;45m                                   ;OOOOb`.\x1b[0m                     Kernel:      \x1b[37mbetween-us-core\x1b[0m",
           " \x1b[38;5;51m                                  ;OOOOOY\" )\x1b[0m                    Host:        \x1b[37mMacBook Pro (Simulated)\x1b[0m",
-          " \x1b[38;5;51m                                 ;OOOO' ,%%)\x1b[0m                    Shell:       \x1b[37mhacksh 1.0.0\x1b[0m",
+          " \x1b[38;5;51m                                 ;OOOO' ,%%)\x1b[0m                    Shell:       \x1b[37mzsh\x1b[0m",
           " \x1b[38;5;87m                             \\\\  /OOO ,%%%%,%\\\\\x1b[0m                 Runtime:     \x1b[37mReact 19 / V8\x1b[0m",
           " \x1b[38;5;87m                              |:  ,%%%%%%;%%/\x1b[0m                  Resolution:  \x1b[37m" + resolution + "\x1b[0m",
           " \x1b[38;5;123m                              ||,%%%%%%%%%%/\x1b[0m                   Theme:       \x1b[35mBetween Us Dark\x1b[0m",
@@ -452,9 +451,9 @@ export function TerminalContent({ openApp }) {
           `Networks: 5 packets in, 3 packets out`,
           ``,
           `PID  COMMAND      %CPU  TIME     MEM  USER`,
-          `1234 hacksh      0.0   0:00.01  12M  you`,
-          `5678 node        0.8   0:12.34  256M you`,
-          `9012 react       0.2   0:04.56  128M you`,
+          `1234 zsh         0.0   0:00.01  12M  user11201`,
+          `5678 node        0.8   0:12.34  256M user11201`,
+          `9012 react       0.2   0:04.56  128M user11201`,
         ],
       };
     }
@@ -490,8 +489,8 @@ export function TerminalContent({ openApp }) {
       return {
         clear: false,
         lines: [
-          `you                 tty1         2025-01-01 12:00`,
-          `you                 tty2         2025-01-01 13:30`,
+          `user11201           tty1         2025-01-01 12:00`,
+          `user11201           tty2         2025-01-01 13:30`,
         ],
       };
     }
@@ -650,10 +649,6 @@ export function TerminalContent({ openApp }) {
           <button className="terminal-btn terminal-btn--minimize" onClick={onMinimize} />
           <button className="terminal-btn terminal-btn--zoom" onClick={onZoom} />
         </div>
-        <div className="terminal-window-title">
-          <VscTerminalBash className="terminal-header-icon" />
-          <span>you — hacksh — 80×24</span>
-        </div>
       </div>
 
       {/* Тело терминала */}
@@ -663,7 +658,7 @@ export function TerminalContent({ openApp }) {
             <div key={i} className="terminal-output-line">
               {entry.type === "prompt" ? (
                 <span>
-                  <span className="prompt-user">you</span>
+                  <span className="prompt-user">user11201</span>
                   <span className="prompt-divider">@</span>
                   <span className="prompt-host">between-us</span>
                   <span className="prompt-sign">:~$ </span>
@@ -679,7 +674,7 @@ export function TerminalContent({ openApp }) {
 
         {/* Зона ввода */}
         <div className="terminal-input-wrapper">
-          <span className="prompt-user">you</span>
+          <span className="prompt-user">user11201</span>
           <span className="prompt-divider">@</span>
           <span className="prompt-host">between-us</span>
           <span className="prompt-sign">:~$ </span>

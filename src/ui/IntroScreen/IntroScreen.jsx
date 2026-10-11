@@ -16,9 +16,6 @@ export default function IntroScreen({ onComplete }) {
   const [veiling, setVeiling] = useState(false);
   const [status, setStatus] = useState("Two hearts still apart \u2014 press the button to unite them.");
   const [statusOk, setStatusOk] = useState(false);
-  const [afterShow, setAfterShow] = useState(false);
-  const [afterOk, setAfterOk] = useState(false);
-  const [afterStatus, setAfterStatus] = useState("Uniting\u2026");
 
   const later = (fn, ms) => {
     const id = setTimeout(fn, ms);
@@ -111,8 +108,6 @@ export default function IntroScreen({ onComplete }) {
     if (entered) return;
     setEntered(true);
     setStatus("Warmth approaching cold \u2014 keep this page open.");
-    setAfterStatus("Warmth approaching cold\u2026");
-    setAfterShow(true);
     try {
       audioCtxRef.current =
         audioCtxRef.current || new (window.AudioContext || window.webkitAudioContext)();
@@ -134,8 +129,6 @@ export default function IntroScreen({ onComplete }) {
           const msg = "\u2713 Both hearts united. Next: Apple logo \u2192 boot.";
           setStatus(msg);
           setStatusOk(true);
-          setAfterStatus(msg);
-          setAfterOk(true);
           setFlashOn(false);
           // Dissolve to black; BootScreen fades in over it.
           later(() => {
@@ -158,7 +151,6 @@ export default function IntroScreen({ onComplete }) {
     }
   };
 
-  const handleReplay = () => location.reload();
 
   return (
     <div className="intro-screen">
@@ -238,12 +230,6 @@ export default function IntroScreen({ onComplete }) {
             </div>
           </div>
         </section>
-      </div>
-      <div id="afterbar" role="status" className={`${afterShow ? "show" : ""}${afterOk ? " ok" : ""}`}>
-        <span id="afterStatus">{afterStatus}</span>
-        <button id="replayBtn" type="button" onClick={handleReplay}>
-          &#8635; Replay
-        </button>
       </div>
       <div className={`flash${flashOn ? " on" : ""}`} id="flash"></div>
       <div className={`veil${veiling ? " on" : ""}`} aria-hidden="true"></div>
