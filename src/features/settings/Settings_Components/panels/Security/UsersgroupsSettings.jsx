@@ -7,7 +7,7 @@ export const UsersgroupsSettings = () => (
       <div className="user-info" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px' }}>
         <div className="user-avatar" style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#007AFF' }} />
         <div>
-          <div style={{ fontWeight: 600 }}>User</div>
+          <div style={{ fontWeight: 600 }}>user11201</div>
           <div style={{ fontSize: '12px', color: '#666' }}>Administrator</div>
         </div>
       </div>

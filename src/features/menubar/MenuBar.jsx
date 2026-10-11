@@ -166,7 +166,7 @@ export const MenuBar = memo(function MenuBar({ activeApp, openApp, onCloseWindow
                           >
                             <span className="menuBar__dropdownLabel">
                               {opt.dynamicApp ? `${opt.label} ${appName}…` : opt.label}
-                              {opt.dynamicUser && " ghost…"}
+                              {opt.dynamicUser && " user11201…"}
                             </span>
                             {opt.shortcut && <span className="menuBar__dropdownShortcut">{opt.shortcut}</span>}
                             {opt.submenu && <span className="menuBar__dropdownIcon">›</span>}
