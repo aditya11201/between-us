@@ -239,6 +239,7 @@ export function MusicContent() {
   }, [playlists]);
 
   const audioRef = useRef(null);
+  const handledPendingPlayRef = useRef(-1);
   const pendingSeekRef = useRef(initialPlayerState.currentTime);
   const pendingAutoplayRef = useRef(false);
   const audioSourceRef = useRef({ id: null, generation: 0 });
@@ -670,6 +671,35 @@ export function MusicContent() {
 
   const disarmLyricFx = useCallback(() => {
     setLyricFx({ armed: false, songId: null });
+  }, []);
+
+  // Terminal 'play <song>' with the window closed: start the queued track on
+  // mount and minimize immediately so it stays out of the way.
+  useEffect(() => {
+    const pending = pendingTerminalPlay;
+    if (!pending.id || handledPendingPlayRef.current === pending.generation) return;
+    handledPendingPlayRef.current = pending.generation;
+    const song = songs.find((item) => item.id === pending.id);
+    if (!song || !isPlayable(song)) return;
+    selectSongForPlayback(song);
+    armLyricFx(song.id);
+    onMinimize?.();
+    // ponytail: a same-tick remount (StrictMode double-effects) or the ambient
+    // mirror-adopt pass can clear the autoplay flag right after this mount
+    // pass; re-kick playback once if nothing actually started.
+    queueMicrotask(() => {
+      if (playerStateRef.current.activeId !== song.id) return;
+      if (audioRef.current && audioRef.current.paused === false) return;
+      pendingAutoplayRef.current = true;
+      requestSourcePlayback();
+    });
+  // ponytail: mount-only — a reopened window gets a fresh generation.
+  }, []);
+
+  // Bridge handles go stale when the window closes; drop them so the terminal
+  // and the floating lyric overlay read the player as idle.
+  useEffect(() => () => {
+    musicBridgeRef.current = null;
   }, []);
 
   musicBridgeRef.current = {
@@ -1365,6 +1395,22 @@ export function MusicContent() {
 const MUSIC_BRIDGE_EVENT = "between-us:music-player";
 
 const musicBridgeRef = { current: null };
+
+// Terminal 'play <song>' hands off through here: live bridge when the Music
+// window is mounted, otherwise queued for the mount it triggers next.
+const pendingTerminalPlay = { id: null, generation: 0 };
+
+export function playFromTerminal(id) {
+  const bridge = musicBridgeRef.current;
+  if (bridge) {
+    bridge.playSongById(id);
+    bridge.armLyricFx(id);
+    return true;
+  }
+  pendingTerminalPlay.id = id;
+  pendingTerminalPlay.generation += 1;
+  return false;
+}
 
 function emitMusicBridge() {
   window.dispatchEvent(new CustomEvent(MUSIC_BRIDGE_EVENT));

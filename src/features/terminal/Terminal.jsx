@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { WindowContext } from "@/windows";
+import { useWindowManager } from "@/core/providers";
 import { VscTerminalBash } from "react-icons/vsc";
 import { MUSIC_CATALOG } from "@/features/music/musicCatalog.js";
-import { useMusicPlayer } from "@/features/music/MusicContent.jsx";
+import { useMusicPlayer, playFromTerminal } from "@/features/music/MusicContent.jsx";
 import { resolveSongQuery } from "@/features/music/musicModel.js";
 import { parseLRC } from "@/features/music/lyricsParser.js";
 
@@ -29,7 +30,8 @@ const randomMatrixString = (length = 20) => {
 
 export function TerminalContent({ openApp }) {
   const { onClose, onMinimize, onZoom, onTitlePointerDown } = useContext(WindowContext);
-  const { activeSong, pause, playSongById, armLyricFx, disarmLyricFx } = useMusicPlayer();
+  const { activeSong, pause, disarmLyricFx } = useMusicPlayer();
+  const { minimizeWindow } = useWindowManager();
 
   const [history, setHistory] = useState([
     { type: "output", text: `\x1b[33mLast login:\x1b[0m ${new Date().toDateString()} on ttys001` },
@@ -506,9 +508,9 @@ export function TerminalContent({ openApp }) {
       if (!song) {
         return { clear: false, lines: [`\x1b[31mNo match for '${joinArgs}'\x1b[0m`, available] };
       }
-      playSongById(song.id);
-      armLyricFx(song.id);
+      playFromTerminal(song.id);
       openAppHelper("music");
+      minimizeWindow("music");
       return {
         clear: false,
         lines: [
