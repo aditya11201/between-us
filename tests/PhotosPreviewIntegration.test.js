@@ -18,6 +18,7 @@ let createRoot;
 let AppWindow;
 let WindowContext;
 let PhotoCard;
+let PhotoSection;
 let PhotoPreviewContent;
 let PhotosContent;
 let photoCatalog;
@@ -42,6 +43,9 @@ before(async () => {
   ));
   ({ PhotoCard } = await vite.ssrLoadModule(
     "/src/features/photos/PhotoCard.jsx",
+  ));
+  ({ PhotoSection } = await vite.ssrLoadModule(
+    "/src/features/photos/PhotoSection.jsx",
   ));
   ({ PhotosContent } = await vite.ssrLoadModule(
     "/src/features/photos/PhotosContent.jsx",
@@ -154,30 +158,43 @@ function findConditionalRule(predicate) {
 }
 
 test("keeps modified-click selection while opening the complete photo on double-click", async () => {
-  const photoId = "favorites/01-07-26-2234.webp";
-  const photo = photoCatalog.find(({ id }) => id === photoId);
-  assert.ok(photo, `catalog contains the double-click fixture ${photoId}`);
+  const photo = {
+    id: "favorites/double-click-fixture.webp",
+    name: "double-click-fixture.webp",
+    url: "/between-us/assets/double-click-fixture.webp",
+  };
+  const section = { id: "favorites", label: "Favorites", photos: [photo] };
+  const selectedPhotoIds = new Set();
   const openAppCalls = [];
   const { container, root } = createMountedRoot();
 
+  const renderSection = () => root.render(
+    React.createElement(PhotoSection, {
+      section,
+      selectedPhotoIds: new Set(selectedPhotoIds),
+      onTogglePhoto: (photoId, additive) => {
+        if (additive) {
+          if (selectedPhotoIds.has(photoId)) selectedPhotoIds.delete(photoId);
+          else selectedPhotoIds.add(photoId);
+        } else {
+          selectedPhotoIds.clear();
+          selectedPhotoIds.add(photoId);
+        }
+      },
+      onDoubleClickPhoto: (photo) => openAppCalls.push([`preview:${photo.id}`, "Preview", photo]),
+    }),
+  );
+
   await act(async () => {
-    root.render(
-      React.createElement(PhotosContent, {
-        onClose: () => {},
-        onMinimize: () => {},
-        onMaximize: () => {},
-        openApp: (...args) => openAppCalls.push(args),
-      }),
-    );
+    renderSection();
   });
 
-  const card = [...container.querySelectorAll(".photos-card")].find(
-    (candidate) => candidate.querySelector("img")?.getAttribute("src") === photo.url,
-  );
+  const card = container.querySelector(".photos-card");
   assert.ok(card);
 
   await act(async () => {
     dom.dispatch(card, "click", { ctrlKey: true });
+    renderSection();
   });
   assert.equal(card.getAttribute("aria-pressed"), "true");
 
