@@ -70,7 +70,21 @@ test("unread-only filtering excludes read messages", () => {
     unreadOnly: true,
   });
 
-  assert.deepEqual(result.map((message) => message.id), ["favorite-stranger-first-times", "apology-to-my-favorite-stranger", "social", "payment", "account-update"]);
+  assert.deepEqual(result.map((message) => message.id), ["favorite-stranger-first-times", "apology-to-my-favorite-stranger", "message-for-you", "social", "payment", "account-update"]);
+});
+test("keeps the photo mail separate from the existing Can it be fixed email", () => {
+  const messages = createInitialMessages();
+  const existingMessage = getMessageById(messages, "security");
+  const photoMessage = getMessageById(messages, "message-for-you");
+
+  assert.ok(existingMessage);
+  assert.ok(photoMessage);
+  assert.equal(existingMessage.subject, "Can it be fixed?");
+  assert.ok(photoMessage.photoAttachment);
+  assert.equal(photoMessage.mailbox, "inbox");
+  assert.equal(photoMessage.sentAt, "2026-11-01T19:00:00+07:00");
+  assert.equal(getMailboxCount(messages, "inbox"), 8);
+  assert.equal(getMailboxCount(messages, "trash"), 1);
 });
 
 test("read-to-unread transition adds the message to unread-only results", () => {
@@ -84,7 +98,7 @@ test("read-to-unread transition adds the message to unread-only results", () => 
       query: "",
       unreadOnly: true,
     }).map((message) => message.id),
-    ["favorite-stranger-first-times", "apology-to-my-favorite-stranger"],
+    ["favorite-stranger-first-times", "apology-to-my-favorite-stranger", "message-for-you"],
   );
   assert.deepEqual(
     getVisibleMessages(unread, {
@@ -93,7 +107,7 @@ test("read-to-unread transition adds the message to unread-only results", () => 
       query: "",
       unreadOnly: true,
     }).map((message) => message.id),
-    ["favorite-stranger-first-times", "apology-to-my-favorite-stranger", "security"],
+    ["favorite-stranger-first-times", "apology-to-my-favorite-stranger", "message-for-you", "security"],
   );
 });
 
@@ -145,7 +159,7 @@ test("mailbox counts reflect post-transition moves", () => {
   const initial = createInitialMessages();
   const moved = moveMessage(moveMessage(initial, "apology-to-my-favorite-stranger", "trash"), "security", "junk");
 
-  assert.equal(getMailboxCount(moved, "inbox"), 5);
+  assert.equal(getMailboxCount(moved, "inbox"), 6);
   assert.equal(getMailboxCount(moved, "trash"), 2);
   assert.equal(getMailboxCount(moved, "junk"), 2);
 });

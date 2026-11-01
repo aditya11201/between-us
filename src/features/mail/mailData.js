@@ -104,6 +104,36 @@ Once again, I'm really sorry ya,. Aku harap kamu bisa memahami maksudku, dan sem
     flagged: false,
   },
   {
+    id: "message-for-you",
+    mailbox: "inbox",
+    category: "primary",
+    sender: "user11201",
+    senderEmail: "user11201@gmail.com",
+    sentAt: "2026-11-01T19:00:00+07:00",
+    subject: "Always Happies",
+    preview: "Haiii, My Favorite Stranger! 🤍",
+    body: `Haiii, My Favorite Stranger! 🤍
+
+Don't think about me too much, okay? I don't want you to keep feeling sad because of me.
+
+Live your life well, okay? Live happily, find countless reasons to smile, and never forget to take good care of yourself.
+
+And please believe me, even if one day I'm no longer by your side, it doesn't mean I'll stop caring about you.
+
+I may no longer be there to walk beside you, but silently, from afar, my prayers will always be with you. I'll always pray that life makes things easier for you, that you stay healthy, and that the world treats you with all the kindness and gentleness you deserve.
+
+Even if I can no longer walk beside you, I'll always wish you nothing but happiness.
+
+And if someday you ever feel alone, I hope you'll remember that there was once someone who loved you so sincerely and always wanted nothing but the best for you.
+
+I'll always love you, My Favorite Stranger. Even if one day, the only way I can love you is by quietly praying for your happiness from afar. 🤍`,
+    photoAttachment: "hiuu dapat salam dari dino",
+    to: "myfavoritestranger@gmail.com",
+    toName: "My Favorite Stranger",
+    unread: true,
+    flagged: false,
+  },
+  {
     id: "security",
     mailbox: "inbox",
     category: "primary",

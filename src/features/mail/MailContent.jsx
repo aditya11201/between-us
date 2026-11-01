@@ -27,6 +27,7 @@ import {
 } from "react-icons/fi";
 import { useWindowManager } from "@/core/providers";
 import { WindowContext } from "@/windows";
+import messageForYouPhotoUrl from "@/assets/images/message-for-you-photo.png";
 import { CATEGORIES, MAILBOX_GROUPS, createInitialMessages } from "./mailData";
 import {
   formatMessageDetailTime,
@@ -1024,6 +1025,20 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                   );
                 })}
               </div>
+              {selectedMessage.photoAttachment && (
+                <div className="mail__reader-attachment">
+                  <span className="mail__reader-attachment-name">
+                    {selectedMessage.photoAttachment}
+                  </span>
+                  <img
+                    alt="Person holding a green dinosaur plush."
+                    className="mail__reader-image"
+                    height={1672}
+                    src={messageForYouPhotoUrl}
+                    width={941}
+                  />
+                </div>
+              )}
             </article>
           ) : (
             <div className="mail__no-selection" role="status">No Message Selected</div>

@@ -246,10 +246,23 @@ test("Favorites and account Inbox shortcuts show the same unified mailbox", asyn
 
   assert.deepEqual(visibleMessageIds(), favoritesMessageIds);
   assert.ok(favoritesMessageIds.includes("favorite-stranger-first-times"));
-  assert.equal(favoritesCount, "7");
-  assert.equal(accountInbox.querySelector(".mail__nav-count")?.textContent, "7");
+  assert.ok(favoritesMessageIds.includes("message-for-you"));
+  assert.equal(favoritesCount, "8");
+  assert.equal(accountInbox.querySelector(".mail__nav-count")?.textContent, "8");
   assert.equal(favoritesInbox.getAttribute("aria-current"), "page");
   assert.equal(accountInbox.getAttribute("aria-current"), "page");
+});
+
+test("message keeps the photo attachment without a voice player", async () => {
+  const mount = await renderMail();
+  await click(getByRole(mount.container, "option", {
+    name: "user11201: Always Happies",
+  }));
+
+  const image = mount.container.querySelector(".mail__reader-image");
+  assert.ok(image);
+  assert.equal(image.alt, "Person holding a green dinosaur plush.");
+  assert.equal(mount.container.querySelector("audio"), null);
 });
 
 test("saves composed mail to Sent with a persistent local timestamp", async () => {
@@ -294,7 +307,7 @@ test("masks only the locked Important mailbox count", async () => {
   };
 
   assert.equal(getMailboxCountText("Important"), null);
-  assert.equal(getMailboxCountText("Inbox"), "7");
+  assert.equal(getMailboxCountText("Inbox"), "8");
   assert.equal(getMailboxCountText("Flagged"), "1");
 
   await unlockImportant(mount);
