@@ -909,6 +909,26 @@
   margin: 0 0 12px;
 }
 
+.mail__reader-attachment {
+  display: grid;
+  gap: 6px;
+  max-width: 380px;
+  margin-top: 18px;
+}
+
+.mail__reader-attachment-name {
+  color: var(--mail-text-tertiary);
+  font-size: 11px;
+}
+
+.mail__reader-image {
+  display: block;
+  max-width: 100%;
+  max-height: 480px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
 .mail button:focus-visible,
 .mail input:focus-visible,
 .mail textarea:focus-visible {
