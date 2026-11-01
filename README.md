@@ -10,6 +10,7 @@ Between Us preserves a desktop-style macOS-inspired simulation as a personal bro
 
 - App windows open centered at viewport-safe sizes and support mouse/touch dragging and resizing
 - Finder, Safari, Terminal, Music, and Settings experiences
+- Mail's Favorites and Mail Account Inbox entries open the same combined mailbox; “Save to Sent” stores messages and their local send timestamps in this browser and does not deliver email
 - Below 1024 px, portrait shows a rotate-to-landscape prompt; landscape keeps the desktop workspace available
 
 ## Local setup

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createServer } from "vite";
 import { Window } from "happy-dom";
 import { encryptMailJson } from "../../../scripts/encrypt-mail.mjs";
+import { formatMessageDetailTime, loadSentMessages } from "./mailModel.js";
 import { getLockedMailState } from "./mailLock.js";
 
 const TEST_MAIL_PASSWORD = "test-mail-pass";
@@ -96,10 +97,10 @@ async function click(element) {
 }
 
 async function fill(input, value) {
-  const setInputValue = Object.getOwnPropertyDescriptor(
-    browserWindow.HTMLInputElement.prototype,
-    "value",
-  ).set;
+  const prototype = input instanceof browserWindow.HTMLTextAreaElement
+    ? browserWindow.HTMLTextAreaElement.prototype
+    : browserWindow.HTMLInputElement.prototype;
+  const setInputValue = Object.getOwnPropertyDescriptor(prototype, "value").set;
   await act(async () => {
     setInputValue.call(input, value);
     input.dispatchEvent(new browserWindow.Event("input", { bubbles: true }));
@@ -177,6 +178,8 @@ async function unlockImportant(mount) {
 async function unmount(mount) {
   await act(async () => mount.root.unmount());
   mount.container.remove();
+  const index = mountedRoots.indexOf(mount);
+  if (index >= 0) mountedRoots.splice(index, 1);
 }
 
 before(async () => {
@@ -202,6 +205,7 @@ before(async () => {
 afterEach(async () => {
   for (const mount of mountedRoots.splice(0)) await unmount(mount);
   document.body.replaceChildren();
+  browserWindow.localStorage.clear();
 });
 
 after(async () => {
@@ -219,6 +223,68 @@ test("locked Important view hides protected content and exposes a labelled form"
   assert.equal(queryByText(mount.container, "A Test Subject for Important"), null);
 });
 
+test("Favorites and account Inbox shortcuts show the same unified mailbox", async () => {
+  const mount = await renderMail();
+  const inboxInGroup = (label) => {
+    const group = [...mount.container.querySelectorAll(".mail__group")]
+      .find((section) => section.querySelector(".mail__group-label")?.textContent === label);
+    assert.ok(group, `Expected ${label} group`);
+    const button = [...group.querySelectorAll(".mail__nav-item")]
+      .find((item) => item.querySelector(".mail__nav-label")?.textContent === "Inbox");
+    assert.ok(button, `Expected Inbox in ${label}`);
+    return button;
+  };
+  const favoritesInbox = inboxInGroup("Favorites");
+  const accountInbox = inboxInGroup("Mail Account");
+  const visibleMessageIds = () => [...mount.container.querySelectorAll(".mail__message")]
+    .map((message) => message.dataset.messageId);
+
+  await click(favoritesInbox);
+  const favoritesMessageIds = visibleMessageIds();
+  const favoritesCount = favoritesInbox.querySelector(".mail__nav-count")?.textContent;
+  await click(accountInbox);
+
+  assert.deepEqual(visibleMessageIds(), favoritesMessageIds);
+  assert.ok(favoritesMessageIds.includes("favorite-stranger-first-times"));
+  assert.equal(favoritesCount, "7");
+  assert.equal(accountInbox.querySelector(".mail__nav-count")?.textContent, "7");
+  assert.equal(favoritesInbox.getAttribute("aria-current"), "page");
+  assert.equal(accountInbox.getAttribute("aria-current"), "page");
+});
+
+test("saves composed mail to Sent with a persistent local timestamp", async () => {
+  browserWindow.localStorage.clear();
+  const startedAt = Date.now();
+  let mount = await renderMail();
+
+  await click(getByRole(mount.container, "button", { name: "Compose new message" }));
+  await fill(getByLabelText(mount.container, "To"), "friend@example.com");
+  await fill(getByLabelText(mount.container, "Subject"), "Local timestamp check");
+  await fill(getByLabelText(mount.container, "Message"), "Created from the composer.");
+  await click(getByRole(mount.container, "button", { name: "Save to Sent" }));
+
+  const savedMessage = loadSentMessages(browserWindow.localStorage)[0];
+  assert.ok(savedMessage);
+  assert.ok(Date.parse(savedMessage.sentAt) >= startedAt);
+  assert.ok(Date.parse(savedMessage.sentAt) <= Date.now());
+  assert.equal(savedMessage.senderEmail, "user11201@gmail.com");
+  assert.equal(savedMessage.to, "friend@example.com");
+  assert.equal(savedMessage.body, "Created from the composer.");
+  getByRole(mount.container, "option", {
+    name: "user11201@gmail.com: Local timestamp check",
+  });
+  getByText(mount.container, formatMessageDetailTime(savedMessage));
+
+  await unmount(mount);
+  mount = await renderMail();
+  await click(getByRole(mount.container, "button", { name: /^Sent/ }));
+  await click(getByRole(mount.container, "option", {
+    name: "user11201@gmail.com: Local timestamp check",
+  }));
+  getByText(mount.container, "Created from the composer.");
+  getByText(mount.container, formatMessageDetailTime(savedMessage));
+});
+
 test("masks only the locked Important mailbox count", async () => {
   const mount = await renderMail();
   const getMailboxCountText = (label) => {
@@ -228,7 +294,7 @@ test("masks only the locked Important mailbox count", async () => {
   };
 
   assert.equal(getMailboxCountText("Important"), null);
-  assert.equal(getMailboxCountText("Inbox"), "5");
+  assert.equal(getMailboxCountText("Inbox"), "7");
   assert.equal(getMailboxCountText("Flagged"), "1");
 
   await unlockImportant(mount);
@@ -339,19 +405,19 @@ test("minimizing and closing Mail relock Important", async () => {
 test("minimizing Mail outside Important preserves the current message state", async () => {
   const mount = await renderMail();
 
-  await fill(mount.container.querySelector('[name="search"]'), "lesson");
-  await click(getByRole(mount.container, "option", { name: /Learning App: Continue your lesson today/i }));
+  await fill(mount.container.querySelector('[name="search"]'), "Pwetty");
+  await click(getByRole(mount.container, "option", { name: /^user11201:/ }));
   await click(getByRole(mount.container, "button", { name: "Compose new message" }));
 
   assert.equal(mount.container.querySelector(".mail__compose") !== null, true);
-  assert.equal(mount.container.querySelector('[name="search"]').value, "lesson");
+  assert.equal(mount.container.querySelector('[name="search"]').value, "Pwetty");
 
   await click(getByRole(mount.container, "button", { name: "Minimize Mail window" }));
 
   assert.equal(mount.callbacks.minimize, 1);
   assert.equal(mount.container.querySelector(".mail__compose") !== null, true);
-  assert.equal(mount.container.querySelector('[name="search"]').value, "lesson");
+  assert.equal(mount.container.querySelector('[name="search"]').value, "Pwetty");
 
   await click(getByRole(mount.container, "button", { name: "Discard" }));
-  assert.ok(getByText(mount.container, "Continue your lesson today"));
+  assert.ok(mount.container.querySelector(".mail__reader"));
 });

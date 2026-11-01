@@ -29,10 +29,14 @@ import { useWindowManager } from "@/core/providers";
 import { WindowContext } from "@/windows";
 import { CATEGORIES, MAILBOX_GROUPS, createInitialMessages } from "./mailData";
 import {
+  formatMessageDetailTime,
+  formatMessageListTime,
   getMailboxCount,
   getMessageById,
   getVisibleMessages,
+  loadSentMessages,
   moveMessage,
+  saveSentMessages,
   setMessageUnread,
   toggleMessageFlag,
 } from "./mailModel";
@@ -129,7 +133,10 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const { windows, activeWin } = useWindowManager();
   const mailRef = useRef(null);
   const wasNarrow = useRef(false);
-  const [messages, setMessages] = useState(createInitialMessages);
+  const [messages, setMessages] = useState(() => [
+    ...loadSentMessages(window.localStorage),
+    ...createInitialMessages(),
+  ]);
   const [mailboxId, setMailboxId] = useState("inbox");
   const [importantUnlocked, setImportantUnlocked] = useState(false);
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
@@ -145,6 +152,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const [promoVisible, setPromoVisible] = useState(true);
   const [view, setView] = useState("message");
   const [draft, setDraft] = useState(null);
+  const [sendError, setSendError] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
@@ -235,6 +243,9 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   useEffect(() => {
     if (selectedId && !selectedIsVisible) clearSelection();
   }, [selectedId, selectedIsVisible]);
+  useEffect(() => {
+    saveSentMessages(messages, window.localStorage);
+  }, [messages]);
 
   useEffect(() => {
     const element = mailRef.current;
@@ -361,6 +372,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
       subject: mode === "new" ? "" : `${prefix}${message?.subject || ""}`,
       body: mode === "forward" ? `\n\n--- Forwarded message ---\n${message?.body || ""}` : "",
     });
+    setSendError("");
     setView("compose");
     setMoreOpen(false);
     setMoveOpen(false);
@@ -368,7 +380,48 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
 
   const closeCompose = () => {
     setDraft(null);
+    setSendError("");
     setView("message");
+  };
+
+  const handleSend = (event) => {
+    event.preventDefault();
+    if (!draft) return;
+
+    const senderEmail = "user11201@gmail.com";
+    const sentAt = new Date().toISOString();
+    const message = {
+      id: globalThis.crypto.randomUUID(),
+      localSent: true,
+      mailbox: "sent",
+      category: "primary",
+      sender: senderEmail,
+      senderEmail,
+      sentAt,
+      subject: draft.subject.trim(),
+      preview: draft.body.trim().replace(/\s+/g, " "),
+      body: draft.body,
+      to: draft.to.trim(),
+      toName: draft.to.trim(),
+      unread: false,
+      flagged: false,
+    };
+    const sentMessages = [...messages.filter((item) => item.sentAt), message];
+
+    if (!saveSentMessages(sentMessages, window.localStorage)) {
+      setSendError("Could not save in this browser. No email was sent.");
+      return;
+    }
+
+    selectMailbox("sent");
+    setMessages((current) => [message, ...current]);
+    setCategoryId("primary");
+    setQuery("");
+    setUnreadOnly(false);
+    setSelectedId(message.id);
+    setView("message");
+    setDraft(null);
+    setSendError("");
   };
 
   const handleMessageKeyDown = (event) => {
@@ -730,7 +783,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                     {message.flagged && (
                       <FiFlag className="mail__message-flag" aria-hidden="true" />
                     )}
-                    <span className="mail__message-time">{message.time}</span>
+                    <span className="mail__message-time">{formatMessageListTime(message)}</span>
                   </span>
                   <span className="mail__message-subject">{message.subject}</span>
                   <span className="mail__message-preview">{message.preview}</span>
@@ -894,16 +947,10 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
 
         <div className="mail__detail-body">
           {view === "compose" && draft ? (
-            <form
-              className="mail__compose"
-              onSubmit={(event) => {
-                event.preventDefault();
-                closeCompose();
-              }}
-            >
+            <form className="mail__compose" onSubmit={handleSend}>
               <div className="mail__compose-heading">
                 <h2>{COMPOSE_LABELS[draft.mode]}</h2>
-                <p>Local draft</p>
+                <p>Local-only demo. No email is sent.</p>
               </div>
               <label htmlFor="mail-compose-to">
                 To
@@ -914,6 +961,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                   autoComplete="email"
                   spellCheck={false}
                   value={draft.to}
+                  required
                   onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))}
                 />
               </label>
@@ -938,8 +986,9 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                   onChange={(event) => setDraft((current) => ({ ...current, body: event.target.value }))}
                 />
               </label>
+              {sendError && <p className="mail__lock-error" role="alert">{sendError}</p>}
               <div className="mail__compose-actions">
-                <button type="submit" className="mail__button mail__button--primary">Send</button>
+                <button type="submit" className="mail__button mail__button--primary">Save to Sent</button>
                 <button type="button" className="mail__button" onClick={closeCompose}>Discard</button>
               </div>
             </form>
@@ -954,7 +1003,9 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                   </div>
                   <div className="mail__reader-to">To: {selectedMessage.toName || "User"} &lt;{selectedMessage.to}&gt;</div>
                 </div>
-                <time className="mail__reader-date">{selectedMessage.time}</time>
+                <time className="mail__reader-date" dateTime={selectedMessage.sentAt || undefined}>
+                  {formatMessageDetailTime(selectedMessage)}
+                </time>
               </header>
               <div className="mail__reader-body">
                 {selectedMessage.body.split(/\n\n+/).map((paragraph) => {
