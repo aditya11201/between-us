@@ -6,6 +6,7 @@ import {
   clampVolume,
   computeFadeVolume,
   decideAmbientAction,
+  getNextGalleryTrackIndex,
   isGalleryVisible,
   needsSourceReload,
   setAmbientState,
@@ -57,6 +58,15 @@ test("decideAmbientAction starts after 30 s visible", () => {
     decideAmbientAction({ visible: true, playing: false, visibleSince: now - TRIGGER_MS, now }),
     "start",
   );
+  assert.equal(
+    decideAmbientAction({ visible: true, playing: false, started: true, visibleSince: now - TRIGGER_MS, now }),
+    null,
+  );
+});
+
+test("gallery track sequence advances and then stops", () => {
+  assert.equal(getNextGalleryTrackIndex(0, 2), 1);
+  assert.equal(getNextGalleryTrackIndex(1, 2), null);
 });
 
 test("decideAmbientAction never stops by itself (close fades out immediately)", () => {
@@ -87,13 +97,13 @@ test("clampVolume bounds Music-slider input", () => {
 });
 
 test("ambientState bridge carries the session snapshot", () => {
-  setAmbientState({ playing: true, songId: "fourtwnty-mangu-orchestral-cover", volume: 0.4, currentTime: 12 });
+  setAmbientState({ playing: true, songId: "harry-styles-coming-up-roses", volume: 0.4, currentTime: 12 });
   assert.equal(ambientState.playing, true);
-  assert.equal(ambientState.songId, "fourtwnty-mangu-orchestral-cover");
+  assert.equal(ambientState.songId, "harry-styles-coming-up-roses");
   assert.equal(ambientState.volume, 0.4);
   setAmbientState({ playing: false });
   assert.equal(ambientState.playing, false);
-  assert.equal(ambientState.songId, "fourtwnty-mangu-orchestral-cover");
+  assert.equal(ambientState.songId, "harry-styles-coming-up-roses");
 });
 
 test("shouldRecoverAudio fires only on unexpected stall mid-session", () => {

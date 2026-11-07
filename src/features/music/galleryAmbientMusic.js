@@ -13,7 +13,11 @@ export const GALLERY_AMBIENT_EVENT = "between-us:gallery-ambient";
 export const GALLERY_AMBIENT_COMMAND = "between-us:gallery-ambient-command";
 export const MUSIC_LOCAL_EVENT = "between-us:music-local-playing";
 // ponytail: stable id, no import (GalleryAmbientAudio re-exports it).
-export const GALLERY_AMBIENT_SONG_ID = "fourtwnty-mangu-orchestral-cover";
+export const GALLERY_AMBIENT_SONG_ID = "harry-styles-coming-up-roses";
+export const GALLERY_AMBIENT_SONG_IDS = Object.freeze([
+  GALLERY_AMBIENT_SONG_ID,
+  "new-west-those-eyes",
+]);
 
 // Bridge snapshot so late subscribers (e.g. a freshly opened Music window)
 // see the current ambient session without waiting for the next event.
@@ -67,10 +71,15 @@ export function needsSourceReload({ readyState, networkState, error }) {
 
 // Start-only decision. Stopping needs no decision: closing the gallery begins
 // the fade-out immediately and the session ends when volume reaches 0.
-export function decideAmbientAction({ visible, playing, visibleSince, now }) {
-  if (visible && !playing) {
+export function decideAmbientAction({ visible, playing, started = false, visibleSince, now }) {
+  if (visible && !playing && !started) {
     if (visibleSince == null) return null;
     return now - visibleSince >= GALLERY_AMBIENT.TRIGGER_MS ? "start" : null;
   }
   return null;
+}
+
+export function getNextGalleryTrackIndex(currentIndex, trackCount) {
+  const nextIndex = currentIndex + 1;
+  return nextIndex < trackCount ? nextIndex : null;
 }

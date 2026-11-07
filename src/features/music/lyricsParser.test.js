@@ -29,6 +29,13 @@ test("skips metadata and malformed lines", () => {
   assert.deepEqual(lines, [{ time: 5, text: "real line" }]);
 });
 
+test("strips inline word timestamps from lyric text", () => {
+  assert.deepEqual(
+    parseLRC("[00:08.52]Tell <00:08.86>me <00:09.09>your <00:09.41>fears"),
+    [{ time: 8.52, text: "Tell me your fears" }],
+  );
+});
+
 test("handles empty and non-string input", () => {
   assert.deepEqual(parseLRC(""), []);
   assert.deepEqual(parseLRC(undefined), []);
