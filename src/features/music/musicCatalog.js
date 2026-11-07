@@ -13,7 +13,9 @@ import riskItAllLyrics from "@/content/music/bruno-mars-risk-it-all.lrc?raw";
 import untilIFoundYouAudio from "@/content/music/Stephen Sanchez - Until I Found You.wasm?url";
 import untilIFoundYouArtwork from "@/content/music/Stephen Sanchez - Until I Found You.webp";
 import untilIFoundYouLyrics from "@/content/music/stephen-sanchez-until-i-found-you.lrc?raw";
-import manguAudio from "@/content/music/Fourtwnty - Mangu (Orchestral Cover).wasm?url";
+import comingUpRosesAudio from "@/content/music/Harry Styles - Coming Up Roses.mp3?url";
+import comingUpRosesLyrics from "@/content/music/harry-styles-coming-up-roses.lrc?raw";
+import thoseEyesAudio from "@/content/music/New West - Those Eyes (Lyrics).mp3?url";
 
 const catalog = [
   {
@@ -69,17 +71,30 @@ const catalog = [
     addedAt: "2026-09-28",
   },
   {
-    id: "fourtwnty-mangu-orchestral-cover",
-    title: "Mangu (Orchestral Cover)",
-    artist: "Fourtwnty",
+    id: "harry-styles-coming-up-roses",
+    title: "Coming Up Roses",
+    artist: "Harry Styles",
     album: "Single",
-    genre: "Instrumental",
-    src: manguAudio,
+    genre: "Pop",
+    src: comingUpRosesAudio,
     // ponytail: placeholder artwork until a dedicated cover exists
     artwork: perfectArtwork,
-    mimeType: "audio/mp4",
+    mimeType: "audio/mpeg",
+    lyrics: comingUpRosesLyrics,
     explicit: false,
-    addedAt: "2026-09-30",
+    addedAt: "2026-11-07",
+  },
+  {
+    id: "new-west-those-eyes",
+    title: "Those Eyes",
+    artist: "New West",
+    album: "Single",
+    genre: "",
+    src: thoseEyesAudio,
+    artwork: perfectArtwork,
+    mimeType: "audio/mpeg",
+    explicit: false,
+    addedAt: "2026-11-07",
   },
 ];
 export const MUSIC_CATALOG = validateMusicCatalog(catalog);

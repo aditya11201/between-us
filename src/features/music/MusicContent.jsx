@@ -32,7 +32,7 @@ import {
   GALLERY_AMBIENT,
   GALLERY_AMBIENT_COMMAND,
   GALLERY_AMBIENT_EVENT,
-  GALLERY_AMBIENT_SONG_ID,
+  GALLERY_AMBIENT_SONG_IDS,
   MUSIC_LOCAL_EVENT,
   ambientState,
 } from "./galleryAmbientMusic";
@@ -62,7 +62,7 @@ import {
 import { getActiveLyricIndex, parseLRC } from "./lyricsParser.js";
 import { matchesQuery } from "@/utils/search.js";
 
-// ponytail: stored ids validate against the full library (5 playable + 84
+// ponytail: stored ids validate against the full library (6 playable + 84
 // templates) so playlist entries and resume position survive for template
 // songs once their audio lands.
 const FULL_MUSIC_LIBRARY = [...MUSIC_CATALOG, ...TEMPLATE_SONGS];
@@ -83,7 +83,7 @@ const getInitialPlayerState = () => {
     );
     // ponytail: the ambient track is gallery-timed, never restored — IDM
     // grabs the audio when a persisted activeId auto-loads it on next boot.
-    if (restored.activeId === GALLERY_AMBIENT_SONG_ID) {
+    if (GALLERY_AMBIENT_SONG_IDS.includes(restored.activeId)) {
       return { ...restored, activeId: null, currentTime: 0 };
     }
     return restored;
@@ -97,9 +97,9 @@ const getInitialPlayerState = () => {
 // a pre-fix stored id never survives to trigger a fetch.
 try {
   const stored = window.localStorage.getItem(PLAYER_STORAGE_KEY);
-  if (stored && stored.includes(GALLERY_AMBIENT_SONG_ID)) {
+  if (stored && GALLERY_AMBIENT_SONG_IDS.some((id) => stored.includes(id))) {
     const parsed = JSON.parse(stored);
-    if (parsed?.activeId === GALLERY_AMBIENT_SONG_ID) {
+    if (GALLERY_AMBIENT_SONG_IDS.includes(parsed?.activeId)) {
       window.localStorage.setItem(
         PLAYER_STORAGE_KEY,
         serializePlayerState({ ...parsed, activeId: null, currentTime: 0 }),
@@ -246,6 +246,7 @@ export function MusicContent() {
   const metadataLoadedRef = useRef(false);
   const playerStateRef = useRef(initialPlayerState);
   const handleEndedRef = useRef(null);
+  const musicBridgeValueRef = useRef(null);
   const filteredSongs = useMemo(
     () => filterMusicCatalog(songs, searchQuery),
     [songs, searchQuery],
@@ -276,7 +277,7 @@ export function MusicContent() {
     // ponytail: the ambient track is gallery-timed, never restored — IDM
     // grabs the MP3 when a persisted activeId auto-loads it on next boot.
     // Import-time scrub already removed pre-fix ids; this guards new writes.
-    if (activeId === GALLERY_AMBIENT_SONG_ID) return;
+    if (GALLERY_AMBIENT_SONG_IDS.includes(activeId)) return;
     persistPlayerState();
   }, [activeId, volume, isMuted, persistPlayerState]);
 
@@ -304,7 +305,7 @@ export function MusicContent() {
       const nextState = { ...state, currentTime: currentAudioTime };
       // ponytail: the ambient track is gallery-timed, never restored — IDM
       // grabs the audio when a persisted activeId auto-loads it on boot.
-      if (nextState.activeId === GALLERY_AMBIENT_SONG_ID) return;
+      if (GALLERY_AMBIENT_SONG_IDS.includes(nextState.activeId)) return;
       playerStateRef.current = nextState;
       window.localStorage.setItem(
         PLAYER_STORAGE_KEY,
@@ -460,15 +461,6 @@ export function MusicContent() {
     const audio = audioRef.current;
     if (!audio) return undefined;
 
-    // ponytail: the ambient track is gallery-timed, never restored — skip
-    // loading it here entirely so no audio fetch ever fires for it on boot
-    // (this is what IDM was grabbing). Mirror adopt below shows metadata only.
-    if (activeSong?.id === GALLERY_AMBIENT_SONG_ID && !ambientMirrorRef.current) {
-      pendingAutoplayRef.current = false;
-      setDuration(0);
-      setCurrentTime(0);
-      return undefined;
-    }
 
     // ponytail: mirror adopt shows metadata only; the ambient session owns
     // audible output, so skip the load/autoplay entirely.
@@ -672,7 +664,7 @@ export function MusicContent() {
     setLyricFx({ armed: false, songId: null });
   }, []);
 
-  musicBridgeRef.current = {
+  musicBridgeValueRef.current = {
     songs,
     activeSong,
     activeId,
@@ -688,10 +680,35 @@ export function MusicContent() {
     armLyricFx,
     disarmLyricFx,
   };
+  musicBridgeRef.current = musicBridgeValueRef.current;
 
   useEffect(() => {
+    musicBridgeRef.current = musicBridgeValueRef.current;
     emitMusicBridge();
   });
+  useEffect(() => () => {
+    if (musicBridgeRef.current === musicBridgeValueRef.current) {
+      musicBridgeRef.current = null;
+      emitMusicBridge();
+    }
+  }, []);
+  useEffect(() => {
+    const request = pendingMusicRequest;
+    if (!request) return undefined;
+    pendingMusicRequest = null;
+    let current = true;
+    let applied = false;
+    queueMicrotask(() => {
+      if (!current) return;
+      applied = true;
+      playSongById(request.songId);
+      if (request.armLyrics) armLyricFx(request.songId);
+    });
+    return () => {
+      current = false;
+      if (!applied) pendingMusicRequest ??= request;
+    };
+  }, [playSongById, armLyricFx]);
   const handleCardSelect = useCallback((id, contextList = null) => {
     const source = Array.isArray(contextList) ? contextList : librarySongs;
     const song = source.find((item) => item.id === id) ?? librarySongs.find((item) => item.id === id);
@@ -1365,6 +1382,8 @@ export function MusicContent() {
 const MUSIC_BRIDGE_EVENT = "between-us:music-player";
 
 const musicBridgeRef = { current: null };
+// ponytail: one pending terminal request; FIFO only if several can queue before Music mounts.
+let pendingMusicRequest = null;
 
 function emitMusicBridge() {
   window.dispatchEvent(new CustomEvent(MUSIC_BRIDGE_EVENT));
@@ -1390,9 +1409,16 @@ export function useMusicPlayer() {
     activeLyricIndex: -1,
     lyricFxArmed: false,
     lyricFxSongId: null,
-    playSongById: () => null,
+    playSongById: (id) => {
+      const song = MUSIC_CATALOG.find((item) => item.id === id);
+      if (!song) return null;
+      pendingMusicRequest = { songId: id, armLyrics: false };
+      return song;
+    },
     pause: () => {},
-    armLyricFx: () => {},
+    armLyricFx: (songId) => {
+      if (pendingMusicRequest?.songId === songId) pendingMusicRequest.armLyrics = true;
+    },
     disarmLyricFx: () => {},
   };
 }

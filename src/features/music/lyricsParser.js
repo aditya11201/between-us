@@ -11,7 +11,7 @@ export function parseLRC(text) {
     if (!match) continue;
     // Single timestamp per line only; metadata ([ar:], [ti:], [offset:]) and
     // malformed lines never match the pattern above.
-    const lyricText = match[4].trim();
+    const lyricText = match[4].replace(/<\d{1,3}:\d{2}(?:[.:]\d{2,3})?>/g, "").trim();
     if (!lyricText || lyricText.startsWith("[")) continue;
     const fraction = match[3] ?? "00";
     lines.push({

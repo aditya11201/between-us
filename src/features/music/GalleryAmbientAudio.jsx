@@ -5,17 +5,25 @@ import {
   GALLERY_AMBIENT_COMMAND,
   GALLERY_AMBIENT_EVENT,
   GALLERY_AMBIENT_SONG_ID,
+  GALLERY_AMBIENT_SONG_IDS,
   MUSIC_LOCAL_EVENT,
   ambientState,
   clampVolume,
   computeFadeVolume,
   decideAmbientAction,
+  getNextGalleryTrackIndex,
   isGalleryVisible,
   needsSourceReload,
   setAmbientState,
   shouldRecoverAudio,
 } from "./galleryAmbientMusic";
-import manguAudio from "@/content/music/Fourtwnty - Mangu (Orchestral Cover).wasm?url";
+import comingUpRosesAudio from "@/content/music/Harry Styles - Coming Up Roses.mp3?url";
+import thoseEyesAudio from "@/content/music/New West - Those Eyes (Lyrics).mp3?url";
+
+const GALLERY_AMBIENT_TRACKS = [
+  { id: GALLERY_AMBIENT_SONG_ID, src: comingUpRosesAudio },
+  { id: GALLERY_AMBIENT_SONG_IDS[1], src: thoseEyesAudio },
+];
 
 export { GALLERY_AMBIENT_SONG_ID };
 
@@ -26,6 +34,8 @@ export function GalleryAmbientAudio() {
   const audioRef = useRef(null);
   const visibleRef = useRef(false);
   const playingRef = useRef(false);
+  const sequenceStartedRef = useRef(false);
+  const trackIndexRef = useRef(0);
   const visibleSinceRef = useRef(null);
   const timerRef = useRef(null);
   const fadeRef = useRef(null);
@@ -60,7 +70,7 @@ export function GalleryAmbientAudio() {
       playingRef.current = playing;
       const state = setAmbientState({
         playing,
-        songId: playing ? GALLERY_AMBIENT_SONG_ID : ambientState.songId,
+        songId: playing ? GALLERY_AMBIENT_TRACKS[trackIndexRef.current].id : ambientState.songId,
         volume: latestVolumeRef.current,
         currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
         ...extra,
@@ -97,20 +107,29 @@ export function GalleryAmbientAudio() {
       }, GALLERY_AMBIENT.TICK_MS);
     };
 
-    const startPlayback = async () => {
-      if (!audio.src) audio.src = manguAudio;
-      audio.loop = true;
-      latestVolumeRef.current = 0;
-      audio.volume = 0;
-      setAmbientState({ songId: GALLERY_AMBIENT_SONG_ID, volume: 0, currentTime: 0 });
+    const startTrack = async (index, fadeIn = false) => {
+      const track = GALLERY_AMBIENT_TRACKS[index];
+      trackIndexRef.current = index;
+      audio.loop = false;
+      if (audio.getAttribute("src") !== track.src) audio.src = track.src;
+      if (fadeIn) {
+        latestVolumeRef.current = 0;
+        audio.volume = 0;
+      }
+      setAmbientState({
+        songId: track.id,
+        volume: latestVolumeRef.current,
+        currentTime: 0,
+      });
       try {
         await audio.play();
       } catch {
-        // ponytail: autoplay blocked until first user gesture; retry on next pointer/key
+        if (!visibleRef.current) return;
+        // ponytail: retry autoplay on the next user gesture.
         if (!gestureCleanupRef.current) {
           const retry = () => {
             removeGestureListeners();
-            startPlayback();
+            startTrack(index, fadeIn);
           };
           window.addEventListener("pointerdown", retry, { once: true });
           window.addEventListener("keydown", retry, { once: true });
@@ -121,14 +140,25 @@ export function GalleryAmbientAudio() {
         }
         return;
       }
+      if (!visibleRef.current) {
+        audio.pause();
+        removeGestureListeners();
+        return;
+      }
       removeGestureListeners();
-      setPlaying(true, { currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0 });
-      rampTo(GALLERY_AMBIENT.TARGET_VOLUME, GALLERY_AMBIENT.FADE_IN_MS);
+      setPlaying(true, {
+        songId: track.id,
+        currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
+      });
+      if (fadeIn) rampTo(GALLERY_AMBIENT.TARGET_VOLUME, GALLERY_AMBIENT.FADE_IN_MS);
     };
 
     // Immediate fade-out on gallery close; the session ends at silence.
     const fadeOutAndStop = (durationMs = GALLERY_AMBIENT.FADE_OUT_MS) => {
-      if (!playingRef.current) return;
+      if (!playingRef.current) {
+        removeGestureListeners();
+        return;
+      }
       rampTo(0, durationMs, () => {
         audio.pause();
         audio.currentTime = 0;
@@ -170,7 +200,7 @@ export function GalleryAmbientAudio() {
       // bare play() — re-attach src, restore position, then play + ease back.
       if (needsSourceReload({ readyState: audio.readyState, networkState: audio.networkState, error: audio.error?.code ?? 0 })) {
         const resumeAt = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-        audio.src = manguAudio;
+        audio.src = GALLERY_AMBIENT_TRACKS[trackIndexRef.current].src;
         audio.load();
         audio.currentTime = resumeAt;
       }
@@ -191,15 +221,27 @@ export function GalleryAmbientAudio() {
 
     window.addEventListener(GALLERY_AMBIENT_COMMAND, onCommand);
     window.addEventListener(MUSIC_LOCAL_EVENT, onLocalPlaying);
-    // ponytail: loop attr already repeats, but some browsers fire ended on
-    // long/streamed files — restart here so playback never dies mid-session.
     const onEnded = () => {
-      if (playingRef.current && visibleRef.current) {
-        audio.currentTime = 0;
-        audio.play().catch(() => {});
-      } else if (playingRef.current) {
+      if (!playingRef.current) return;
+      if (!visibleRef.current) {
         fadeOutAndStop();
+        return;
       }
+      const nextIndex = getNextGalleryTrackIndex(
+        trackIndexRef.current,
+        GALLERY_AMBIENT_TRACKS.length,
+      );
+      if (nextIndex !== null) {
+        startTrack(nextIndex);
+        return;
+      }
+      clearFade();
+      removeGestureListeners();
+      audio.pause();
+      audio.currentTime = 0;
+      latestVolumeRef.current = 0;
+      audio.volume = 0;
+      setPlaying(false, { currentTime: 0 });
     };
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("error", onStall);
@@ -211,16 +253,20 @@ export function GalleryAmbientAudio() {
       if (playingRef.current) {
         // ponytail: reopened mid-fade-out — cancel the fade and resume to peak.
         rampTo(GALLERY_AMBIENT.TARGET_VOLUME, GALLERY_AMBIENT.RESUME_FADE_MS);
-      } else {
+      } else if (!sequenceStartedRef.current) {
         timerRef.current = setTimeout(() => {
           timerRef.current = null;
           const action = decideAmbientAction({
             visible: visibleRef.current,
             playing: playingRef.current,
+            started: sequenceStartedRef.current,
             visibleSince: visibleSinceRef.current,
             now: Date.now(),
           });
-          if (action === "start") startPlayback();
+          if (action === "start") {
+            sequenceStartedRef.current = true;
+            startTrack(0, true);
+          }
         }, GALLERY_AMBIENT.TRIGGER_MS);
       }
     } else {
@@ -230,6 +276,7 @@ export function GalleryAmbientAudio() {
 
     return () => {
       clearTimeout(timerRef.current);
+      removeGestureListeners();
       stopWatchdog();
       window.removeEventListener(GALLERY_AMBIENT_COMMAND, onCommand);
       window.removeEventListener(MUSIC_LOCAL_EVENT, onLocalPlaying);
@@ -256,6 +303,6 @@ export function GalleryAmbientAudio() {
     };
   }, []);
 
-  return <audio ref={audioRef} loop preload="none" style={{ display: "none" }} />;
+  return <audio ref={audioRef} preload="none" style={{ display: "none" }} />;
 }
 
