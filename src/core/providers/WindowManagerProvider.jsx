@@ -49,18 +49,36 @@ export function windowReducer(state, action) {
     case WINDOW_ACTIONS.OPEN: {
       const { appId, appName, position, viewport } = action.payload;
       const { payload } = action.payload;
+      const shouldMaximize = payload?.maximize === true;
+      const vw = viewport?.width ?? (typeof window !== "undefined" ? window.innerWidth : 1280);
+      const vh = viewport?.height ?? (typeof window !== "undefined" ? window.innerHeight : 800);
+      const maximizedBounds = {
+        x: 0,
+        y: MENU_BAR_HEIGHT,
+        width: vw,
+        height: vh - MENU_BAR_HEIGHT - DOCK_HEIGHT,
+      };
       const existing = state.windows.find(w => w.id === appId);
       if (existing) {
         const nextZIndexState = getNextWindowZIndexState(state.windows, state.zCounter);
         const newMinimizedApps = new Set(state.minimizedApps);
         newMinimizedApps.delete(appId);
+        const isAlreadyMaximized = existing.x === 0 && existing.y === MENU_BAR_HEIGHT;
+        const nextWindowStates = shouldMaximize && !isAlreadyMaximized
+          ? {
+              ...state.windowStates,
+              [appId]: { x: existing.x, y: existing.y, w: existing.width, h: existing.height },
+            }
+          : state.windowStates;
         return {
           ...state,
+          windowStates: nextWindowStates,
           windows: nextZIndexState.windows.map(window => (
             window.id === appId
               ? {
                   ...window,
                   zIndex: nextZIndexState.zIndex,
+                  ...(shouldMaximize ? maximizedBounds : {}),
                   ...(payload === undefined ? {} : { payload }),
                 }
               : window
@@ -74,18 +92,25 @@ export function windowReducer(state, action) {
       const p = position || getInitialWindowBounds(appId, viewport?.width, viewport?.height);
       const nextZIndexState = getNextWindowZIndexState(state.windows, state.zCounter);
       const newZIndex = nextZIndexState.zIndex;
+      const nextWindowStates = shouldMaximize
+        ? {
+            ...state.windowStates,
+            [appId]: { x: p.x, y: p.y, w: p.w, h: p.h },
+          }
+        : state.windowStates;
       
       return {
         ...state,
+        windowStates: nextWindowStates,
         windows: [
           ...nextZIndexState.windows,
           {
             id: appId,
             title: appName || appId,
-            x: p.x,
-            y: p.y,
-            width: p.w,
-            height: p.h,
+            x: shouldMaximize ? maximizedBounds.x : p.x,
+            y: shouldMaximize ? maximizedBounds.y : p.y,
+            width: shouldMaximize ? maximizedBounds.width : p.w,
+            height: shouldMaximize ? maximizedBounds.height : p.h,
             zIndex: newZIndex,
             ...(payload === undefined ? {} : { payload }),
           },
@@ -124,6 +149,7 @@ export function windowReducer(state, action) {
     
     case WINDOW_ACTIONS.MAXIMIZE: {
       const { appId, windowStates } = action.payload;
+      const knownWindowStates = { ...state.windowStates, ...windowStates };
       const win = state.windows.find(w => w.id === appId);
       if (!win) return state;
 
@@ -131,7 +157,7 @@ export function windowReducer(state, action) {
       const isMaximized = win.x === 0 && win.y === MENU_BAR_HEIGHT;
 
       if (isMaximized) {
-        const saved = windowStates[appId];
+        const saved = knownWindowStates[appId];
         if (!saved) return state;
         
         return {
@@ -144,7 +170,7 @@ export function windowReducer(state, action) {
         };
       } else {
         const newWindowStates = {
-          ...windowStates,
+          ...knownWindowStates,
           [appId]: { x: win.x, y: win.y, w: win.width, h: win.height },
         };
         

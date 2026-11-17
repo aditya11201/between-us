@@ -32,6 +32,59 @@ export const MAILBOX_GROUPS = [
 
 export const INITIAL_MESSAGES = [
   {
+    id: "happy-one-year-anniversary",
+    mailbox: "inbox",
+    category: "primary",
+    sender: "user11201",
+    senderEmail: "user11201@gmail.com",
+    sentAt: "2026-11-18T00:00:00+07:00",
+    subject: "Happy One Year, Pretty Girl 🤍",
+    preview: "Helloooo, pretty girl! How are you doing, cantikkk? How's life treating you lately?",
+    body: `Helloooo, pretty girl! 
+
+How are you doing, cantikkk? How's life treating you lately? ak harap km selalu sehat, happy, dan semoga banyak good things yang datang ke hidup km yaaa. Don't forget to take care of yourself, okay
+
+Anywayyy, do you know what day it is today? Atau km inget nggak ada apa sama tanggal hari ini? Hmm, let me guess... km lupa yaaa? Or maybe you didn't even realize it? Hehehe.
+
+Well, guess whattt? Today marks exactly one year since the day we first met and talked to each other! Yup, it's been a whole year already! 
+
+Time flies so fast, doesn't it? Rasanya kayak baru kemarin kita pertama kali kenalan, ngobrol, dan mulai saling mengenal. From two complete strangers to two people who have shared so many little moments, stories, and memories together, sampe asing lagi yak? klo gini gini terus stuck mending asing
+
+And you know what? Those little moments mean a lot to me.
+
+Sebenernya ak pengin banget bisa celebrate this special day with you in person. Maybe meet up, spend some time together, ngobrol, ketawa, atau sekadar menikmati hari ini bareng km. But aku udah tau pasti jawabannya ga akan mau km hehehe
+
+So, if you don't mind, let me celebrate this little milestone in my own way, right here, with you.
+
+It might not be something fancy or extraordinary. Mungkin kelihatannya sederhana, bahkan nggak seberapa. But trust me, every little detail comes straight from my heart.
+
+Everything you're about to see started as a little idea in my head. Dari imajinasi ak, dari perasaan ak, dari hal-hal kecil yang pengin ak ekspresikan tapi mungkin nggak selalu bisa ak sampaikan lewat kata-kata. So I decided to turn those thoughts and feelings into something real, something you can actually see and experience.
+
+Because I believe not every special moment needs a grand celebration. Sometimes, the simplest things can carry the deepest feelings.
+
+And this little celebration? It's my way of saying that the day we first met is still a beautiful memory to me.
+
+I really hope you like it, pwettyyy. 
+
+Nowwww, are you ready for a little surprise?
+
+Go ahead and interact with what's right below this message, okayyy? Hehehe.
+
+A little something, made with love, just for you.
+
+Happy one year since we first met, pretty girl. I'm really glad our paths crossed.`,
+    terminalSurprise: {
+      title: "1st Anniversary Gift Box",
+      subtitle: "Open interactive ASCII animation in Terminal",
+      buttonLabel: "Open Surprise",
+      action: "anniversary-gift",
+    },
+    to: "myfavoritestranger@gmail.com",
+    toName: "My Favorite Stranger",
+    unread: true,
+    flagged: false,
+  },
+  {
     id: "favorite-stranger-first-times",
     mailbox: "inbox",
     category: "primary",

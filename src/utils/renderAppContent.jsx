@@ -50,7 +50,7 @@ export const renderAppContent = (
     case "finder":
       return <Suspense fallback={<WindowLoading />}><FinderContent {...commonProps} /></Suspense>;
     case "terminal":
-      return <Suspense fallback={<WindowLoading />}><TerminalContent {...commonProps} /></Suspense>;
+      return <Suspense fallback={<WindowLoading />}><TerminalContent {...commonProps} payload={payload} /></Suspense>;
     case "notes":
       return <Suspense fallback={<WindowLoading />}><NotesContent {...commonProps} /></Suspense>;
     case "settings":

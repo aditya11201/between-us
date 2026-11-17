@@ -20,6 +20,7 @@ import {
   FiShoppingCart,
   FiSidebar,
   FiTag,
+  FiTerminal,
   FiTrash,
   FiTrash2,
   FiUser,
@@ -129,7 +130,7 @@ function renderFormattedInline(text) {
   return nodes;
 }
 
-export function MailContent({ onClose, onMinimize, onMaximize }) {
+export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
   const { onTitlePointerDown } = useContext(WindowContext);
   const { windows, activeWin } = useWindowManager();
   const mailRef = useRef(null);
@@ -1025,6 +1026,35 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                   );
                 })}
               </div>
+              {selectedMessage.terminalSurprise && (
+                <section
+                  className="mail__surprise-card"
+                  aria-label={selectedMessage.terminalSurprise.title}
+                >
+                  <div className="mail__surprise-icon" aria-hidden="true">
+                    <FiTerminal />
+                  </div>
+                  <div className="mail__surprise-copy">
+                    <div className="mail__surprise-title">
+                      {selectedMessage.terminalSurprise.title}
+                    </div>
+                    <div className="mail__surprise-subtitle">
+                      {selectedMessage.terminalSurprise.subtitle}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="mail__button mail__button--primary mail__surprise-button"
+                    onClick={() => openApp?.("terminal", "Terminal", {
+                      action: selectedMessage.terminalSurprise.action,
+                      maximize: true,
+                      runId: Date.now(),
+                    })}
+                  >
+                    {selectedMessage.terminalSurprise.buttonLabel || "Open Surprise"}
+                  </button>
+                </section>
+              )}
               {selectedMessage.photoAttachment && (
                 <div className="mail__reader-attachment">
                   <span className="mail__reader-attachment-name">

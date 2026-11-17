@@ -4,6 +4,10 @@ import { MUSIC_CATALOG } from "@/features/music/musicCatalog.js";
 import { useMusicPlayer } from "@/features/music/MusicContent.jsx";
 import { resolveSongQuery } from "@/features/music/musicModel.js";
 import { parseLRC } from "@/features/music/lyricsParser.js";
+import { AnniversaryGiftCanvas } from "./AnniversaryGiftCanvas.jsx";
+
+const ANNIVERSARY_LAUNCH_COMMAND = "./anniversary-gift.sh";
+const ANNIVERSARY_LAUNCH_STATUS = "\x1b[35mLaunching 1st Anniversary ASCII Gift Box...\x1b[0m";
 
 // Массив для команды fortune
 const FORTUNES = [
@@ -26,9 +30,10 @@ const randomMatrixString = (length = 20) => {
   return result;
 };
 
-export function TerminalContent({ openApp }) {
+export function TerminalContent({ openApp, payload, onMaximize }) {
   const { onClose, onMinimize, onZoom, onTitlePointerDown } = useContext(WindowContext);
   const { activeSong, pause, playSongById, armLyricFx, disarmLyricFx } = useMusicPlayer();
+  const handleZoom = onMaximize || onZoom;
 
   const [history, setHistory] = useState([
     { type: "output", text: `\x1b[33mLast login:\x1b[0m ${new Date().toDateString()} on ttys001` },
@@ -42,6 +47,7 @@ export function TerminalContent({ openApp }) {
   const [cmdHistory, setCmdHistory] = useState([]);
   const [cmdIdx, setCmdIdx] = useState(-1);
   const [matrixInterval, setMatrixInterval] = useState(null);
+  const [stage, setStage] = useState("terminal");
 
   const [gitLogLines, setGitLogLines] = useState([]);
   const [gitLogLoading, setGitLogLoading] = useState(true);
@@ -49,11 +55,75 @@ export function TerminalContent({ openApp }) {
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const matrixIntervalRef = useRef(null);
+  const lastRunIdRef = useRef(null);
+  const launchTimersRef = useRef([]);
+
+  matrixIntervalRef.current = matrixInterval;
 
   // Авто-скролл
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [history]);
+
+  useEffect(() => {
+    return () => {
+      launchTimersRef.current.forEach((id) => clearTimeout(id));
+      launchTimersRef.current = [];
+      if (matrixIntervalRef.current) {
+        clearInterval(matrixIntervalRef.current);
+        matrixIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (payload?.action !== "anniversary-gift") return undefined;
+    const runKey = payload.runId ?? "__anniversary-gift__";
+    if (lastRunIdRef.current === runKey) return undefined;
+    lastRunIdRef.current = runKey;
+
+    launchTimersRef.current.forEach((id) => clearTimeout(id));
+    launchTimersRef.current = [];
+
+    if (matrixIntervalRef.current) {
+      clearInterval(matrixIntervalRef.current);
+      matrixIntervalRef.current = null;
+      setMatrixInterval(null);
+    }
+
+    setStage("launching");
+    setInput("");
+
+    const charStepMs = 28;
+    for (let i = 1; i <= ANNIVERSARY_LAUNCH_COMMAND.length; i++) {
+      const timerId = setTimeout(() => {
+        setInput(ANNIVERSARY_LAUNCH_COMMAND.slice(0, i));
+      }, i * charStepMs);
+      launchTimersRef.current.push(timerId);
+    }
+
+    const typingDoneMs = ANNIVERSARY_LAUNCH_COMMAND.length * charStepMs + 60;
+    const commitTimer = setTimeout(() => {
+      setInput("");
+      setHistory((prev) => [
+        ...prev,
+        { type: "prompt", text: ANNIVERSARY_LAUNCH_COMMAND },
+        { type: "output", text: ANNIVERSARY_LAUNCH_STATUS },
+      ]);
+    }, typingDoneMs);
+    launchTimersRef.current.push(commitTimer);
+
+    const enterStageTimer = setTimeout(() => {
+      setStage("anniversary-gift");
+    }, typingDoneMs + 150);
+    launchTimersRef.current.push(enterStageTimer);
+
+    return () => {
+      launchTimersRef.current.forEach((id) => clearTimeout(id));
+      launchTimersRef.current = [];
+    };
+  }, [payload?.action, payload?.runId]);
 
   // Fetch Git log
   useEffect(() => {
@@ -564,6 +634,7 @@ export function TerminalContent({ openApp }) {
   // ─── ОТПРАВКА КОМАНДЫ ──────────────────────────────────────────────
 
   const handleSubmit = () => {
+    if (stage !== "terminal") return;
     const cmd = input.trim();
     if (!cmd) return;
 
@@ -640,71 +711,91 @@ export function TerminalContent({ openApp }) {
     );
   };
 
+  const handleExitSurprise = () => {
+    setStage("terminal");
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  };
+
   return (
-    <div className="terminal-container">
+    <div className={`terminal-container${stage === "anniversary-gift" ? " terminal-container--stage" : ""}`}>
       {/* Шапка окна macOS */}
       <div className="terminal-window-header" onPointerDown={(e) => !e.target.closest('.terminal-btn') && onTitlePointerDown(e)}>
         <div className="terminal-traffic-lights">
-          <button className="terminal-btn terminal-btn--close" onClick={onClose} />
-          <button className="terminal-btn terminal-btn--minimize" onClick={onMinimize} />
-          <button className="terminal-btn terminal-btn--zoom" onClick={onZoom} />
+          <button type="button" className="terminal-btn terminal-btn--close" onClick={onClose} aria-label="Close Terminal window" title="Close Terminal window" />
+          <button type="button" className="terminal-btn terminal-btn--minimize" onClick={onMinimize} aria-label="Minimize Terminal window" title="Minimize Terminal window" />
+          <button type="button" className="terminal-btn terminal-btn--zoom" onClick={handleZoom} aria-label="Zoom Terminal window" title="Zoom Terminal window" />
         </div>
+        {stage === "anniversary-gift" && (
+          <span className="terminal-window-title">Terminal — 1st Anniversary Gift Box</span>
+        )}
       </div>
 
-      {/* Тело терминала */}
-      <div className="terminal-window-body" onClick={() => inputRef.current?.focus()}>
-        <div className="terminal-history-area">
-          {history.map((entry, i) => (
-            <div key={i} className="terminal-output-line">
-              {entry.type === "prompt" ? (
-                <span>
-                  <span className="prompt-user">user11201</span>
-                  <span className="prompt-divider">@</span>
-                  <span className="prompt-host">between-us</span>
-                  <span className="prompt-sign">:~$ </span>
-                  <span className="prompt-text">{entry.text}</span>
-                </span>
-              ) : (
-                renderLine(entry.text)
-              )}
-            </div>
-          ))}
-          <div ref={bottomRef} />
-        </div>
+      {stage === "anniversary-gift" ? (
+        <AnniversaryGiftCanvas onExit={handleExitSurprise} />
+      ) : (
+        /* Тело терминала */
+        <div className="terminal-window-body" onClick={() => inputRef.current?.focus()}>
+          <div className="terminal-history-area">
+            {history.map((entry, i) => (
+              <div key={i} className="terminal-output-line">
+                {entry.type === "prompt" ? (
+                  <span>
+                    <span className="prompt-user">user11201</span>
+                    <span className="prompt-divider">@</span>
+                    <span className="prompt-host">between-us</span>
+                    <span className="prompt-sign">:~$ </span>
+                    <span className="prompt-text">{entry.text}</span>
+                  </span>
+                ) : (
+                  renderLine(entry.text)
+                )}
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
 
-        {/* Зона ввода */}
-        <div className="terminal-input-wrapper">
-          <span className="prompt-user">user11201</span>
-          <span className="prompt-divider">@</span>
-          <span className="prompt-host">between-us</span>
-          <span className="prompt-sign">:~$ </span>
-          <input
-            ref={inputRef}
-            value={input}
-            maxLength={2000}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSubmit();
-              if (e.key === "ArrowUp") {
-                const ni = Math.min(cmdIdx + 1, cmdHistory.length - 1);
-                setCmdIdx(ni);
-                setInput(cmdHistory[ni] || "");
-              }
-              if (e.key === "ArrowDown") {
-                const ni = Math.max(cmdIdx - 1, -1);
-                setCmdIdx(ni);
-                setInput(ni === -1 ? "" : cmdHistory[ni]);
-              }
-            }}
-            className="terminal-interactive-input"
-            autoFocus
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck="false"
-          />
+          {/* Зона ввода */}
+          <div className="terminal-input-wrapper">
+            <span className="prompt-user">user11201</span>
+            <span className="prompt-divider">@</span>
+            <span className="prompt-host">between-us</span>
+            <span className="prompt-sign">:~$ </span>
+            <input
+              ref={inputRef}
+              value={input}
+              maxLength={2000}
+              readOnly={stage === "launching"}
+              aria-label="Terminal command input"
+              onChange={(e) => {
+                if (stage === "launching") return;
+                setInput(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (stage === "launching") return;
+                if (e.key === "Enter") handleSubmit();
+                if (e.key === "ArrowUp") {
+                  const ni = Math.min(cmdIdx + 1, cmdHistory.length - 1);
+                  setCmdIdx(ni);
+                  setInput(cmdHistory[ni] || "");
+                }
+                if (e.key === "ArrowDown") {
+                  const ni = Math.max(cmdIdx - 1, -1);
+                  setCmdIdx(ni);
+                  setInput(ni === -1 ? "" : cmdHistory[ni]);
+                }
+              }}
+              className="terminal-interactive-input"
+              autoFocus
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

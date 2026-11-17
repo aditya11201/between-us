@@ -114,7 +114,7 @@ async function pressEscape() {
   });
 }
 
-async function renderMail({ onClose, onMinimize, active = false } = {}) {
+async function renderMail({ onClose, onMinimize, active = false, openApp } = {}) {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
@@ -146,6 +146,7 @@ async function renderMail({ onClose, onMinimize, active = false } = {}) {
               onMinimize?.();
             },
             onMaximize() {},
+            openApp,
           }),
         ),
       ),
@@ -245,10 +246,11 @@ test("Favorites and account Inbox shortcuts show the same unified mailbox", asyn
   await click(accountInbox);
 
   assert.deepEqual(visibleMessageIds(), favoritesMessageIds);
+  assert.ok(favoritesMessageIds.includes("happy-one-year-anniversary"));
   assert.ok(favoritesMessageIds.includes("favorite-stranger-first-times"));
   assert.ok(favoritesMessageIds.includes("message-for-you"));
-  assert.equal(favoritesCount, "8");
-  assert.equal(accountInbox.querySelector(".mail__nav-count")?.textContent, "8");
+  assert.equal(favoritesCount, "9");
+  assert.equal(accountInbox.querySelector(".mail__nav-count")?.textContent, "9");
   assert.equal(favoritesInbox.getAttribute("aria-current"), "page");
   assert.equal(accountInbox.getAttribute("aria-current"), "page");
 });
@@ -307,7 +309,7 @@ test("masks only the locked Important mailbox count", async () => {
   };
 
   assert.equal(getMailboxCountText("Important"), null);
-  assert.equal(getMailboxCountText("Inbox"), "8");
+  assert.equal(getMailboxCountText("Inbox"), "9");
   assert.equal(getMailboxCountText("Flagged"), "1");
 
   await unlockImportant(mount);
@@ -433,4 +435,36 @@ test("minimizing Mail outside Important preserves the current message state", as
 
   await click(getByRole(mount.container, "button", { name: "Discard" }));
   assert.ok(mount.container.querySelector(".mail__reader"));
+});
+
+test("anniversary email renders the Terminal surprise launcher card and invokes openApp", async () => {
+  const openedCalls = [];
+  const mount = await renderMail({
+    openApp: (...args) => openedCalls.push(args),
+  });
+
+  await click(getByRole(mount.container, "option", {
+    name: /user11201: Happy One Year, Pretty Girl/,
+  }));
+
+  getByText(mount.container, "1st Anniversary Gift Box");
+  getByText(mount.container, "Open interactive ASCII animation in Terminal");
+  const button = getByRole(mount.container, "button", { name: "Open Surprise" });
+  await click(button);
+
+  assert.equal(openedCalls.length, 1);
+  assert.equal(openedCalls[0][0], "terminal");
+  assert.equal(openedCalls[0][1], "Terminal");
+  assert.equal(openedCalls[0][2].action, "anniversary-gift");
+  assert.equal(openedCalls[0][2].maximize, true);
+  assert.equal(typeof openedCalls[0][2].runId, "number");
+});
+
+test("clicking Open Surprise without an openApp handler is safely guarded", async () => {
+  const mount = await renderMail();
+  await click(getByRole(mount.container, "option", {
+    name: /user11201: Happy One Year, Pretty Girl/,
+  }));
+  await click(getByRole(mount.container, "button", { name: "Open Surprise" }));
+  assert.ok(mount.container.querySelector(".mail__surprise-card"));
 });

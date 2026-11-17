@@ -447,3 +447,60 @@ test("public openApp reopens a minimized preview, promotes it, and focuses it ab
   assert.ok(reopenedPreview.zIndex > finder.zIndex);
   assert.notEqual(finder.zIndex, Math.max(...state.windows.map((window) => window.zIndex)));
 });
+
+test("public openApp opens Terminal maximized with payload and preserves restore bounds", async () => {
+  const container = await renderWindowManager();
+  Object.defineProperty(browserWindow, "innerWidth", { configurable: true, value: 1440 });
+  Object.defineProperty(browserWindow, "innerHeight", { configurable: true, value: 900 });
+
+  try {
+    const payload = { action: "anniversary-gift", maximize: true, runId: 101 };
+    await act(async () => {
+      currentManager.openApp("terminal", "Terminal", payload);
+    });
+
+    const maximizedState = await waitForWindowManagerState(
+      container,
+      ({ windows }) => windows[0]?.id === "terminal" && windows[0]?.x === 0 && windows[0]?.y === 28,
+      "maximized Terminal window on initial openApp",
+    );
+    assert.deepEqual(maximizedState.windows[0].payload, payload);
+    assert.equal(maximizedState.windows[0].width, 1440);
+    assert.equal(maximizedState.windows[0].height, 900 - 28 - 80);
+
+    await act(async () => {
+      currentManager.maximizeWindow("terminal");
+    });
+
+    const restoredState = await waitForWindowManagerState(
+      container,
+      ({ windows }) => windows[0]?.x !== 0 || windows[0]?.y !== 28,
+      "restored Terminal bounds after maximizeWindow toggle",
+    );
+    assert.deepEqual(
+      {
+        x: restoredState.windows[0].x,
+        y: restoredState.windows[0].y,
+        width: restoredState.windows[0].width,
+        height: restoredState.windows[0].height,
+      },
+      { x: 390, y: 214, width: 660, height: 420 },
+    );
+
+    const nextPayload = { action: "anniversary-gift", maximize: true, runId: 202 };
+    await act(async () => {
+      currentManager.openApp("terminal", "Terminal", nextPayload);
+    });
+
+    const remaximizedState = await waitForWindowManagerState(
+      container,
+      ({ windows }) => windows[0]?.payload?.runId === 202 && windows[0]?.x === 0 && windows[0]?.y === 28,
+      "re-maximized existing Terminal window with updated payload",
+    );
+    assert.equal(remaximizedState.windows[0].width, 1440);
+    assert.equal(remaximizedState.windows[0].height, 900 - 28 - 80);
+  } finally {
+    delete browserWindow.innerWidth;
+    delete browserWindow.innerHeight;
+  }
+});
