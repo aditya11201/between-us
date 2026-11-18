@@ -265,6 +265,7 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
   const [isNarrow, setIsNarrow] = useState(false);
   const [revealedSpoilerPhotos, setRevealedSpoilerPhotos] = useState({});
   const [revealedSurprises, setRevealedSurprises] = useState({});
+  const [revealedPreviews, setRevealedPreviews] = useState({});
   const mailWindow = windows.find((window) => window.id === "mail");
   const isMailActive = activeWin === "mail";
   const isMaximized = mailWindow?.x === 0 && mailWindow?.y === 28;
@@ -317,6 +318,7 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
     setUnlockError(lockedState.unlockError);
     setRevealedSpoilerPhotos(lockedState.revealedSpoilerPhotos);
     setRevealedSurprises(lockedState.revealedSurprises);
+    setRevealedPreviews(lockedState.revealedPreviews);
   };
 
   const submitImportantUnlock = async (event) => {
@@ -449,6 +451,7 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
     setView("message");
     setSelectedId(id);
     setMessages((current) => setMessageUnread(current, id, false));
+    setRevealedPreviews((current) => (current[id] ? current : { ...current, [id]: true }));
   };
 
   const updateSelected = (transition) => {
@@ -875,6 +878,7 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
         >
           {visibleMessages.length ? visibleMessages.map((message) => {
             const isSelected = message.id === selectedId;
+            const isPreviewBlurred = Boolean(message.blurPreviewUntilOpened && !revealedPreviews[message.id]);
 
             return (
               <button
@@ -897,7 +901,12 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
                     <span className="mail__message-time">{formatMessageListTime(message)}</span>
                   </span>
                   <span className="mail__message-subject">{message.subject}</span>
-                  <span className="mail__message-preview">{message.preview}</span>
+                  <span
+                    className={`mail__message-preview${isPreviewBlurred ? " is-blurred" : ""}`}
+                    aria-hidden={isPreviewBlurred ? "true" : undefined}
+                  >
+                    {message.preview}
+                  </span>
                 </span>
               </button>
             );

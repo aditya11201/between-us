@@ -564,6 +564,7 @@ test("locking Mail resets spoiler photo and surprise reveal state", async () => 
     unlockError: "",
     revealedSpoilerPhotos: {},
     revealedSurprises: {},
+    revealedPreviews: {},
   });
 
   const mount = await renderMail();
@@ -591,4 +592,80 @@ test("locking Mail resets spoiler photo and surprise reveal state", async () => 
   assert.ok(queryByRole(mount.container, "button", { name: "Reveal hidden photo 2" }));
   assert.ok(queryByRole(mount.container, "button", { name: "Reveal surprise action" }));
   assert.equal(queryByRole(mount.container, "button", { name: "Open Surprise" }), null);
+});
+
+test("blurs only the 1st anniversary email preview until opened and resets on lock or close", async () => {
+  const getPreview = (container, messageId) => container.querySelector(
+    `[data-message-id="${messageId}"] .mail__message-preview`,
+  );
+
+  let mount = await renderMail();
+  const anniversaryPreview = getPreview(mount.container, "happy-one-year-anniversary");
+  const firstExpPreview = getPreview(mount.container, "favorite-stranger-first-times");
+  const apologyPreview = getPreview(mount.container, "apology-to-my-favorite-stranger");
+
+  assert.ok(anniversaryPreview);
+  assert.ok(firstExpPreview);
+  assert.ok(apologyPreview);
+  assert.equal(anniversaryPreview.classList.contains("is-blurred"), true);
+  assert.equal(anniversaryPreview.getAttribute("aria-hidden"), "true");
+  assert.equal(firstExpPreview.classList.contains("is-blurred"), false);
+  assert.equal(firstExpPreview.getAttribute("aria-hidden"), null);
+  assert.equal(apologyPreview.classList.contains("is-blurred"), false);
+  assert.equal(apologyPreview.getAttribute("aria-hidden"), null);
+
+  await click(getByRole(mount.container, "option", {
+    name: /user11201: Happy One Year, Pretty Girl/,
+  }));
+  assert.equal(anniversaryPreview.classList.contains("is-blurred"), false);
+  assert.equal(anniversaryPreview.getAttribute("aria-hidden"), null);
+
+  // Switching to another email during the session keeps the preview revealed.
+  await click(getByRole(mount.container, "option", {
+    name: /user11201: First Experience/,
+  }));
+  assert.equal(
+    getPreview(mount.container, "happy-one-year-anniversary").classList.contains("is-blurred"),
+    false,
+  );
+  assert.equal(
+    getPreview(mount.container, "happy-one-year-anniversary").getAttribute("aria-hidden"),
+    null,
+  );
+
+  // Locking Important resets revealedPreviews so the preview is blurred again.
+  await unlockImportant(mount);
+  await click(getByRole(mount.container, "button", { name: "Lock Important mailbox" }));
+  await click(getByRole(mount.container, "button", { name: /^Inbox/ }));
+  assert.equal(
+    getPreview(mount.container, "happy-one-year-anniversary").classList.contains("is-blurred"),
+    true,
+  );
+  assert.equal(
+    getPreview(mount.container, "happy-one-year-anniversary").getAttribute("aria-hidden"),
+    "true",
+  );
+
+  // Reveal again, then close & reopen Mail to verify fresh session starts blurred.
+  await click(getByRole(mount.container, "option", {
+    name: /user11201: Happy One Year, Pretty Girl/,
+  }));
+  assert.equal(
+    getPreview(mount.container, "happy-one-year-anniversary").classList.contains("is-blurred"),
+    false,
+  );
+
+  await click(getByRole(mount.container, "button", { name: "Close Mail window" }));
+  assert.equal(mount.callbacks.close, 1);
+  await unmount(mount);
+  mount = await renderMail();
+
+  assert.equal(
+    getPreview(mount.container, "happy-one-year-anniversary").classList.contains("is-blurred"),
+    true,
+  );
+  assert.equal(
+    getPreview(mount.container, "happy-one-year-anniversary").getAttribute("aria-hidden"),
+    "true",
+  );
 });

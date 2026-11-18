@@ -40,6 +40,7 @@ export const INITIAL_MESSAGES = [
     sentAt: "2026-11-18T00:00:00+07:00",
     subject: "Happy One Year, Pretty Girl 🤍",
     preview: "Helloooo, pretty girl! How are you doing, cantikkk? How's life treating you lately?",
+    blurPreviewUntilOpened: true,
     body: `Helloooo, pretty girl! 
 
 How are you doing, cantikkk? How's life treating you lately? ak harap km selalu sehat, happy, dan semoga banyak good things yang datang ke hidup km yaaa. Don't forget to take care of yourself, okay

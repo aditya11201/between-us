@@ -8,5 +8,6 @@ export function getLockedMailState() {
     unlockError: "",
     revealedSpoilerPhotos: {},
     revealedSurprises: {},
+    revealedPreviews: {},
   };
 }
