@@ -922,6 +922,10 @@
   background: var(--mail-field);
 }
 
+.mail__surprise-card + .mail__surprise-card {
+  margin-top: 12px;
+}
+
 .mail__surprise-icon {
   display: grid;
   width: 36px;

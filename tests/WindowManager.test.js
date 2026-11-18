@@ -504,3 +504,63 @@ test("public openApp opens Terminal maximized with payload and preserves restore
     delete browserWindow.innerHeight;
   }
 });
+
+test("opening Music behind maximized Terminal keeps Terminal focused on top without duplicate windows", async () => {
+  const container = await renderWindowManager();
+  Object.defineProperty(browserWindow, "innerWidth", { configurable: true, value: 1440 });
+  Object.defineProperty(browserWindow, "innerHeight", { configurable: true, value: 900 });
+
+  try {
+    const runBonusOpen = async (runId) => {
+      await act(async () => {
+        currentManager.openApp("music", "Music", {
+          action: "bonus-sync-prepare",
+          songId: "ravyn-lenae-love-me-not",
+          startTime: 56.9,
+          runId,
+        });
+        currentManager.openApp("terminal", "Terminal", {
+          action: "bonus-cat-story",
+          maximize: true,
+          songId: "ravyn-lenae-love-me-not",
+          startTime: 56.9,
+          runId,
+        });
+      });
+
+      return waitForWindowManagerState(
+        container,
+        ({ activeWin, windows }) =>
+          activeWin === "terminal"
+          && windows.some((w) => w.id === "music")
+          && windows.some((w) => w.id === "terminal"),
+        `bonus launch run ${runId}`,
+      );
+    };
+
+    const first = await runBonusOpen(1);
+    const music1 = first.windows.find((w) => w.id === "music");
+    const terminal1 = first.windows.find((w) => w.id === "terminal");
+    assert.equal(first.windows.length, 2);
+    assert.ok(terminal1.zIndex > music1.zIndex);
+    assert.equal(terminal1.x, 0);
+    assert.equal(terminal1.y, 28);
+
+    // Repeat when Terminal is already activeWin: Music's rAF must still be cancelled.
+    const second = await runBonusOpen(2);
+    // Allow any stray requestAnimationFrame callbacks to flush.
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const settled = readWindowManagerState(container);
+    const music2 = settled.windows.find((w) => w.id === "music");
+    const terminal2 = settled.windows.find((w) => w.id === "terminal");
+    assert.equal(settled.windows.length, 2);
+    assert.equal(settled.activeWin, "terminal");
+    assert.ok(terminal2.zIndex > music2.zIndex);
+    assert.equal(music2.payload.runId, 2);
+    assert.equal(terminal2.payload.runId, 2);
+    assert.equal(second.windows.length, 2);
+  } finally {
+    delete browserWindow.innerWidth;
+    delete browserWindow.innerHeight;
+  }
+});

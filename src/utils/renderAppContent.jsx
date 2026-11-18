@@ -58,7 +58,7 @@ export const renderAppContent = (
     case "safari":
       return <Suspense fallback={<WindowLoading />}><SafariContent {...commonProps} /></Suspense>;
     case "music":
-      return <Suspense fallback={<WindowLoading />}><MusicContent {...commonProps} /></Suspense>;
+      return <Suspense fallback={<WindowLoading />}><MusicContent {...commonProps} payload={payload} /></Suspense>;
     case "calendar":
       return <Suspense fallback={<WindowLoading />}><CalendarContent {...commonProps} /></Suspense>;
     case "calculator":

@@ -267,13 +267,15 @@ export function WindowManagerProvider({ children }) {
   // Мемоизированный фокус без лишних обновлений
   // ✅ Используем ref вместо зависимостей для избежания пересоздания функции
   const focusWindow = useCallback((appId) => {
-    if (activeWinRef.current === appId) return;
-    
     if (focusTimeoutRef.current) {
       cancelAnimationFrame(focusTimeoutRef.current);
+      focusTimeoutRef.current = null;
     }
-    
+
+    if (activeWinRef.current === appId) return;
+
     focusTimeoutRef.current = requestAnimationFrame(() => {
+      focusTimeoutRef.current = null;
       dispatch({ type: WINDOW_ACTIONS.FOCUS, payload: { appId } });
     });
   }, []);

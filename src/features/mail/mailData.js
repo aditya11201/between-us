@@ -79,6 +79,13 @@ Happy one year since we first met, pretty girl. I'm really glad our paths crosse
       buttonLabel: "Open Surprise",
       action: "anniversary-gift",
     },
+    bonusSurprise: {
+      title: "Bonus for You",
+      subtitle: "Cat Story ASCII synced with Love Me Not",
+      buttonLabel: "Bonus for You",
+      action: "bonus-cat-story",
+      songId: "ravyn-lenae-love-me-not",
+    },
     to: "myfavoritestranger@gmail.com",
     toName: "My Favorite Stranger",
     unread: true,

@@ -14,6 +14,8 @@ import untilIFoundYouAudio from "@/content/music/Stephen Sanchez - Until I Found
 import untilIFoundYouArtwork from "@/content/music/Stephen Sanchez - Until I Found You.webp";
 import untilIFoundYouLyrics from "@/content/music/stephen-sanchez-until-i-found-you.lrc?raw";
 import manguAudio from "@/content/music/Fourtwnty - Mangu (Orchestral Cover).wasm?url";
+import loveMeNotAudio from "@/content/music/Ravyn Lenae - Love Me Not.wasm?url";
+import loveMeNotLyrics from "@/content/music/ravyn-lenae-love-me-not.lrc?raw";
 
 const catalog = [
   {
@@ -80,6 +82,20 @@ const catalog = [
     mimeType: "audio/mp4",
     explicit: false,
     addedAt: "2026-09-30",
+  },
+  {
+    id: "ravyn-lenae-love-me-not",
+    title: "Love Me Not",
+    artist: "Ravyn Lenae",
+    album: "Bird's Eye",
+    genre: "R&B",
+    src: loveMeNotAudio,
+    // ponytail: placeholder artwork until a dedicated cover exists
+    artwork: perfectArtwork,
+    mimeType: "audio/mpeg",
+    lyrics: loveMeNotLyrics,
+    explicit: false,
+    addedAt: "2026-11-18",
   },
 ];
 export const MUSIC_CATALOG = validateMusicCatalog(catalog);

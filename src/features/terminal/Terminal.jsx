@@ -4,10 +4,22 @@ import { MUSIC_CATALOG } from "@/features/music/musicCatalog.js";
 import { useMusicPlayer } from "@/features/music/MusicContent.jsx";
 import { resolveSongQuery } from "@/features/music/musicModel.js";
 import { parseLRC } from "@/features/music/lyricsParser.js";
+import { BONUS_SONG_ID, getBonusStartTime } from "@/features/music/bonusSyncModel.js";
 import { AnniversaryGiftCanvas } from "./AnniversaryGiftCanvas.jsx";
+import { CatStoryCanvas } from "./CatStoryCanvas.jsx";
 
-const ANNIVERSARY_LAUNCH_COMMAND = "./anniversary-gift.sh";
-const ANNIVERSARY_LAUNCH_STATUS = "\x1b[35mLaunching 1st Anniversary ASCII Gift Box...\x1b[0m";
+const SURPRISE_LAUNCH_CONFIG = {
+  "anniversary-gift": {
+    command: "./anniversary-gift.sh",
+    status: "\x1b[35mLaunching 1st Anniversary ASCII Gift Box...\x1b[0m",
+    title: "Terminal — 1st Anniversary Gift Box",
+  },
+  "bonus-cat-story": {
+    command: "./cat-story --sync=love-me-not",
+    status: "\x1b[35mLaunching Cat Story ASCII (synced with Love Me Not)...\x1b[0m",
+    title: "Terminal — Cat Story ASCII",
+  },
+};
 
 // Массив для команды fortune
 const FORTUNES = [
@@ -78,8 +90,9 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
   }, []);
 
   useEffect(() => {
-    if (payload?.action !== "anniversary-gift") return undefined;
-    const runKey = payload.runId ?? "__anniversary-gift__";
+    const config = SURPRISE_LAUNCH_CONFIG[payload?.action];
+    if (!config) return undefined;
+    const runKey = `${payload.action}:${payload.runId ?? `__${payload.action}__`}`;
     if (lastRunIdRef.current === runKey) return undefined;
     lastRunIdRef.current = runKey;
 
@@ -98,27 +111,27 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
     setInput("");
 
     const charStepMs = 28;
-    for (let i = 1; i <= ANNIVERSARY_LAUNCH_COMMAND.length; i++) {
+    for (let i = 1; i <= config.command.length; i++) {
       const timerId = setTimeout(() => {
-        setInput(ANNIVERSARY_LAUNCH_COMMAND.slice(0, i));
+        setInput(config.command.slice(0, i));
       }, i * charStepMs);
       launchTimersRef.current.push(timerId);
     }
 
-    const typingDoneMs = ANNIVERSARY_LAUNCH_COMMAND.length * charStepMs + 60;
+    const typingDoneMs = config.command.length * charStepMs + 60;
     const commitTimer = setTimeout(() => {
       setInput("");
       setHistory((prev) => [
         ...prev,
-        { type: "prompt", text: ANNIVERSARY_LAUNCH_COMMAND },
-        { type: "output", text: ANNIVERSARY_LAUNCH_STATUS },
+        { type: "prompt", text: config.command },
+        { type: "output", text: config.status },
       ]);
     }, typingDoneMs);
     launchTimersRef.current.push(commitTimer);
 
     const enterStageTimer = setTimeout(() => {
       completed = true;
-      setStage("anniversary-gift");
+      setStage(payload.action);
     }, typingDoneMs + 150);
     launchTimersRef.current.push(enterStageTimer);
 
@@ -724,8 +737,11 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
     });
   };
 
+  const activeStageConfig = SURPRISE_LAUNCH_CONFIG[stage] || null;
+  const isStageActive = Boolean(activeStageConfig);
+
   return (
-    <div className={`terminal-container${stage === "anniversary-gift" ? " terminal-container--stage" : ""}`}>
+    <div className={`terminal-container${isStageActive ? " terminal-container--stage" : ""}`}>
       {/* Шапка окна macOS */}
       <div className="terminal-window-header" onPointerDown={(e) => !e.target.closest('.terminal-btn') && onTitlePointerDown(e)}>
         <div className="terminal-traffic-lights">
@@ -733,13 +749,20 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
           <button type="button" className="terminal-btn terminal-btn--minimize" onClick={onMinimize} aria-label="Minimize Terminal window" title="Minimize Terminal window" />
           <button type="button" className="terminal-btn terminal-btn--zoom" onClick={handleZoom} aria-label="Zoom Terminal window" title="Zoom Terminal window" />
         </div>
-        {stage === "anniversary-gift" && (
-          <span className="terminal-window-title">Terminal — 1st Anniversary Gift Box</span>
+        {activeStageConfig && (
+          <span className="terminal-window-title">{activeStageConfig.title}</span>
         )}
       </div>
 
       {stage === "anniversary-gift" ? (
         <AnniversaryGiftCanvas onExit={handleExitSurprise} />
+      ) : stage === "bonus-cat-story" ? (
+        <CatStoryCanvas
+          onExit={handleExitSurprise}
+          runId={payload?.runId}
+          songId={payload?.songId || BONUS_SONG_ID}
+          startTime={Number.isFinite(payload?.startTime) ? payload.startTime : getBonusStartTime()}
+        />
       ) : (
         /* Тело терминала */
         <div className="terminal-window-body" onClick={() => inputRef.current?.focus()}>

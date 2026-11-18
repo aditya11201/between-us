@@ -44,6 +44,8 @@ import {
 } from "./mailModel";
 import { getLockedMailState } from "./mailLock.js";
 import { decryptImportantMail, fetchImportantMailEnvelope } from "./mailCrypto.js";
+import { BONUS_SONG_ID, getBonusStartTime } from "@/features/music/bonusSyncModel.js";
+import { prepareBonusSyncRun } from "@/features/music/bonusSyncCoordinator.js";
 
 const MAILBOX_ICONS = {
   inbox: FiInbox,
@@ -130,6 +132,34 @@ function renderFormattedInline(text) {
   });
 
   return nodes;
+}
+
+function SurpriseCard({ surprise, defaultLabel, onLaunch }) {
+  return (
+    <section
+      className="mail__surprise-card"
+      aria-label={surprise.title}
+    >
+      <div className="mail__surprise-icon" aria-hidden="true">
+        <FiTerminal />
+      </div>
+      <div className="mail__surprise-copy">
+        <div className="mail__surprise-title">
+          {surprise.title}
+        </div>
+        <div className="mail__surprise-subtitle">
+          {surprise.subtitle}
+        </div>
+      </div>
+      <button
+        type="button"
+        className="mail__button mail__button--primary mail__surprise-button"
+        onClick={onLaunch}
+      >
+        {surprise.buttonLabel || defaultLabel}
+      </button>
+    </section>
+  );
 }
 
 export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
@@ -1029,33 +1059,40 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
                 })}
               </div>
               {selectedMessage.terminalSurprise && (
-                <section
-                  className="mail__surprise-card"
-                  aria-label={selectedMessage.terminalSurprise.title}
-                >
-                  <div className="mail__surprise-icon" aria-hidden="true">
-                    <FiTerminal />
-                  </div>
-                  <div className="mail__surprise-copy">
-                    <div className="mail__surprise-title">
-                      {selectedMessage.terminalSurprise.title}
-                    </div>
-                    <div className="mail__surprise-subtitle">
-                      {selectedMessage.terminalSurprise.subtitle}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="mail__button mail__button--primary mail__surprise-button"
-                    onClick={() => openApp?.("terminal", "Terminal", {
-                      action: selectedMessage.terminalSurprise.action,
+                <SurpriseCard
+                  surprise={selectedMessage.terminalSurprise}
+                  defaultLabel="Open Surprise"
+                  onLaunch={() => openApp?.("terminal", "Terminal", {
+                    action: selectedMessage.terminalSurprise.action,
+                    maximize: true,
+                    runId: ++nextSurpriseRunId,
+                  })}
+                />
+              )}
+              {selectedMessage.bonusSurprise && (
+                <SurpriseCard
+                  surprise={selectedMessage.bonusSurprise}
+                  defaultLabel="Bonus for You"
+                  onLaunch={() => {
+                    const runId = ++nextSurpriseRunId;
+                    const startTime = getBonusStartTime();
+                    const songId = selectedMessage.bonusSurprise.songId || BONUS_SONG_ID;
+                    prepareBonusSyncRun({ runId, songId, startTime });
+                    openApp?.("music", "Music", {
+                      action: "bonus-sync-prepare",
+                      songId,
+                      startTime,
+                      runId,
+                    });
+                    openApp?.("terminal", "Terminal", {
+                      action: selectedMessage.bonusSurprise.action,
                       maximize: true,
-                      runId: ++nextSurpriseRunId,
-                    })}
-                  >
-                    {selectedMessage.terminalSurprise.buttonLabel || "Open Surprise"}
-                  </button>
-                </section>
+                      songId,
+                      startTime,
+                      runId,
+                    });
+                  }}
+                />
               )}
               {selectedMessage.photoAttachment && (
                 <div className="mail__reader-attachment">
