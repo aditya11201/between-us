@@ -1981,13 +1981,18 @@ test("decodeCatStoryFrames strips left/right vertical border bars while preservi
     assert.equal(countCol(frameIndex, COLS - 1), 0, `expected col 240 cleared on frame ${frameIndex}`);
   }
 
-  // Edge artwork in f=155 (col 1 & 239) and f=292 (col 0 & 240), plus near-edge lyric lettering in f=102 and f=175 remain intact.
+  // Edge artwork in f=155 (col 1 & 239) and f=292 (col 0 & 240), plus near-edge lyric lettering in f=102, f=175, and f=220 (c240 period) remain intact.
   assert.ok(countCol(155, 1) >= 40);
   assert.ok(countCol(155, 239) >= 40);
   assert.ok(countCol(292, 0) === 20);
   assert.ok(countCol(292, 240) === 8);
   assert.ok(countCol(102, 235) > 0);
   assert.ok(countCol(175, 238) > 0);
+  assert.equal(countCol(220, 0), 0);
+  assert.equal(countCol(220, 240), 4);
+  for (const row of [77, 78, 79, 80]) {
+    assert.ok(decoded[220 * CELLS + row * COLS + 240] !== 0, `expected f=220 row ${row} col 240 period cell preserved`);
+  }
 });
 
 test("CatStoryCanvas fits wide and portrait viewports dynamically via ResizeObserver and resize while preserving PNG export", async () => {
@@ -2304,8 +2309,32 @@ test("CatStoryCanvas renders edge-to-edge interior columns without horizontal vi
       }
       return found;
     };
+    const assertNoForeground = (frame, rowStart, rowEnd, colStart, colEnd, totalRows = 120, label = "margin") => {
+      for (let r = rowStart; r < rowEnd; r += 1) {
+        for (let c = colStart; c < colEnd; c += 1) {
+          const lum = maxChan(pixelAtCell(frame, r, c, totalRows));
+          assert.ok(lum <= 68, `${label} cell (${r},${c}) must contain no foreground artwork (lum=${lum})`);
+        }
+      }
+    };
+
+    // Default 956x720 canvas on frame 220 ("HERE / YOU."): preserves c240 period at destCol=232 with safe right & bottom margins.
+    await act(async () => {
+      controls.seekTo(56.90 + 220 / 30);
+    });
+    const defaultF220 = capturedFrames.at(-1);
+    assert.equal(defaultF220.width, 956);
+    assert.equal(defaultF220.height, 720);
+    for (const row of [72, 73, 74]) {
+      assert.ok(maxChan(pixelAtCell(defaultF220, row, 232)) >= 180, `default f=220 c240 period at (${row},232) must render`);
+    }
+    assertNoForeground(defaultF220, 0, 120, 233, 239, 120, "default f=220 right margin");
+    assertNoForeground(defaultF220, 115, 120, 0, 239, 120, "default f=220 bottom margin");
 
     // Wide 2:1 viewport (1440x720): full edge-to-edge 239-column rendering with dim ambient stars.
+    await act(async () => {
+      controls.seekTo(56.90);
+    });
     await triggerResize(1440, 720);
     const wideF0 = capturedFrames.at(-1);
     assert.equal(wideF0.width, 1440);
@@ -2317,20 +2346,46 @@ test("CatStoryCanvas renders edge-to-edge interior columns without horizontal vi
       assert.ok(maxChan(star.rgb) <= 68, `star luminance should stay dim (<=68), got ${star.rgb}`);
     }
 
-    // Frame 102 ("IT'S HARD") and frame 175 ("WERE RIGHT HERE") preserve full-brightness interior edge lyrics.
+    // Frame 102 ("IT'S HARD") shifts left by 3 to preserve 6-col right safe margin without clipping letter D.
     await act(async () => {
       controls.seekTo(56.90 + 102 / 30);
     });
     const f102 = capturedFrames.at(-1);
-    assert.ok(maxChan(pixelAtCell(f102, 50, 234)) >= 180, "frame 102 letter D near edge should remain unclipped");
+    assert.ok(maxChan(pixelAtCell(f102, 50, 230)) >= 180, "frame 102 shifted letter D should remain unclipped");
+    assertNoForeground(f102, 0, 120, 233, 239, 120, "wide f=102 right margin");
 
+    // Frame 175 ("WERE RIGHT HERE!") shifts left by 6, keeping "!" clear of right edge and stars occluded behind shifted art.
     await act(async () => {
       controls.seekTo(56.90 + 175 / 30);
     });
     const f175 = capturedFrames.at(-1);
-    assert.ok(maxChan(pixelAtCell(f175, 38, 237)) >= 180, "frame 175 edge lettering should remain unclipped");
+    assert.ok(maxChan(pixelAtCell(f175, 38, 231)) >= 180, "frame 175 shifted edge lettering should remain unclipped");
+    assert.ok(maxChan(pixelAtCell(f175, 16, 122)) >= 180, "frame 175 star occlusion must match shifted foreground");
+    assertNoForeground(f175, 0, 120, 233, 239, 120, "wide f=175 right margin");
 
-    // Frame 155 omits col 0/240 border bars and renders interior swirls edge-to-edge without horizontal fade.
+    // Frame 220 ("OH, IT'S HARD TO LEAVE YOU.") shifts (-7, -5): full c240 period intact + 6-col right & 5-row bottom margins.
+    await act(async () => {
+      controls.seekTo(56.90 + 220 / 30);
+    });
+    const f220 = capturedFrames.at(-1);
+    for (const row of [72, 73, 74]) {
+      assert.ok(maxChan(pixelAtCell(f220, row, 232)) >= 180, `wide f=220 c240 period at (${row},232) must render`);
+    }
+    assert.ok(maxChan(pixelAtCell(f220, 5, 187)) >= 180, "wide f=220 star occlusion must match (-7,-5) shifted art");
+    assertNoForeground(f220, 0, 120, 233, 239, 120, "wide f=220 right margin");
+    assertNoForeground(f220, 115, 120, 0, 239, 120, "wide f=220 bottom margin");
+
+    // Frame 315 ("EVERYWHERE / i love u") shifts (-1, -5): clean right & bottom safe margins above toolbar.
+    await act(async () => {
+      controls.seekTo(56.90 + 315 / 30);
+    });
+    const f315 = capturedFrames.at(-1);
+    assert.ok(maxChan(pixelAtCell(f315, 112, 231)) >= 180, "wide f=315 shifted 'i love u' should render intact");
+    assert.ok(maxChan(pixelAtCell(f315, 10, 145)) >= 180, "wide f=315 star occlusion must match (-1,-5) shifted art");
+    assertNoForeground(f315, 0, 120, 233, 239, 120, "wide f=315 right margin");
+    assertNoForeground(f315, 115, 120, 0, 239, 120, "wide f=315 bottom margin");
+
+    // Frame 155 ("WISH" swirls, full-bleed) omits col 0/240 border bars and renders edge-to-edge without shifting.
     await act(async () => {
       controls.seekTo(56.90 + 155 / 30);
     });
@@ -2339,14 +2394,7 @@ test("CatStoryCanvas renders edge-to-edge interior columns without horizontal vi
     assert.ok(maxChan(pixelAtCell(f155, 10, 238)) >= 180, "frame 155 srcCol 239 should render un-feathered at true right edge col 238");
     assert.ok(maxChan(pixelAtCell(f155, 0, 7)) >= 180, "frame 155 top row should stay un-feathered when padTop=0");
 
-    // Frame 193 ("HERE") reaches cleanly to true right edge (destCol 238).
-    await act(async () => {
-      controls.seekTo(56.90 + 193 / 30);
-    });
-    const f193 = capturedFrames.at(-1);
-    assert.ok(maxChan(pixelAtCell(f193, 64, 238)) >= 180, "frame 193 right-edge artwork should reach destCol 238 cleanly");
-
-    // Frame 292 ("YOU" cats) reaches both true left and right edges at full brightness without horizontal vignette.
+    // Frame 292 ("YOU" ribbons, full-bleed) reaches both true left and right edges at full brightness without shifting.
     await act(async () => {
       controls.seekTo(56.90 + 292 / 30);
     });
@@ -2395,6 +2443,21 @@ test("CatStoryCanvas renders edge-to-edge interior columns without horizontal vi
         < maxChan(pixelAtCell(p155, padTop + 112, 23, portraitTotalRows)) * 0.35,
       "portrait frame 155 bottom boundary swirl should feather gently into bottom extension",
     );
+
+    // Portrait frame 220 & 315 shift up by 5 rows so shifted bottom row (114) stays crisp and un-feathered.
+    await act(async () => {
+      controls.seekTo(56.90 + 220 / 30);
+    });
+    const p220 = capturedFrames.at(-1);
+    assert.ok(maxChan(pixelAtCell(p220, padTop + 114, 75, portraitTotalRows)) >= 180, "portrait f=220 shifted paws at row 114 stay un-feathered");
+    assertNoForeground(p220, padTop + 115, padTop + 120, 0, 239, portraitTotalRows, "portrait f=220 bottom margin");
+
+    await act(async () => {
+      controls.seekTo(56.90 + 315 / 30);
+    });
+    const p315 = capturedFrames.at(-1);
+    assert.ok(maxChan(pixelAtCell(p315, padTop + 114, 229, portraitTotalRows)) >= 180, "portrait f=315 shifted 'i love u' at row 114 stays un-feathered");
+    assertNoForeground(p315, padTop + 115, padTop + 120, 0, 239, portraitTotalRows, "portrait f=315 bottom margin");
 
     // Reduced motion keeps ambient starfield static across different audio timestamps on the same frame.
     reducedMotionMatches = true;

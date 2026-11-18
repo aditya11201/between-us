@@ -30,6 +30,12 @@ const DEFAULT_GEOMETRY = { width: BASE_W, height: BASE_H, totalRows: BASE_ROWS, 
 const DARK_BG = [3, 2, 4];
 const DARK_BG_U32 = 0xff040203;
 const BORDER_COL_THRESHOLD = 100;
+const SAFE_MARGIN_X = 6;
+const SAFE_MARGIN_Y = 5;
+const MIN_OPP_Y = 3;
+const MIN_SAFE_SRC_COL = 1 + SAFE_MARGIN_X;
+const MAX_SAFE_SRC_COL = SRC_COLS - SAFE_MARGIN_X;
+const MAX_SAFE_SRC_ROW = BASE_ROWS - 1 - SAFE_MARGIN_Y;
 const FEATHER_EDGE_ROW_THRESHOLD = 8;
 const FEATHER_INNER_ROW_THRESHOLD = 15;
 const V_FEATHER_ROWS = 4;
@@ -73,7 +79,7 @@ const pack = (r, g, b) => (255 << 24) | (b << 16) | (g << 8) | r;
 
 let cachedRawFrames = null;
 let cachedRawFramesPromise = null;
-const verticalFeatherFlagsCache = new WeakMap();
+const frameMetadataCache = new WeakMap();
 
 function computeTargetGeometry(rect) {
   if (!rect || !(rect.width > 0 && rect.height > 0)) return null;
@@ -121,20 +127,73 @@ function clearColumnCells(raw, frameOffset, col) {
   }
 }
 
-function countInteriorRowCells(raw, frameOffset, row) {
+function computeFrameLayout(raw, frameOffset) {
+  let minCol = RAW_COLS;
+  let maxCol = -1;
+  let minRow = BASE_ROWS;
+  let maxRow = -1;
+
+  for (let row = 0; row < BASE_ROWS; row++) {
+    const rowBase = frameOffset + row * RAW_COLS;
+    for (let col = 0; col < RAW_COLS; col++) {
+      if (raw[rowBase + col] === 0) continue;
+      if (col < minCol) minCol = col;
+      if (col > maxCol) maxCol = col;
+      if (row < minRow) minRow = row;
+      if (row > maxRow) maxRow = row;
+    }
+  }
+
+  if (maxCol < minCol) {
+    return { shiftX: 0, shiftY: 0, isFullBleed: false };
+  }
+
+  // Full-bleed artwork touches opposing horizontal boundaries and stays edge-to-edge without margin shifting.
+  const isFullBleed = minCol <= 1 && maxCol >= RAW_COLS - 2;
+  if (isFullBleed) {
+    return { shiftX: 0, shiftY: 0, isFullBleed: true };
+  }
+
+  let shiftX = 0;
+  if (maxCol > MAX_SAFE_SRC_COL) {
+    const leftSlack = Math.max(0, minCol - MIN_SAFE_SRC_COL);
+    shiftX = -Math.min(maxCol - MAX_SAFE_SRC_COL, leftSlack);
+  } else if (minCol < MIN_SAFE_SRC_COL) {
+    const rightSlack = Math.max(0, MAX_SAFE_SRC_COL - maxCol);
+    shiftX = Math.min(MIN_SAFE_SRC_COL - minCol, rightSlack);
+  }
+
+  let shiftY = 0;
+  if (maxRow > MAX_SAFE_SRC_ROW) {
+    const topSlack = Math.max(0, minRow - MIN_OPP_Y);
+    shiftY = -Math.min(maxRow - MAX_SAFE_SRC_ROW, topSlack);
+  } else if (minRow < MIN_OPP_Y) {
+    const bottomSlack = Math.max(0, MAX_SAFE_SRC_ROW - maxRow);
+    shiftY = Math.min(MIN_OPP_Y - minRow, bottomSlack);
+  }
+
+  return { shiftX, shiftY, isFullBleed: false };
+}
+
+function countShiftedRowCells(raw, frameOffset, destRow, shiftX, shiftY) {
+  const srcRow = destRow - shiftY;
+  if (srcRow < 0 || srcRow >= BASE_ROWS) return 0;
+  const rowBase = frameOffset + srcRow * RAW_COLS;
   let count = 0;
-  const rowBase = frameOffset + row * RAW_COLS;
-  for (let col = 1; col < RAW_COLS - 1; col++) {
-    if (raw[rowBase + col] !== 0) {
+  for (let srcCol = 0; srcCol < RAW_COLS; srcCol++) {
+    const destCol = srcCol + shiftX - 1;
+    if (destCol < 0 || destCol >= SRC_COLS) continue;
+    if (raw[rowBase + srcCol] !== 0) {
       count += 1;
     }
   }
   return count;
 }
 
-// Strip solid full-height border bars on col 0 / col 240 and flag frames with dense top/bottom boundary art.
+// Strip solid full-height border bars on col 0 / col 240, compute per-frame safe shifts, and flag shifted boundary rows.
 function sanitizeCatStoryFrames(raw) {
   const verticalFeatherFlags = new Uint8Array(BONUS_FRAME_COUNT);
+  const frameLayouts = new Array(BONUS_FRAME_COUNT);
   for (let f = 0; f < BONUS_FRAME_COUNT; f++) {
     const base = f * RAW_CELLS;
     if (countColumnCells(raw, base, 0) >= BORDER_COL_THRESHOLD) {
@@ -144,10 +203,14 @@ function sanitizeCatStoryFrames(raw) {
       clearColumnCells(raw, base, RAW_COLS - 1);
     }
 
-    const topEdgeCount = countInteriorRowCells(raw, base, 0);
-    const topInnerCount = countInteriorRowCells(raw, base, 1);
-    const bottomEdgeCount = countInteriorRowCells(raw, base, BASE_ROWS - 1);
-    const bottomInnerCount = countInteriorRowCells(raw, base, BASE_ROWS - 2);
+    const layout = computeFrameLayout(raw, base);
+    frameLayouts[f] = layout;
+    const { shiftX, shiftY } = layout;
+
+    const topEdgeCount = countShiftedRowCells(raw, base, 0, shiftX, shiftY);
+    const topInnerCount = countShiftedRowCells(raw, base, 1, shiftX, shiftY);
+    const bottomEdgeCount = countShiftedRowCells(raw, base, BASE_ROWS - 1, shiftX, shiftY);
+    const bottomInnerCount = countShiftedRowCells(raw, base, BASE_ROWS - 2, shiftX, shiftY);
     let flags = 0;
     if (topEdgeCount >= FEATHER_EDGE_ROW_THRESHOLD || topInnerCount >= FEATHER_INNER_ROW_THRESHOLD) {
       flags |= FEATHER_TOP_BIT;
@@ -157,13 +220,14 @@ function sanitizeCatStoryFrames(raw) {
     }
     verticalFeatherFlags[f] = flags;
   }
-  verticalFeatherFlagsCache.set(raw, verticalFeatherFlags);
-  return verticalFeatherFlags;
+  const metadata = { verticalFeatherFlags, frameLayouts };
+  frameMetadataCache.set(raw, metadata);
+  return metadata;
 }
 
-function getVerticalFeatherFlags(raw) {
+function getFrameMetadata(raw) {
   if (!raw) return null;
-  const cached = verticalFeatherFlagsCache.get(raw);
+  const cached = frameMetadataCache.get(raw);
   if (cached) return cached;
   return sanitizeCatStoryFrames(raw);
 }
@@ -371,7 +435,7 @@ export function CatStoryCanvas({
   const geomRef = useRef(DEFAULT_GEOMETRY);
   const starsRef = useRef(null);
   const rawRef = useRef(null);
-  const verticalFeatherFlagsRef = useRef(null);
+  const frameMetadataRef = useRef(null);
   const tileSetCacheRef = useRef(new Map());
   const readyRef = useRef(false);
   const lastDrawRef = useRef(-1);
@@ -458,7 +522,9 @@ export function CatStoryCanvas({
     if (!raw || !surface) return;
 
     const { ctx, pixels, buf, width, padTop, colX, rowY } = surface;
-    const vFlags = padTop > 0 ? (verticalFeatherFlagsRef.current?.[index] ?? 0) : 0;
+    const meta = frameMetadataRef.current || getFrameMetadata(raw);
+    const { shiftX = 0, shiftY = 0 } = meta?.frameLayouts?.[index] ?? {};
+    const vFlags = padTop > 0 ? (meta?.verticalFeatherFlags?.[index] ?? 0) : 0;
     const featherTop = Boolean(vFlags & FEATHER_TOP_BIT);
     const featherBottom = Boolean(vFlags & FEATHER_BOTTOM_BIT);
 
@@ -476,25 +542,31 @@ export function CatStoryCanvas({
     buf.fill(DARK_BG_U32);
     const start = index * RAW_CELLS;
 
-    for (let row = 0; row < BASE_ROWS; row++) {
-      const destRow = padTop + row;
+    for (let srcRow = 0; srcRow < BASE_ROWS; srcRow++) {
+      const srcRowShifted = srcRow + shiftY;
+      if (srcRowShifted < 0 || srcRowShifted >= BASE_ROWS) continue;
+
+      const destRow = padTop + srcRowShifted;
       const y0 = rowY[destRow];
       const cellH = rowY[destRow + 1] - y0;
       if (cellH <= 0) continue;
 
       let gain256 = 256;
-      if (featherTop && row < V_FEATHER_ROWS) {
-        gain256 = V_FEATHER_GAINS_256[row];
-      } else if (featherBottom && row >= BASE_ROWS - V_FEATHER_ROWS) {
-        gain256 = V_FEATHER_GAINS_256[BASE_ROWS - 1 - row];
+      if (featherTop && srcRowShifted < V_FEATHER_ROWS) {
+        gain256 = V_FEATHER_GAINS_256[srcRowShifted];
+      } else if (featherBottom && srcRowShifted >= BASE_ROWS - V_FEATHER_ROWS) {
+        gain256 = V_FEATHER_GAINS_256[BASE_ROWS - 1 - srcRowShifted];
       }
 
-      const rowBase = start + row * RAW_COLS;
-      for (let col = 0; col < SRC_COLS; col++) {
-        const code = raw[rowBase + col + 1];
+      const rowBase = start + srcRow * RAW_COLS;
+      for (let srcCol = 0; srcCol < RAW_COLS; srcCol++) {
+        const destCol = srcCol + shiftX - 1;
+        if (destCol < 0 || destCol >= SRC_COLS) continue;
+
+        const code = raw[rowBase + srcCol];
         if (!code) continue;
-        const x0 = colX[col];
-        const cellW = colX[col + 1] - x0;
+        const x0 = colX[destCol];
+        const cellW = colX[destCol + 1] - x0;
         if (cellW <= 0) continue;
         const tileSet = resolveTileSet(cellW, cellH);
         const tile = tileSet?.tiles[code];
@@ -508,8 +580,15 @@ export function CatStoryCanvas({
     if (stars) {
       for (let i = 0; i < stars.length; i++) {
         const star = stars[i];
-        const srcRow = star.row - padTop;
-        if (srcRow >= 0 && srcRow < BASE_ROWS && raw[start + srcRow * RAW_COLS + star.col + 1] !== 0) {
+        const origRow = star.row - padTop - shiftY;
+        const origCol = star.col + 1 - shiftX;
+        if (
+          origRow >= 0
+          && origRow < BASE_ROWS
+          && origCol >= 0
+          && origCol < RAW_COLS
+          && raw[start + origRow * RAW_COLS + origCol] !== 0
+        ) {
           continue;
         }
         const x0 = colX[star.col];
@@ -626,7 +705,7 @@ export function CatStoryCanvas({
       .then((raw) => {
         if (cancelled) return;
         rawRef.current = raw;
-        verticalFeatherFlagsRef.current = getVerticalFeatherFlags(raw);
+        frameMetadataRef.current = getFrameMetadata(raw);
         readyRef.current = true;
         setReady(true);
         if (runId !== null && runId !== undefined) {
