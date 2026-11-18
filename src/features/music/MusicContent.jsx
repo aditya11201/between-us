@@ -817,9 +817,14 @@ export function MusicContent({ openApp, payload } = {}) {
       && source.id === songId
       && Boolean(audio);
 
-    const nextCue = { runId, songId, startTime, triggered: false };
-    armedBonusCueRef.current = nextCue;
-    setArmedBonusCue(nextCue);
+    if (payload.autoOpenTerminal !== false) {
+      const nextCue = { runId, songId, startTime, triggered: false };
+      armedBonusCueRef.current = nextCue;
+      setArmedBonusCue(nextCue);
+    } else {
+      armedBonusCueRef.current = null;
+      setArmedBonusCue(null);
+    }
 
     if (sameLoadedSong) {
       pendingSeekRef.current = 0;
@@ -847,6 +852,7 @@ export function MusicContent({ openApp, payload } = {}) {
     payload?.startTime,
     payload?.runId,
     payload?.volume,
+    payload?.autoOpenTerminal,
     stopAmbientBridge,
     tryPlay,
   ]);

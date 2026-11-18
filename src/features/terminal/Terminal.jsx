@@ -4,9 +4,14 @@ import { MUSIC_CATALOG } from "@/features/music/musicCatalog.js";
 import { useMusicPlayer } from "@/features/music/MusicContent.jsx";
 import { resolveSongQuery } from "@/features/music/musicModel.js";
 import { parseLRC } from "@/features/music/lyricsParser.js";
-import { BONUS_SONG_ID, getBonusStartTime } from "@/features/music/bonusSyncModel.js";
+import {
+  BONUS_BASE_START_TIME,
+  BONUS_SONG_ID,
+  getBonusStartTime,
+  resolveUnifiedSurpriseScene,
+} from "@/features/music/bonusSyncModel.js";
 import { AnniversaryGiftCanvas } from "./AnniversaryGiftCanvas.jsx";
-import { CatStoryCanvas } from "./CatStoryCanvas.jsx";
+import { CatStoryCanvas, decodeCatStoryFrames } from "./CatStoryCanvas.jsx";
 
 const SURPRISE_LAUNCH_CONFIG = {
   "anniversary-gift": {
@@ -44,7 +49,17 @@ const randomMatrixString = (length = 20) => {
 
 export function TerminalContent({ openApp, payload, onMaximize }) {
   const { onClose, onMinimize, onZoom, onTitlePointerDown } = useContext(WindowContext);
-  const { activeSong, pause, playSongById, armLyricFx, disarmLyricFx } = useMusicPlayer();
+  const {
+    activeSong,
+    isPlaying,
+    playbackError,
+    getAudioElement,
+    resumePlayback,
+    pause,
+    playSongById,
+    armLyricFx,
+    disarmLyricFx,
+  } = useMusicPlayer();
   const handleZoom = onMaximize || onZoom;
 
   const [history, setHistory] = useState([
@@ -60,6 +75,14 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
   const [cmdIdx, setCmdIdx] = useState(-1);
   const [matrixInterval, setMatrixInterval] = useState(null);
   const [stage, setStage] = useState("terminal");
+  const [syncSessionActive, setSyncSessionActive] = useState(false);
+  const [syncSongId, setSyncSongId] = useState(BONUS_SONG_ID);
+  const [unifiedScene, setUnifiedScene] = useState({
+    mode: "gift-box",
+    windowIndex: -1,
+    startTime: null,
+  });
+  const [hasPlayedInSession, setHasPlayedInSession] = useState(false);
 
   const [gitLogLines, setGitLogLines] = useState([]);
   const [gitLogLoading, setGitLogLoading] = useState(true);
@@ -96,7 +119,13 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
     if (lastRunIdRef.current === runKey) return undefined;
     lastRunIdRef.current = runKey;
 
+    const shouldSync = payload.action === "anniversary-gift" && Boolean(payload.syncWithMusic);
+    const targetSongId = payload.songId || BONUS_SONG_ID;
     let completed = false;
+
+    if (shouldSync) {
+      void decodeCatStoryFrames().catch(() => {});
+    }
 
     launchTimersRef.current.forEach((id) => clearTimeout(id));
     launchTimersRef.current = [];
@@ -115,10 +144,17 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
         { type: "prompt", text: config.command },
         { type: "output", text: config.status },
       ]);
+      setSyncSessionActive(shouldSync);
+      setSyncSongId(targetSongId);
+      setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
+      setHasPlayedInSession(false);
       setStage(payload.action);
       return undefined;
     }
 
+    setSyncSessionActive(false);
+    setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
+    setHasPlayedInSession(false);
     setStage("launching");
     setInput("");
 
@@ -143,6 +179,10 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
 
     const enterStageTimer = setTimeout(() => {
       completed = true;
+      setSyncSessionActive(shouldSync);
+      setSyncSongId(targetSongId);
+      setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
+      setHasPlayedInSession(false);
       setStage(payload.action);
     }, typingDoneMs + 150);
     launchTimersRef.current.push(enterStageTimer);
@@ -154,7 +194,131 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
       launchTimersRef.current.forEach((id) => clearTimeout(id));
       launchTimersRef.current = [];
     };
-  }, [payload?.action, payload?.runId, payload?.immediate]);
+  }, [payload?.action, payload?.runId, payload?.immediate, payload?.syncWithMusic, payload?.songId]);
+
+  const isSyncedGiftStage = stage === "anniversary-gift" && syncSessionActive;
+  const isSyncedSongActive = Boolean(activeSong?.id && activeSong.id === syncSongId);
+
+  useEffect(() => {
+    if (!isSyncedGiftStage || !isSyncedSongActive) {
+      setUnifiedScene((prev) => (
+        prev.mode === "gift-box" && prev.windowIndex === -1 && prev.startTime === null
+          ? prev
+          : { mode: "gift-box", windowIndex: -1, startTime: null }
+      ));
+      return undefined;
+    }
+
+    const audio = getAudioElement?.() ?? null;
+    if (!audio) {
+      setUnifiedScene((prev) => (
+        prev.mode === "gift-box" && prev.windowIndex === -1 && prev.startTime === null
+          ? prev
+          : { mode: "gift-box", windowIndex: -1, startTime: null }
+      ));
+      return undefined;
+    }
+
+    let rafId = null;
+    let disposed = false;
+
+    const evaluateScene = () => {
+      if (disposed) return;
+      if (!audio.paused) {
+        setHasPlayedInSession(true);
+      }
+      const audioTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      const next = resolveUnifiedSurpriseScene(audioTime);
+      setUnifiedScene((prev) => {
+        if (
+          prev.mode === next.mode
+          && prev.windowIndex === next.windowIndex
+          && prev.startTime === next.startTime
+        ) {
+          return prev;
+        }
+        return {
+          mode: next.mode,
+          windowIndex: next.windowIndex,
+          startTime: next.startTime,
+        };
+      });
+    };
+
+    const stopLoop = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+
+    const startLoop = () => {
+      if (disposed || rafId !== null) return;
+      if (audio.paused || audio.ended || document.hidden) return;
+      const tick = () => {
+        rafId = null;
+        if (disposed) return;
+        evaluateScene();
+        if (!audio.paused && !audio.ended && !document.hidden) {
+          rafId = requestAnimationFrame(tick);
+        }
+      };
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const onPlay = () => {
+      setHasPlayedInSession(true);
+      evaluateScene();
+      startLoop();
+    };
+    const onPause = () => {
+      stopLoop();
+      evaluateScene();
+    };
+    const onSeeked = () => evaluateScene();
+    const onTimeUpdate = () => evaluateScene();
+    const onRateChange = () => evaluateScene();
+    const onEnded = () => {
+      stopLoop();
+      evaluateScene();
+    };
+    const onLoadedMetadata = () => evaluateScene();
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        stopLoop();
+      } else {
+        evaluateScene();
+        startLoop();
+      }
+    };
+
+    evaluateScene();
+    if (!audio.paused && !audio.ended) {
+      startLoop();
+    }
+
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("seeked", onSeeked);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("ratechange", onRateChange);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      disposed = true;
+      stopLoop();
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("seeked", onSeeked);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("ratechange", onRateChange);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [isSyncedGiftStage, isSyncedSongActive, getAudioElement, isPlaying]);
 
   // Fetch Git log
   useEffect(() => {
@@ -743,13 +907,30 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
   };
 
   const handleExitSurprise = () => {
+    setSyncSessionActive(false);
+    setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
     setStage("terminal");
     requestAnimationFrame(() => {
       inputRef.current?.focus();
     });
   };
 
-  const activeStageConfig = SURPRISE_LAUNCH_CONFIG[stage] || null;
+  const handleCloseTerminal = () => {
+    setSyncSessionActive(false);
+    setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
+    onClose?.();
+  };
+
+  const isCatStoryOverlay = isSyncedGiftStage && isSyncedSongActive && unifiedScene.mode === "cat-story";
+  const syncedAudio = isSyncedGiftStage && isSyncedSongActive ? (getAudioElement?.() ?? null) : null;
+  const showGiftBoxPlayAudio = Boolean(
+    isSyncedGiftStage
+      && isSyncedSongActive
+      && (playbackError || (!hasPlayedInSession && (!syncedAudio || syncedAudio.paused))),
+  );
+  const activeStageConfig = isCatStoryOverlay
+    ? SURPRISE_LAUNCH_CONFIG["bonus-cat-story"]
+    : SURPRISE_LAUNCH_CONFIG[stage] || null;
   const isStageActive = Boolean(activeStageConfig);
 
   return (
@@ -757,7 +938,7 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
       {/* Шапка окна macOS */}
       <div className="terminal-window-header" onPointerDown={(e) => !e.target.closest('.terminal-btn') && onTitlePointerDown(e)}>
         <div className="terminal-traffic-lights">
-          <button type="button" className="terminal-btn terminal-btn--close" onClick={onClose} aria-label="Close Terminal window" title="Close Terminal window" />
+          <button type="button" className="terminal-btn terminal-btn--close" onClick={handleCloseTerminal} aria-label="Close Terminal window" title="Close Terminal window" />
           <button type="button" className="terminal-btn terminal-btn--minimize" onClick={onMinimize} aria-label="Minimize Terminal window" title="Minimize Terminal window" />
           <button type="button" className="terminal-btn terminal-btn--zoom" onClick={handleZoom} aria-label="Zoom Terminal window" title="Zoom Terminal window" />
         </div>
@@ -767,7 +948,26 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
       </div>
 
       {stage === "anniversary-gift" ? (
-        <AnniversaryGiftCanvas onExit={handleExitSurprise} />
+        <>
+          <div
+            className={`terminal-ascii-slot${isCatStoryOverlay ? " terminal-ascii-slot--hidden" : ""}`}
+            style={isCatStoryOverlay ? { display: "none" } : undefined}
+          >
+            <AnniversaryGiftCanvas
+              onExit={handleExitSurprise}
+              active={!isCatStoryOverlay}
+              showPlayAudio={showGiftBoxPlayAudio}
+              onPlayAudio={resumePlayback}
+            />
+          </div>
+          {isCatStoryOverlay && (
+            <CatStoryCanvas
+              onExit={handleExitSurprise}
+              songId={syncSongId}
+              startTime={unifiedScene.startTime ?? BONUS_BASE_START_TIME}
+            />
+          )}
+        </>
       ) : stage === "bonus-cat-story" ? (
         <CatStoryCanvas
           onExit={handleExitSurprise}

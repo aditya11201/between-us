@@ -437,7 +437,7 @@ test("minimizing Mail outside Important preserves the current message state", as
   assert.ok(mount.container.querySelector(".mail__reader"));
 });
 
-test("anniversary email renders the Terminal surprise launcher card and invokes openApp", async () => {
+test("anniversary email renders the unified Open Surprise launcher card and invokes openApp for Music and Terminal", async () => {
   const openedCalls = [];
   const mount = await renderMail({
     openApp: (...args) => openedCalls.push(args),
@@ -447,19 +447,35 @@ test("anniversary email renders the Terminal surprise launcher card and invokes 
     name: /user11201: Happy One Year, Pretty Girl/,
   }));
 
+  const cards = [...mount.container.querySelectorAll(".mail__surprise-card")];
+  assert.equal(cards.length, 1);
   getByText(mount.container, "1st Anniversary Gift Box");
-  getByText(mount.container, "Open interactive ASCII animation in Terminal");
+  getByText(mount.container, "Open interactive ASCII surprise with Love Me Not");
+  assert.equal(queryByRole(mount.container, "button", { name: "Bonus for You" }), null);
+
   const button = getByRole(mount.container, "button", { name: "Open Surprise" });
   await click(button);
   await click(button);
 
-  assert.equal(openedCalls.length, 2);
-  assert.equal(openedCalls[0][0], "terminal");
-  assert.equal(openedCalls[0][1], "Terminal");
-  assert.equal(openedCalls[0][2].action, "anniversary-gift");
-  assert.equal(openedCalls[0][2].maximize, true);
+  assert.equal(openedCalls.length, 4);
+  assert.deepEqual(openedCalls[0].slice(0, 2), ["music", "Music"]);
+  assert.equal(openedCalls[0][2].action, "bonus-play-from-start");
+  assert.equal(openedCalls[0][2].songId, "ravyn-lenae-love-me-not");
+  assert.equal(openedCalls[0][2].volume, 0.4);
+  assert.equal(openedCalls[0][2].autoOpenTerminal, false);
   assert.equal(typeof openedCalls[0][2].runId, "number");
-  assert.ok(openedCalls[1][2].runId > openedCalls[0][2].runId);
+
+  assert.deepEqual(openedCalls[1].slice(0, 2), ["terminal", "Terminal"]);
+  assert.equal(openedCalls[1][2].action, "anniversary-gift");
+  assert.equal(openedCalls[1][2].maximize, true);
+  assert.equal(openedCalls[1][2].syncWithMusic, true);
+  assert.equal(openedCalls[1][2].songId, "ravyn-lenae-love-me-not");
+  assert.equal(openedCalls[1][2].runId, openedCalls[0][2].runId);
+
+  assert.equal(openedCalls[2][0], "music");
+  assert.equal(openedCalls[3][0], "terminal");
+  assert.equal(openedCalls[2][2].runId, openedCalls[3][2].runId);
+  assert.ok(openedCalls[2][2].runId > openedCalls[0][2].runId);
 });
 
 test("clicking Open Surprise without an openApp handler is safely guarded", async () => {

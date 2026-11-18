@@ -294,7 +294,7 @@ export function CatStoryCanvas({
       cancelled = true;
       unsubscribe();
     };
-  }, [runId, songId, startTime]);
+  }, [runId, songId]);
 
   // Rebuild glyph tiles when toggling Full Color / Phosphor mode.
   useEffect(() => {

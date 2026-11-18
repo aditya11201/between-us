@@ -949,14 +949,22 @@ function makeLilyTexture(index) {
   return g.getImageData(0, 0, 320, 320).data;
 }
 
-export function AnniversaryGiftCanvas({ onExit }) {
+export function AnniversaryGiftCanvas({
+  onExit,
+  active = true,
+  showPlayAudio = false,
+  onPlayAudio,
+}) {
   const canvasRef = useRef(null);
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const controlsRef = useRef({
     toggle: () => {},
     restart: () => {},
     save: () => {},
+    setActive: () => {},
   });
   const onExitRef = useRef(onExit);
   onExitRef.current = onExit;
@@ -1017,6 +1025,14 @@ export function AnniversaryGiftCanvas({ onExit }) {
 
     let renderFrame = () => {};
 
+    const stopRaf = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      last = 0;
+    };
+
     const restart = () => {
       if (disposed) return;
       t = 0;
@@ -1039,9 +1055,8 @@ export function AnniversaryGiftCanvas({ onExit }) {
       a.click();
     };
 
-    controlsRef.current = { restart, save };
-
     const onKeyDown = (e) => {
+      if (!activeRef.current) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "Escape") {
         e.preventDefault();
@@ -1653,7 +1668,7 @@ export function AnniversaryGiftCanvas({ onExit }) {
     renderFrame = frame;
 
     function tick(ms) {
-      if (disposed) {
+      if (disposed || !activeRef.current) {
         rafId = null;
         return;
       }
@@ -1667,20 +1682,59 @@ export function AnniversaryGiftCanvas({ onExit }) {
         lastDraw = ms;
         frame(t);
       }
-      rafId = requestAnimationFrame(tick);
+      if (activeRef.current) {
+        rafId = requestAnimationFrame(tick);
+      } else {
+        rafId = null;
+      }
     }
 
+    const startRaf = () => {
+      if (disposed || !activeRef.current || rafId !== null) return;
+      last = 0;
+      rafId = requestAnimationFrame(tick);
+    };
+
+    controlsRef.current = {
+      restart,
+      save,
+      setActive: (nextActive) => {
+        if (disposed) return;
+        if (!nextActive) {
+          stopRaf();
+          return;
+        }
+        if (rafId !== null) return;
+        last = 0;
+        lastDraw = 0;
+        frame(t);
+        startRaf();
+      },
+    };
+
     frame(0);
-    rafId = requestAnimationFrame(tick);
+    if (activeRef.current) {
+      startRaf();
+    }
 
     return () => {
       disposed = true;
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      rafId = null;
+      stopRaf();
+      controlsRef.current = {
+        toggle: () => {},
+        restart: () => {},
+        save: () => {},
+        setActive: () => {},
+      };
       window.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [handleTogglePause]);
+
+  useEffect(() => {
+    activeRef.current = active;
+    controlsRef.current.setActive?.(active);
+  }, [active]);
 
   return (
     <div className="terminal-ascii-stage" aria-label="1st Anniversary ASCII Gift Box stage">
@@ -1722,6 +1776,15 @@ export function AnniversaryGiftCanvas({ onExit }) {
         >
           ↓ PNG
         </button>
+        {showPlayAudio && (
+          <button
+            type="button"
+            className="terminal-ascii-btn terminal-cat-btn--primary"
+            onClick={() => onPlayAudio?.()}
+          >
+            ▶ Play Audio
+          </button>
+        )}
         <button
           type="button"
           className="terminal-ascii-btn terminal-ascii-btn--exit"

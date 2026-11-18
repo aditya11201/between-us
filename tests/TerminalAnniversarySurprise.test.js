@@ -259,6 +259,7 @@ test("Terminal and Mail SCSS compile cleanly with anniversary surprise styles", 
   const terminalCss = sass.compile(`${projectRoot}src/styles/components/Terminal/Terminal.scss`).css;
   const mailCss = sass.compile(`${projectRoot}src/styles/components/Mail/Mail.scss`).css;
 
+  assert.match(terminalCss, /\.terminal-ascii-slot/);
   assert.match(terminalCss, /\.terminal-ascii-scene/);
   assert.match(terminalCss, /aspect-ratio:\s*1080\s*\/\s*960/);
   assert.match(mailCss, /\.mail__surprise-card/);
@@ -485,6 +486,107 @@ test("AnniversaryGiftCanvas continues advancing past 29.00s without looping or f
 
       assert.match(timerCalls().at(-1)?.text, /t 00\.0[1-9]s$/);
       assert.equal(rafQueue.size, 1);
+    });
+    } finally {
+    globalThis.requestAnimationFrame = originalRaf;
+    globalThis.cancelAnimationFrame = originalCancelRaf;
+  }
+});
+
+test("AnniversaryGiftCanvas pauses rAF and ignores shortcuts when active=false and resumes from preserved t without jumping", async () => {
+  const originalRaf = globalThis.requestAnimationFrame;
+  const originalCancelRaf = globalThis.cancelAnimationFrame;
+  let nextRafId = 1;
+  const rafQueue = new Map();
+
+  globalThis.requestAnimationFrame = (cb) => {
+    const id = nextRafId++;
+    rafQueue.set(id, cb);
+    return id;
+  };
+  globalThis.cancelAnimationFrame = (id) => {
+    rafQueue.delete(id);
+  };
+
+  try {
+    await withMockCanvas(async ({ mainFillTexts, trailClearRects }) => {
+      const container = document.createElement("div");
+      document.body.append(container);
+      const root = createRoot(container);
+      mountedRoots.push({ container, root });
+
+      let exitCount = 0;
+      const renderCanvas = async (active) => {
+        await act(async () => {
+          root.render(
+            React.createElement(AnniversaryGiftCanvas, {
+              onExit: () => { exitCount += 1; },
+              active,
+            }),
+          );
+        });
+      };
+
+      await renderCanvas(true);
+
+      const timerCalls = () => mainFillTexts.filter((call) => /t \d{2,}\.\d{2}s$/.test(call.text));
+      const parseTimerSeconds = (text) => {
+        const match = /t (\d+\.\d{2})s$/.exec(text || "");
+        return match ? Number(match[1]) : NaN;
+      };
+
+      let ms = 100;
+      const stepTicks = async (count, stepMs = 100) => {
+        await act(async () => {
+          for (let i = 0; i < count; i += 1) {
+            const entries = [...rafQueue.entries()];
+            rafQueue.clear();
+            for (const [, cb] of entries) {
+              cb(ms);
+            }
+            ms += stepMs;
+          }
+        });
+      };
+
+      // Advance several seconds so the gift box is actively animating.
+      await stepTicks(45);
+      const tBeforePause = parseTimerSeconds(timerCalls().at(-1)?.text);
+      assert.ok(tBeforePause >= 2.5);
+
+      // Deactivate (e.g. while Cat Story is playing).
+      await renderCanvas(false);
+      assert.equal(rafQueue.size, 0, "rAF loop should stop while active=false");
+
+      const pauseButton = [...container.querySelectorAll("button")].find(
+        (btn) => btn.textContent.trim() === "II PAUSE",
+      );
+      assert.ok(pauseButton);
+
+      // Shortcuts Space, R, Escape must be ignored while inactive.
+      await act(async () => {
+        browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: " ", bubbles: true }));
+        browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "r", bubbles: true }));
+        browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      });
+      assert.equal(pauseButton.textContent.trim(), "II PAUSE");
+      assert.equal(exitCount, 0);
+      assert.equal(trailClearRects.length, 0);
+
+      // Simulate 12 seconds passing while Cat Story plays, then re-activate.
+      ms += 12000;
+      await renderCanvas(true);
+      assert.equal(rafQueue.size, 1, "rAF loop should resume when active=true");
+      assert.equal(trailClearRects.length, 0, "trail canvas must not clear on resume");
+
+      const tAtResume = parseTimerSeconds(timerCalls().at(-1)?.text);
+      assert.equal(tAtResume, tBeforePause, "t must stay preserved on resume");
+
+      // First tick after resume should have dt=0 (last was reset), second tick advances by ~0.05s.
+      await stepTicks(2, 50);
+      const tAfterResume = parseTimerSeconds(timerCalls().at(-1)?.text);
+      assert.ok(tAfterResume >= tBeforePause && tAfterResume <= tBeforePause + 0.1,
+        `expected smooth resume without dt jump: before=${tBeforePause}, after=${tAfterResume}`);
     });
   } finally {
     globalThis.requestAnimationFrame = originalRaf;

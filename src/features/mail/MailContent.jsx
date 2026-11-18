@@ -47,7 +47,6 @@ import { decryptImportantMail, fetchImportantMailEnvelope } from "./mailCrypto.j
 import {
   BONUS_DEFAULT_VOLUME,
   BONUS_SONG_ID,
-  getBonusStartTime,
 } from "@/features/music/bonusSyncModel.js";
 import { prewarmBonusCatStory } from "@/features/music/bonusSyncCoordinator.js";
 
@@ -1066,27 +1065,22 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
                 <SurpriseCard
                   surprise={selectedMessage.terminalSurprise}
                   defaultLabel="Open Surprise"
-                  onLaunch={() => openApp?.("terminal", "Terminal", {
-                    action: selectedMessage.terminalSurprise.action,
-                    maximize: true,
-                    runId: ++nextSurpriseRunId,
-                  })}
-                />
-              )}
-              {selectedMessage.bonusSurprise && (
-                <SurpriseCard
-                  surprise={selectedMessage.bonusSurprise}
-                  defaultLabel="Bonus for You"
                   onLaunch={() => {
                     const runId = ++nextSurpriseRunId;
-                    const startTime = getBonusStartTime();
-                    const songId = selectedMessage.bonusSurprise.songId || BONUS_SONG_ID;
+                    const songId = selectedMessage.terminalSurprise.songId || BONUS_SONG_ID;
                     prewarmBonusCatStory();
                     openApp?.("music", "Music", {
                       action: "bonus-play-from-start",
                       songId,
-                      startTime,
                       volume: BONUS_DEFAULT_VOLUME,
+                      autoOpenTerminal: false,
+                      runId,
+                    });
+                    openApp?.("terminal", "Terminal", {
+                      action: selectedMessage.terminalSurprise.action,
+                      maximize: true,
+                      syncWithMusic: true,
+                      songId,
                       runId,
                     });
                   }}

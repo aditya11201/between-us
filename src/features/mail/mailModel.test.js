@@ -76,10 +76,12 @@ test("places the 1st anniversary message first in the inbox with terminal surpri
   assert.equal(inbox[0]?.sentAt, "2026-11-18T00:00:00+07:00");
   assert.deepEqual(inbox[0]?.terminalSurprise, {
     title: "1st Anniversary Gift Box",
-    subtitle: "Open interactive ASCII animation in Terminal",
+    subtitle: "Open interactive ASCII surprise with Love Me Not",
     buttonLabel: "Open Surprise",
     action: "anniversary-gift",
+    songId: "ravyn-lenae-love-me-not",
   });
+  assert.equal(inbox[0]?.bonusSurprise, undefined);
 });
 
 test("unread-only filtering excludes read messages", () => {

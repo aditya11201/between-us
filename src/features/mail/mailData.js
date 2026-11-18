@@ -75,15 +75,9 @@ A little something, made with love, just for you.
 Happy one year since we first met, pretty girl. I'm really glad our paths crossed.`,
     terminalSurprise: {
       title: "1st Anniversary Gift Box",
-      subtitle: "Open interactive ASCII animation in Terminal",
+      subtitle: "Open interactive ASCII surprise with Love Me Not",
       buttonLabel: "Open Surprise",
       action: "anniversary-gift",
-    },
-    bonusSurprise: {
-      title: "Bonus for You",
-      subtitle: "Cat Story ASCII synced with Love Me Not",
-      buttonLabel: "Bonus for You",
-      action: "bonus-cat-story",
       songId: "ravyn-lenae-love-me-not",
     },
     to: "myfavoritestranger@gmail.com",

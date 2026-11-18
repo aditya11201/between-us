@@ -1,10 +1,25 @@
 export const BONUS_SONG_ID = "ravyn-lenae-love-me-not";
 export const BONUS_BASE_START_TIME = 56.90;
+export const BONUS_SECOND_START_TIME = 132.68;
 export const BONUS_DEFAULT_VOLUME = 0.4;
 export const BONUS_FPS = 30;
 export const BONUS_FRAME_COUNT = 338;
 export const BONUS_DURATION = BONUS_FRAME_COUNT / BONUS_FPS;
 export const BONUS_END_TIME = BONUS_BASE_START_TIME + BONUS_DURATION;
+export const BONUS_LYRIC_WINDOWS = Object.freeze([
+  Object.freeze({
+    windowIndex: 0,
+    label: "chorus-1",
+    startTime: BONUS_BASE_START_TIME,
+    endTime: BONUS_BASE_START_TIME + BONUS_DURATION,
+  }),
+  Object.freeze({
+    windowIndex: 1,
+    label: "chorus-2",
+    startTime: BONUS_SECOND_START_TIME,
+    endTime: BONUS_SECOND_START_TIME + BONUS_DURATION,
+  }),
+]);
 export const DEFAULT_BONUS_START_OFFSET_SEC = 0;
 export const BONUS_OFFSET_STORAGE_KEY = "between-us.bonus.offset";
 
@@ -32,13 +47,11 @@ function parseFiniteNumber(value) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
-export function getBonusStartTime(
+export function getBonusOffset({
   offsetOverride,
-  {
-    search = typeof window !== "undefined" ? window.location?.search : undefined,
-    storage = typeof window !== "undefined" ? window.localStorage : undefined,
-  } = {},
-) {
+  search = typeof window !== "undefined" ? window.location?.search : undefined,
+  storage = typeof window !== "undefined" ? window.localStorage : undefined,
+} = {}) {
   let offset = parseFiniteNumber(offsetOverride);
 
   if (offset === null && typeof search === "string" && search) {
@@ -62,6 +75,11 @@ export function getBonusStartTime(
     offset = DEFAULT_BONUS_START_OFFSET_SEC;
   }
 
+  return offset;
+}
+
+export function getBonusStartTime(offsetOverride, options = {}) {
+  const offset = getBonusOffset({ offsetOverride, ...options });
   return Math.max(0, BONUS_BASE_START_TIME + offset);
 }
 
@@ -87,6 +105,88 @@ export function resolveCatStoryFrame(
   }
 
   const elapsed = audioTime - safeStartTime;
-  const frameIndex = Math.min(safeFrameCount - 1, Math.floor(elapsed * safeFps));
+  const frameIndex = Math.min(safeFrameCount - 1, Math.floor(elapsed * safeFps + 1e-9));
   return { frameIndex, elapsed, status: "playing" };
+}
+
+export function resolveUnifiedSurpriseScene(
+  audioTime,
+  {
+    offsetOverride,
+    search,
+    storage,
+    windows = BONUS_LYRIC_WINDOWS,
+    fps = BONUS_FPS,
+    frameCount = BONUS_FRAME_COUNT,
+  } = {},
+) {
+  const safeFps = Number.isFinite(fps) && fps > 0 ? fps : BONUS_FPS;
+  const safeFrameCount = Number.isInteger(frameCount) && frameCount > 0 ? frameCount : BONUS_FRAME_COUNT;
+  const duration = safeFrameCount / safeFps;
+  const offset = getBonusOffset({ offsetOverride, search, storage });
+
+  const resolvedWindows = (Array.isArray(windows) && windows.length ? windows : BONUS_LYRIC_WINDOWS).map(
+    (win, index) => {
+      const baseStart = Number.isFinite(win?.startTime) ? win.startTime : BONUS_BASE_START_TIME;
+      const startTime = Math.max(0, baseStart + offset);
+      const baseDuration = Number.isFinite(win?.endTime) && Number.isFinite(win?.startTime) && win.endTime > win.startTime
+        ? win.endTime - win.startTime
+        : duration;
+      return {
+        windowIndex: Number.isInteger(win?.windowIndex) ? win.windowIndex : index,
+        startTime,
+        endTime: startTime + baseDuration,
+      };
+    },
+  );
+
+  if (!Number.isFinite(audioTime)) {
+    return {
+      mode: "gift-box",
+      windowIndex: -1,
+      startTime: null,
+      endTime: null,
+      frameIndex: 0,
+      elapsed: 0,
+      status: "before",
+    };
+  }
+
+  for (let i = 0; i < resolvedWindows.length; i += 1) {
+    const win = resolvedWindows[i];
+    if (audioTime >= win.startTime && audioTime < win.endTime) {
+      const frame = resolveCatStoryFrame(audioTime, {
+        startTime: win.startTime,
+        fps: safeFps,
+        frameCount: safeFrameCount,
+      });
+      return {
+        mode: "cat-story",
+        windowIndex: win.windowIndex,
+        startTime: win.startTime,
+        endTime: win.endTime,
+        frameIndex: frame.frameIndex,
+        elapsed: frame.elapsed,
+        status: "playing",
+      };
+    }
+  }
+
+  const firstStart = resolvedWindows[0]?.startTime ?? BONUS_BASE_START_TIME;
+  const lastEnd = resolvedWindows.at(-1)?.endTime ?? (firstStart + duration);
+  const status = audioTime < firstStart
+    ? "before"
+    : audioTime >= lastEnd
+      ? "completed"
+      : "between";
+
+  return {
+    mode: "gift-box",
+    windowIndex: -1,
+    startTime: null,
+    endTime: null,
+    frameIndex: 0,
+    elapsed: 0,
+    status,
+  };
 }
