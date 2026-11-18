@@ -1,5 +1,6 @@
 export const BONUS_SONG_ID = "ravyn-lenae-love-me-not";
 export const BONUS_BASE_START_TIME = 56.90;
+export const BONUS_DEFAULT_VOLUME = 0.4;
 export const BONUS_FPS = 30;
 export const BONUS_FRAME_COUNT = 338;
 export const BONUS_DURATION = BONUS_FRAME_COUNT / BONUS_FPS;

@@ -44,7 +44,11 @@ import {
 } from "./mailModel";
 import { getLockedMailState } from "./mailLock.js";
 import { decryptImportantMail, fetchImportantMailEnvelope } from "./mailCrypto.js";
-import { BONUS_SONG_ID, getBonusStartTime } from "@/features/music/bonusSyncModel.js";
+import {
+  BONUS_DEFAULT_VOLUME,
+  BONUS_SONG_ID,
+  getBonusStartTime,
+} from "@/features/music/bonusSyncModel.js";
 import { prepareBonusSyncRun } from "@/features/music/bonusSyncCoordinator.js";
 
 const MAILBOX_ICONS = {
@@ -1082,6 +1086,7 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
                       action: "bonus-sync-prepare",
                       songId,
                       startTime,
+                      volume: BONUS_DEFAULT_VOLUME,
                       runId,
                     });
                     openApp?.("terminal", "Terminal", {

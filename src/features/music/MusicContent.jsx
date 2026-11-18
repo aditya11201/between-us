@@ -60,7 +60,11 @@ import {
   serializePlayerState,
 } from "./musicModel.js";
 import { getActiveLyricIndex, parseLRC } from "./lyricsParser.js";
-import { BONUS_SONG_ID, getBonusStartTime } from "./bonusSyncModel.js";
+import {
+  BONUS_DEFAULT_VOLUME,
+  BONUS_SONG_ID,
+  getBonusStartTime,
+} from "./bonusSyncModel.js";
 import {
   ensureBonusSyncRun,
   markBonusMusicReady,
@@ -115,6 +119,10 @@ try {
   }
 } catch {
   // Storage can be unavailable in private or restricted browsing contexts.
+}
+
+function resolveBonusTargetVolume(volume) {
+  return Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : BONUS_DEFAULT_VOLUME;
 }
 
 function isCurrentAudioSource(audio, expectedSource, audioRef, audioSourceRef) {
@@ -207,12 +215,15 @@ export function MusicContent({ payload } = {}) {
   const songs = MUSIC_CATALOG;
   const [initialPlayerState] = useState(() => {
     const base = getInitialPlayerState();
-    if (payload?.action === "bonus-sync-prepare" && payload?.songId) {
+    if (payload?.action === "bonus-sync-prepare") {
       const startTime = Number.isFinite(payload.startTime) ? payload.startTime : getBonusStartTime();
+      const targetVolume = resolveBonusTargetVolume(payload.volume);
       return {
         ...base,
-        activeId: payload.songId,
+        activeId: payload.songId || BONUS_SONG_ID,
         currentTime: startTime,
+        volume: targetVolume,
+        isMuted: false,
       };
     }
     return base;
@@ -747,6 +758,7 @@ export function MusicContent({ payload } = {}) {
     const songId = payload.songId || BONUS_SONG_ID;
     const startTime = Number.isFinite(payload.startTime) ? payload.startTime : getBonusStartTime();
     const runId = payload.runId ?? "__bonus-sync__";
+    const targetVolume = resolveBonusTargetVolume(payload.volume);
 
     ensureBonusSyncRun({ runId, songId, startTime });
 
@@ -759,8 +771,20 @@ export function MusicContent({ payload } = {}) {
     pendingAutoplayRef.current = false;
     setPlaybackError(null);
     setIsPlaying(false);
+    setVolume(targetVolume);
+    setIsMuted(false);
 
     const audio = audioRef.current;
+    if (audio) {
+      audio.volume = targetVolume;
+      audio.muted = false;
+    }
+    playerStateRef.current = {
+      ...playerStateRef.current,
+      volume: targetVolume,
+      isMuted: false,
+    };
+
     const source = audioSourceRef.current;
     const currentId = playerStateRef.current.activeId;
     const sameLoadedSong =
@@ -790,7 +814,7 @@ export function MusicContent({ payload } = {}) {
       setSourceLoadRequest((value) => value + 1);
     }
     return undefined;
-  }, [payload?.action, payload?.songId, payload?.startTime, payload?.runId, stopAmbientBridge]);
+  }, [payload?.action, payload?.songId, payload?.startTime, payload?.runId, payload?.volume, stopAmbientBridge]);
 
   useEffect(() => {
     return subscribeBonusSync((event) => {

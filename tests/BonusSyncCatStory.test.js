@@ -213,6 +213,7 @@ test("bonusSyncModel exports constants, offset resolution, and frame mapping", (
   const {
     BONUS_SONG_ID,
     BONUS_BASE_START_TIME,
+    BONUS_DEFAULT_VOLUME,
     BONUS_FPS,
     BONUS_FRAME_COUNT,
     BONUS_DURATION,
@@ -224,6 +225,7 @@ test("bonusSyncModel exports constants, offset resolution, and frame mapping", (
 
   assert.equal(BONUS_SONG_ID, "ravyn-lenae-love-me-not");
   assert.equal(BONUS_BASE_START_TIME, 56.90);
+  assert.equal(BONUS_DEFAULT_VOLUME, 0.4);
   assert.equal(BONUS_FPS, 30);
   assert.equal(BONUS_FRAME_COUNT, 338);
   assert.ok(Math.abs(BONUS_DURATION - 338 / 30) < 1e-9);
@@ -306,6 +308,7 @@ test("Mail renders Bonus for You below Open Surprise and opens Music behind maxi
   assert.equal(openedCalls[0][2].action, "bonus-sync-prepare");
   assert.equal(openedCalls[0][2].songId, "ravyn-lenae-love-me-not");
   assert.equal(openedCalls[0][2].startTime, 56.90);
+  assert.equal(openedCalls[0][2].volume, 0.4);
 
   assert.equal(openedCalls[1][0], "terminal");
   assert.equal(openedCalls[1][1], "Terminal");
@@ -672,4 +675,104 @@ test("renderAppContent forwards payload to MusicContent and Terminal SCSS compil
   assert.match(catCanvasRule, /background:\s*transparent/);
 
   assert.match(terminalCss, /\.terminal-cat-stage--phosphor[^}]*background:\s*#050e09/i);
+});
+
+test("MusicContent sets volume to 0.4 and unmutes on bonus-sync-prepare despite saved localStorage volume", async () => {
+  const { PLAYER_STORAGE_KEY } = await vite.ssrLoadModule("/src/features/music/musicModel.js");
+  browserWindow.localStorage.setItem(
+    PLAYER_STORAGE_KEY,
+    JSON.stringify({
+      activeId: "ravyn-lenae-love-me-not",
+      currentTime: 12,
+      volume: 0.7,
+      isMuted: true,
+    }),
+  );
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mountedRoots.push({ container, root });
+
+  let bridgeRef = null;
+  function BridgeProbe() {
+    bridgeRef = useMusicPlayer();
+    return null;
+  }
+
+  // 1. Fresh mount with bonus-sync-prepare overrides stored 0.7 / muted.
+  await act(async () => {
+    root.render(
+      React.createElement(
+        WindowContext.Provider,
+        { value: createWindowContextValue() },
+        React.createElement(MusicContent, {
+          payload: {
+            action: "bonus-sync-prepare",
+            songId: "ravyn-lenae-love-me-not",
+            startTime: 56.90,
+            volume: 0.4,
+            runId: 901,
+          },
+        }),
+        React.createElement(BridgeProbe),
+      ),
+    );
+  });
+
+  const audio = bridgeRef.getAudioElement();
+  const slider = container.querySelector(".music-volume-slider");
+  const muteBtn = container.querySelector('button[aria-label="Mute"], button[aria-label="Unmute"]');
+  assert.ok(audio);
+  assert.ok(slider);
+  assert.ok(muteBtn);
+  assert.equal(audio.volume, 0.4);
+  assert.equal(audio.muted, false);
+  assert.equal(Number(slider.value), 0.4);
+  assert.equal(muteBtn.getAttribute("aria-pressed"), "false");
+  assert.equal(JSON.parse(browserWindow.localStorage.getItem(PLAYER_STORAGE_KEY)).volume, 0.4);
+  assert.equal(JSON.parse(browserWindow.localStorage.getItem(PLAYER_STORAGE_KEY)).isMuted, false);
+
+  // 2. User adjusts volume slider and mutes afterwards -> stays user-controlled.
+  const setInputValue = Object.getOwnPropertyDescriptor(
+    browserWindow.HTMLInputElement.prototype,
+    "value",
+  ).set;
+  await act(async () => {
+    setInputValue.call(slider, "0.85");
+    slider.dispatchEvent(new browserWindow.Event("input", { bubbles: true }));
+    slider.dispatchEvent(new browserWindow.Event("change", { bubbles: true }));
+  });
+  assert.equal(audio.volume, 0.85);
+  assert.equal(Number(slider.value), 0.85);
+
+  await dom.click(muteBtn);
+  assert.equal(audio.muted, true);
+  assert.equal(Number(slider.value), 0);
+
+  // 3. Re-launching bonus-sync-prepare while Music is already open resets to 0.4 and unmutes.
+  await act(async () => {
+    root.render(
+      React.createElement(
+        WindowContext.Provider,
+        { value: createWindowContextValue() },
+        React.createElement(MusicContent, {
+          payload: {
+            action: "bonus-sync-prepare",
+            songId: "ravyn-lenae-love-me-not",
+            startTime: 56.90,
+            runId: 902,
+          },
+        }),
+        React.createElement(BridgeProbe),
+      ),
+    );
+  });
+
+  assert.equal(audio.volume, 0.4);
+  assert.equal(audio.muted, false);
+  assert.equal(Number(slider.value), 0.4);
+  assert.equal(muteBtn.getAttribute("aria-pressed"), "false");
+  assert.equal(JSON.parse(browserWindow.localStorage.getItem(PLAYER_STORAGE_KEY)).volume, 0.4);
+  assert.equal(JSON.parse(browserWindow.localStorage.getItem(PLAYER_STORAGE_KEY)).isMuted, false);
 });
