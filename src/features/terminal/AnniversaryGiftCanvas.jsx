@@ -124,25 +124,6 @@ const SHORT_WISHES = [
   "SALUTE", "PACE", "GIOIA", "FORZA", "SOGNO",
 ];
 
-const WISH_CAPTIONS = [
-  { lang: "INDONESIA", text: "Semoga kamu sehat selalu." },
-  { lang: "INDONESIA", text: "Semoga harimu selalu menyenangkan." },
-  { lang: "INDONESIA", text: "Semoga hatimu senang selalu." },
-  { lang: "INDONESIA", text: "Semoga Tuhan menghilangkan semua trauma yang pernah kamu alami." },
-  { lang: "INDONESIA", text: "Semoga hatimu perlahan pulih lagi." },
-  { lang: "INDONESIA", text: "Semoga segalanya yang kamu lakukan selalu dimudahkan." },
-  { lang: "INDONESIA", text: "Semoga kamu lulus dengan baik." },
-  { lang: "INDONESIA", text: "Semoga impianmu terwujud." },
-  { lang: "INDONESIA", text: "Semoga kamu selalu diberi kekuatan." },
-  { lang: "INDONESIA", text: "Semoga kamu selalu bahagia dan senang." },
-  { lang: "ENGLISH", text: "May you always be healthy and may your dreams come true." },
-  { lang: "ESPANOL", text: "Que siempre tengas salud, paz y fuerza para seguir adelante." },
-  { lang: "BASA JAWA", text: "Muga kowe tansah sehat, atimu waras, lan uripmu dilancarke." },
-  { lang: "BASA SUNDA", text: "Mugia anjeun salawasna sehat, bagja, tur hatena laun laun pulih deui." },
-  { lang: "FRANCAIS", text: "Que tu sois toujours en bonne sante, que ton coeur guerisse, et que tes reves se realisent." },
-  { lang: "ITALIANO", text: "Che tu stia sempre in buona salute, che il tuo cuore guarisca, e che i tuoi sogni si avverino." },
-];
-
 const FLOWERS = [
   [-1.82, 3.88, 0.98, 0.98, -0.11, -0.05],
   [-0.42, 4.02, 0.70, 0.84, -0.02, -0.03],
@@ -1179,31 +1160,6 @@ export function AnniversaryGiftCanvas({ onExit }) {
       }
     }
 
-    function drawWishCaption(now) {
-      const p = safeMod(Math.floor(now / 2.2), WISH_CAPTIONS.length);
-      const item = WISH_CAPTIONS[p];
-      const phase = now / 2.2 - Math.floor(now / 2.2);
-      const fade = Math.min(1, phase * 6, (1 - phase) * 7);
-      ctx.save();
-      ctx.textBaseline = "alphabetic";
-      ctx.textAlign = "left";
-      const label = `✦ ${item.lang}  /  `;
-      ctx.font = "14px Consolas,Menlo,monospace";
-      ctx.fillStyle = `rgba(243,183,217,${0.72 * fade})`;
-      ctx.fillText(label, 44, H - 69);
-      const lx = 44 + ctx.measureText(label).width + 5;
-      const maxWidth = W - lx - 48;
-      let fontSize = 16;
-      ctx.font = `${fontSize}px "DejaVu Sans", "Noto Sans", Arial, sans-serif`;
-      while (ctx.measureText(item.text).width > maxWidth && fontSize > 11) {
-        fontSize--;
-        ctx.font = `${fontSize}px "DejaVu Sans", "Noto Sans", Arial, sans-serif`;
-      }
-      ctx.fillStyle = `rgba(252,220,233,${0.92 * fade})`;
-      ctx.fillText(item.text, lx, H - 69);
-      ctx.restore();
-    }
-
     function coverage(word, scale, cy) {
       const k = `${word}_${Math.round(scale * 40)}`;
       if (typeCache.has(k)) return typeCache.get(k);
@@ -1363,20 +1319,7 @@ export function AnniversaryGiftCanvas({ onExit }) {
       ctx.restore();
 
       ctx.textBaseline = "alphabetic";
-      ctx.textAlign = "left";
       ctx.font = "16px Consolas,Menlo,monospace";
-      ctx.fillStyle = "#9e8ca4";
-      const phaseLabel = now < 10.85
-        ? "SEALED"
-        : now < 13.5
-          ? "OPENING"
-          : now < 16.3
-            ? "BOUQUET RISING"
-            : now < 19.4
-              ? "BLOOMING"
-              : "IN BLOOM";
-      ctx.fillText(`ASCII GIFT BOX  /  STARGAZER LILIES  //  ${phaseLabel}`, 40, H - 30);
-      drawWishCaption(now);
       ctx.textAlign = "right";
       ctx.fillStyle = "#edadd9";
       ctx.fillText(`${Math.floor(now * 2) % 2 === 0 ? "●" : " "} t ${now.toFixed(2).padStart(5, "0")}s`, W - 64, 31);

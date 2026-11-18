@@ -12,6 +12,7 @@ let React;
 let act;
 let createRoot;
 let TerminalContent;
+let AnniversaryGiftCanvas;
 let WindowContext;
 let renderAppContent;
 let originalFetch;
@@ -31,6 +32,7 @@ before(async () => {
   ({ act } = React);
   ({ createRoot } = await import("react-dom/client"));
   ({ TerminalContent } = await vite.ssrLoadModule("/src/features/terminal/Terminal.jsx"));
+  ({ AnniversaryGiftCanvas } = await vite.ssrLoadModule("/src/features/terminal/AnniversaryGiftCanvas.jsx"));
   ({ WindowContext } = await vite.ssrLoadModule("/src/windows/index.js"));
   ({ renderAppContent } = await vite.ssrLoadModule("/src/utils/renderAppContent.jsx"));
 });
@@ -221,4 +223,103 @@ test("Terminal and Mail SCSS compile cleanly with anniversary surprise styles", 
   assert.match(terminalCss, /\.terminal-ascii-scene/);
   assert.match(terminalCss, /aspect-ratio:\s*1080\s*\/\s*960/);
   assert.match(mailCss, /\.mail__surprise-card/);
+});
+
+test("AnniversaryGiftCanvas draws the top-right timer without bottom-left status or wish caption overlays", async () => {
+  const originalGetContext = browserWindow.HTMLCanvasElement.prototype.getContext;
+  const originalPath2D = globalThis.Path2D;
+  const mainFillTexts = [];
+
+  class MockPath2D {
+    moveTo() {}
+    bezierCurveTo() {}
+    closePath() {}
+  }
+
+  function makeMockContext(targetCanvas) {
+    const isMainCanvas = targetCanvas.className === "terminal-ascii-canvas";
+    const gradient = { addColorStop() {} };
+    return {
+      fillStyle: "",
+      strokeStyle: "",
+      shadowColor: "",
+      shadowBlur: 0,
+      shadowOffsetY: 0,
+      lineWidth: 1,
+      lineCap: "butt",
+      font: "",
+      textAlign: "left",
+      textBaseline: "alphabetic",
+      globalCompositeOperation: "source-over",
+      globalAlpha: 1,
+      filter: "none",
+      save() {},
+      restore() {},
+      translate() {},
+      rotate() {},
+      clip() {},
+      beginPath() {},
+      moveTo() {},
+      lineTo() {},
+      bezierCurveTo() {},
+      quadraticCurveTo() {},
+      arc() {},
+      ellipse() {},
+      fill() {},
+      stroke() {},
+      fillRect() {},
+      clearRect() {},
+      drawImage() {},
+      createLinearGradient: () => gradient,
+      createRadialGradient: () => gradient,
+      measureText: (text) => ({ width: String(text).length * 8 }),
+      getImageData: (_x, _y, w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }),
+      fillText(text, x, y) {
+        if (isMainCanvas) {
+          mainFillTexts.push({ text: String(text), x, y, textAlign: this.textAlign });
+        }
+      },
+    };
+  }
+
+  globalThis.Path2D = MockPath2D;
+  browserWindow.HTMLCanvasElement.prototype.getContext = function getContext() {
+    return makeMockContext(this);
+  };
+
+  try {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mountedRoots.push({ container, root });
+
+    await act(async () => {
+      root.render(React.createElement(AnniversaryGiftCanvas, { onExit() {} }));
+    });
+
+    assert.ok(mainFillTexts.length > 0);
+    assert.ok(
+      mainFillTexts.some(
+        (call) => /t \d{2}\.\d{2}s$/.test(call.text) && call.x === 1080 - 64 && call.y === 31 && call.textAlign === "right",
+      ),
+      "expected top-right timer text on main canvas",
+    );
+    assert.equal(
+      mainFillTexts.some((call) => /ASCII GIFT BOX|STARGAZER LILIES/.test(call.text)),
+      false,
+      "bottom-left status line should be removed",
+    );
+    assert.equal(
+      mainFillTexts.some((call) => /✦|Semoga|May you always|Que siempre|Muga kowe|Mugia anjeun|Que tu sois|Che tu stia/.test(call.text)),
+      false,
+      "bottom-left wish caption should be removed",
+    );
+  } finally {
+    browserWindow.HTMLCanvasElement.prototype.getContext = originalGetContext;
+    if (originalPath2D === undefined) {
+      delete globalThis.Path2D;
+    } else {
+      globalThis.Path2D = originalPath2D;
+    }
+  }
 });
