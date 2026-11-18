@@ -216,6 +216,45 @@ test("renderAppContent forwards terminal payload to TerminalContent", async () =
   }
 });
 
+test("Terminal launches anniversary surprise on first mount under React.StrictMode", async () => {
+  const clock = installClock(browserWindow);
+  try {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mountedRoots.push({ container, root });
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          React.StrictMode,
+          null,
+          React.createElement(
+            WindowContext.Provider,
+            {
+              value: {
+                onClose() {},
+                onMinimize() {},
+                onZoom() {},
+                onTitlePointerDown() {},
+              },
+            },
+            React.createElement(TerminalContent, {
+              payload: { action: "anniversary-gift", maximize: true, runId: 1 },
+            }),
+          ),
+        ),
+      );
+    });
+
+    await advanceTimers(act, clock, 950);
+    assert.ok(container.querySelector(".terminal-ascii-stage"));
+    assert.ok(container.querySelector("canvas.terminal-ascii-canvas"));
+  } finally {
+    clock.restore();
+  }
+});
+
 test("Terminal and Mail SCSS compile cleanly with anniversary surprise styles", () => {
   const terminalCss = sass.compile(`${projectRoot}src/styles/components/Terminal/Terminal.scss`).css;
   const mailCss = sass.compile(`${projectRoot}src/styles/components/Mail/Mail.scss`).css;

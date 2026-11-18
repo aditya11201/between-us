@@ -83,6 +83,8 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
     if (lastRunIdRef.current === runKey) return undefined;
     lastRunIdRef.current = runKey;
 
+    let completed = false;
+
     launchTimersRef.current.forEach((id) => clearTimeout(id));
     launchTimersRef.current = [];
 
@@ -115,11 +117,15 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
     launchTimersRef.current.push(commitTimer);
 
     const enterStageTimer = setTimeout(() => {
+      completed = true;
       setStage("anniversary-gift");
     }, typingDoneMs + 150);
     launchTimersRef.current.push(enterStageTimer);
 
     return () => {
+      if (!completed) {
+        lastRunIdRef.current = null;
+      }
       launchTimersRef.current.forEach((id) => clearTimeout(id));
       launchTimersRef.current = [];
     };

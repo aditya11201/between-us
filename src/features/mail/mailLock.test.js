@@ -451,13 +451,15 @@ test("anniversary email renders the Terminal surprise launcher card and invokes 
   getByText(mount.container, "Open interactive ASCII animation in Terminal");
   const button = getByRole(mount.container, "button", { name: "Open Surprise" });
   await click(button);
+  await click(button);
 
-  assert.equal(openedCalls.length, 1);
+  assert.equal(openedCalls.length, 2);
   assert.equal(openedCalls[0][0], "terminal");
   assert.equal(openedCalls[0][1], "Terminal");
   assert.equal(openedCalls[0][2].action, "anniversary-gift");
   assert.equal(openedCalls[0][2].maximize, true);
   assert.equal(typeof openedCalls[0][2].runId, "number");
+  assert.ok(openedCalls[1][2].runId > openedCalls[0][2].runId);
 });
 
 test("clicking Open Surprise without an openApp handler is safely guarded", async () => {

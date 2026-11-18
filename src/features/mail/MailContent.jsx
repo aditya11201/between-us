@@ -77,6 +77,8 @@ const COMPOSE_LABELS = {
   forward: "Forward",
 };
 
+let nextSurpriseRunId = 0;
+
 function getInitials(sender) {
   return sender
     .split(/\s+/)
@@ -1048,7 +1050,7 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
                     onClick={() => openApp?.("terminal", "Terminal", {
                       action: selectedMessage.terminalSurprise.action,
                       maximize: true,
-                      runId: Date.now(),
+                      runId: ++nextSurpriseRunId,
                     })}
                   >
                     {selectedMessage.terminalSurprise.buttonLabel || "Open Surprise"}
