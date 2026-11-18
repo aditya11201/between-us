@@ -1958,3 +1958,393 @@ test("Unmounting a non-surprise Terminal CLI session preserves lyricFx armed by 
   assert.equal(bridgeRef.lyricFxArmed, true);
   assert.equal(bridgeRef.lyricFxSongId, "ravyn-lenae-love-me-not");
 });
+
+test("decodeCatStoryFrames strips left/right vertical border bars while preserving decoded length and non-border edge artwork", async () => {
+  const decoded = await decodeCatStoryFrames();
+  const COLS = 241;
+  const ROWS = 120;
+  const CELLS = COLS * ROWS;
+  assert.equal(decoded.length, 338 * CELLS);
+
+  const countCol = (frameIndex, col) => {
+    const base = frameIndex * CELLS;
+    let count = 0;
+    for (let row = 0; row < ROWS; row += 1) {
+      if (decoded[base + row * COLS + col] !== 0) count += 1;
+    }
+    return count;
+  };
+
+  // All confirmed border frames (including 68, 135, 155, 262, 273, 283) have zeroed col 0 and col 240.
+  for (const frameIndex of [65, 68, 74, 127, 135, 148, 149, 155, 162, 257, 262, 273, 283, 288]) {
+    assert.equal(countCol(frameIndex, 0), 0, `expected col 0 cleared on frame ${frameIndex}`);
+    assert.equal(countCol(frameIndex, COLS - 1), 0, `expected col 240 cleared on frame ${frameIndex}`);
+  }
+
+  // Edge artwork in f=155 (col 1 & 239) and f=292 (col 0 & 240), plus near-edge lyric lettering in f=102 and f=175 remain intact.
+  assert.ok(countCol(155, 1) >= 40);
+  assert.ok(countCol(155, 239) >= 40);
+  assert.ok(countCol(292, 0) === 20);
+  assert.ok(countCol(292, 240) === 8);
+  assert.ok(countCol(102, 235) > 0);
+  assert.ok(countCol(175, 238) > 0);
+});
+
+test("CatStoryCanvas expands canvas.width dynamically via ResizeObserver and resize while preserving height=720 and PNG export", async () => {
+  const originalResizeObserver = globalThis.ResizeObserver;
+  const observerRecords = [];
+
+  class MockResizeObserver {
+    constructor(callback) {
+      this.callback = callback;
+      this.observed = [];
+      this.disconnected = false;
+      observerRecords.push(this);
+    }
+    observe(target) {
+      this.observed.push(target);
+    }
+    disconnect() {
+      this.disconnected = true;
+    }
+  }
+  globalThis.ResizeObserver = MockResizeObserver;
+
+  try {
+    await withMockCatCanvas(async ({ putImageCalls, toDataUrlCalls }) => {
+      const container = document.createElement("div");
+      document.body.append(container);
+      const root = createRoot(container);
+      const mount = { container, root };
+      mountedRoots.push(mount);
+
+      let bridgeRef = null;
+      function BridgeProbe() {
+        bridgeRef = useMusicPlayer();
+        return null;
+      }
+
+      await act(async () => {
+        root.render(
+          React.createElement(
+            WindowContext.Provider,
+            { value: createWindowContextValue() },
+            React.createElement(MusicContent, {
+              payload: {
+                action: "bonus-play-from-start",
+                songId: "ravyn-lenae-love-me-not",
+                startTime: 56.90,
+                volume: 0.4,
+                runId: 3101,
+              },
+            }),
+            React.createElement(CatStoryCanvas, {
+              onExit() {},
+              runId: 3101,
+              songId: "ravyn-lenae-love-me-not",
+              startTime: 56.90,
+            }),
+            React.createElement(BridgeProbe),
+          ),
+        );
+      });
+
+      const audio = bridgeRef.getAudioElement();
+      const controls = instrumentAudioElement(audio, { duration: 213 });
+      await act(async () => {
+        controls.emitMetadata();
+        controls.advanceTo(56.90);
+      });
+
+      await waitForCondition(
+        () => putImageCalls.length > 0,
+        { description: "CatStoryCanvas draws initial frame" },
+      );
+
+      const viewport = container.querySelector(".terminal-ascii-viewport");
+      const canvas = container.querySelector("canvas.terminal-ascii-canvas");
+      assert.ok(viewport);
+      assert.ok(container.querySelector(".terminal-ascii-viewport > .terminal-ascii-scene > canvas.terminal-ascii-canvas"));
+      assert.deepEqual(
+        [...container.querySelectorAll(".terminal-ascii-tools button")].map((b) => b.textContent.trim()),
+        ["↓ PNG", "Back to Terminal"],
+      );
+      assert.equal(canvas.width, 964);
+      assert.equal(canvas.height, 720);
+      assert.equal(observerRecords.length, 1);
+      assert.deepEqual(observerRecords[0].observed, [viewport]);
+
+      const triggerResize = async (width, height) => {
+        viewport.getBoundingClientRect = () => ({ width, height });
+        await act(async () => {
+          observerRecords[0].callback([{ target: viewport, contentRect: { width, height } }]);
+        });
+      };
+
+      // Wide 2:1 viewport -> targetCols = 360 -> width = 1440, height = 720.
+      await triggerResize(1600, 800);
+      assert.equal(canvas.width, 1440);
+      assert.equal(canvas.height, 720);
+      assert.equal(putImageCalls.at(-1)?.width, 1440);
+      assert.equal(putImageCalls.at(-1)?.height, 720);
+
+      // Frame advances (triggering React HUD re-render) while keeping widened canvas width intact.
+      const callsBeforeAdvance = putImageCalls.length;
+      await act(async () => {
+        controls.advanceTo(56.90 + 1.1);
+      });
+      assert.equal(container.querySelector(".terminal-cat-stage")?.getAttribute("data-frame"), "34");
+      assert.equal(canvas.width, 1440);
+      assert.ok(putImageCalls.length > callsBeforeAdvance);
+      assert.equal(putImageCalls.at(-1)?.width, 1440);
+
+      // Zero-sized viewport (0x0) preserves current width cleanly.
+      await triggerResize(0, 0);
+      assert.equal(canvas.width, 1440);
+      assert.equal(canvas.height, 720);
+
+      // Ultra-wide viewport clamps at MAX_COLS = 440 -> width = 1760.
+      await triggerResize(3000, 800);
+      assert.equal(canvas.width, 1760);
+      assert.equal(canvas.height, 720);
+      assert.equal(putImageCalls.at(-1)?.width, 1760);
+
+      // Narrower than 4:3 viewport clamps cleanly at BASE_COLS = 241 -> width = 964.
+      await triggerResize(600, 800);
+      assert.equal(canvas.width, 964);
+      assert.equal(canvas.height, 720);
+
+      // Window resize fallback also updates canvas.width.
+      viewport.getBoundingClientRect = () => ({ width: 1600, height: 800 });
+      await act(async () => {
+        browserWindow.dispatchEvent(new browserWindow.Event("resize"));
+      });
+      assert.equal(canvas.width, 1440);
+
+      // PNG export continues working cleanly at widened canvas dimensions.
+      const saveBtn = [...container.querySelectorAll(".terminal-ascii-tools button")].find(
+        (b) => b.textContent.trim() === "↓ PNG",
+      );
+      await dom.click(saveBtn);
+      assert.equal(toDataUrlCalls.length, 1);
+      assert.equal(toDataUrlCalls[0], "image/png");
+
+      await unmountMount(act, mount);
+      mountedRoots.pop();
+      assert.equal(observerRecords[0].disconnected, true);
+    });
+  } finally {
+    if (originalResizeObserver === undefined) {
+      delete globalThis.ResizeObserver;
+    } else {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  }
+});
+
+test("CatStoryCanvas renders seamless low-luminance starfield, preserves interior edge lyrics, feathers edge art, and honors reduced motion", async () => {
+  const originalGetContext = browserWindow.HTMLCanvasElement.prototype.getContext;
+  const originalMatchMedia = browserWindow.matchMedia;
+  const originalResizeObserver = globalThis.ResizeObserver;
+  let reducedMotionMatches = false;
+  const observerRecords = [];
+  const capturedFrames = [];
+
+  browserWindow.matchMedia = (query) => ({
+    matches: query === "(prefers-reduced-motion: reduce)" ? reducedMotionMatches : false,
+    media: query,
+    addEventListener() {},
+    removeEventListener() {},
+  });
+
+  class MockResizeObserver {
+    constructor(callback) {
+      this.callback = callback;
+      observerRecords.push(this);
+    }
+    observe() {}
+    disconnect() {}
+  }
+  globalThis.ResizeObserver = MockResizeObserver;
+
+  browserWindow.HTMLCanvasElement.prototype.getContext = function getContext() {
+    const isMain = this.className === "terminal-ascii-canvas";
+    let lastDrawnChar = " ";
+    return {
+      fillStyle: "",
+      font: "",
+      textAlign: "left",
+      textBaseline: "alphabetic",
+      clearRect() {
+        lastDrawnChar = " ";
+      },
+      fillText(text) {
+        lastDrawnChar = String(text ?? " ");
+      },
+      createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
+      getImageData(_x, _y, w, h) {
+        const data = new Uint8ClampedArray(w * h * 4);
+        if (lastDrawnChar !== " ") {
+          for (let i = 3; i < data.length; i += 4) {
+            data[i] = 204;
+          }
+        }
+        return { data };
+      },
+      putImageData(imageData) {
+        if (isMain) {
+          capturedFrames.push({
+            width: imageData.width,
+            height: imageData.height,
+            data: new Uint8ClampedArray(imageData.data),
+          });
+        }
+      },
+    };
+  };
+
+  try {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mountedRoots.push({ container, root });
+
+    let bridgeRef = null;
+    function BridgeProbe() {
+      bridgeRef = useMusicPlayer();
+      return null;
+    }
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          WindowContext.Provider,
+          { value: createWindowContextValue() },
+          React.createElement(MusicContent, {
+            payload: {
+              action: "bonus-play-from-start",
+              songId: "ravyn-lenae-love-me-not",
+              startTime: 56.90,
+              volume: 0.4,
+              runId: 3201,
+            },
+          }),
+          React.createElement(CatStoryCanvas, {
+            onExit() {},
+            runId: 3201,
+            songId: "ravyn-lenae-love-me-not",
+            startTime: 56.90,
+          }),
+          React.createElement(BridgeProbe),
+        ),
+      );
+    });
+
+    const audio = bridgeRef.getAudioElement();
+    const controls = instrumentAudioElement(audio, { duration: 213 });
+    await act(async () => {
+      controls.emitMetadata();
+      controls.advanceTo(56.90);
+    });
+
+    await waitForCondition(
+      () => capturedFrames.length > 0,
+      { description: "CatStoryCanvas renders pixel buffer" },
+    );
+
+    const viewport = container.querySelector(".terminal-ascii-viewport");
+    viewport.getBoundingClientRect = () => ({ width: 1600, height: 800 });
+    await act(async () => {
+      observerRecords[0].callback([{ target: viewport, contentRect: { width: 1600, height: 800 } }]);
+    });
+
+    const pixelAtCell = (frame, row, col) => {
+      const idx = ((row * 6 + 2) * frame.width + (col * 4 + 2)) * 4;
+      return [frame.data[idx], frame.data[idx + 1], frame.data[idx + 2]];
+    };
+    const isDarkBg = ([r, g, b]) => r === 3 && g === 2 && b === 4;
+    const maxChan = ([r, g, b]) => Math.max(r, g, b);
+
+    // Frame 0 at wide 360 cols (padLeft = 59): ambient stars exist across left margin, empty inner sky, and right margin at <=25% luminance.
+    const wideF0 = capturedFrames.at(-1);
+    assert.equal(wideF0.width, 1440);
+    const padLeft = Math.floor((360 - 241) / 2);
+
+    const collectStars = (colStart, colEnd, rowEnd = 120) => {
+      const found = [];
+      for (let r = 0; r < rowEnd; r += 1) {
+        for (let c = colStart; c < colEnd; c += 1) {
+          const rgb = pixelAtCell(wideF0, r, c);
+          if (!isDarkBg(rgb)) found.push({ r, c, rgb });
+        }
+      }
+      return found;
+    };
+
+    const leftMarginStars = collectStars(0, padLeft);
+    const innerTopStars = collectStars(padLeft, padLeft + 241, 12);
+    const rightMarginStars = collectStars(padLeft + 241, 360);
+    assert.ok(leftMarginStars.length > 10);
+    assert.ok(innerTopStars.length > 5);
+    assert.ok(rightMarginStars.length > 10);
+    for (const star of [...leftMarginStars, ...innerTopStars, ...rightMarginStars]) {
+      assert.ok(maxChan(star.rgb) <= 68, `star luminance should stay dim (<=68), got ${star.rgb}`);
+    }
+
+    // Frame 102 ("IT'S HARD") and frame 175 ("WERE RIGHT HERE") preserve full-brightness interior edge lyrics.
+    await act(async () => {
+      controls.seekTo(56.90 + 102 / 30);
+    });
+    const f102 = capturedFrames.at(-1);
+    assert.ok(maxChan(pixelAtCell(f102, 50, padLeft + 235)) >= 180, "frame 102 letter D near edge should remain unclipped");
+
+    await act(async () => {
+      controls.seekTo(56.90 + 175 / 30);
+    });
+    const f175 = capturedFrames.at(-1);
+    assert.ok(maxChan(pixelAtCell(f175, 38, padLeft + 238)) >= 180, "frame 175 edge lettering should remain unclipped");
+
+    // Frame 155 clears col 0 border and gently feathers edge swirl artwork (col 1 dimmer than col 6).
+    await act(async () => {
+      controls.seekTo(56.90 + 155 / 30);
+    });
+    const f155 = capturedFrames.at(-1);
+    for (let r = 0; r < 120; r += 1) {
+      assert.ok(maxChan(pixelAtCell(f155, r, padLeft + 0)) <= 68, `frame 155 col 0 row ${r} must not render border bar`);
+    }
+    assert.ok(
+      maxChan(pixelAtCell(f155, 19, padLeft + 1)) < maxChan(pixelAtCell(f155, 19, padLeft + 6)) * 0.5,
+      "frame 155 edge swirl at col 1 should feather gently compared to interior col 6",
+    );
+
+    // Frame 292 feathers edge burst artwork cleanly without sharp vertical cutoff.
+    await act(async () => {
+      controls.seekTo(56.90 + 292 / 30);
+    });
+    const f292 = capturedFrames.at(-1);
+    assert.ok(
+      maxChan(pixelAtCell(f292, 83, padLeft + 0)) < maxChan(pixelAtCell(f292, 83, padLeft + 6)) * 0.3,
+      "frame 292 outer edge art at col 0 should feather gently into background",
+    );
+
+    // Reduced motion keeps ambient starfield static across different audio timestamps on the same frame.
+    reducedMotionMatches = true;
+    await act(async () => {
+      controls.seekTo(56.90 + 68 / 30);
+    });
+    const rmFrameA = capturedFrames.at(-1);
+    await act(async () => {
+      controls.seekTo(56.90 + 68.02 / 30);
+    });
+    const rmFrameB = capturedFrames.at(-1);
+    assert.deepEqual(rmFrameA.data, rmFrameB.data, "reduced-motion starfield must stay static across timestamps");
+  } finally {
+    browserWindow.HTMLCanvasElement.prototype.getContext = originalGetContext;
+    browserWindow.matchMedia = originalMatchMedia;
+    if (originalResizeObserver === undefined) {
+      delete globalThis.ResizeObserver;
+    } else {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  }
+});
