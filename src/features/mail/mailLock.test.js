@@ -669,3 +669,26 @@ test("blurs only the 1st anniversary email preview until opened and resets on lo
     "true",
   );
 });
+
+test("renders **bold** as strong and *italic* as em in MailContent", async () => {
+  const mount = await renderMail();
+
+  await click(getByRole(mount.container, "option", {
+    name: /user11201: Do you know what day and date it is today\?/,
+  }));
+
+  const body = mount.container.querySelector(".mail__reader-body");
+  assert.ok(body);
+
+  const strongTexts = Array.from(body.querySelectorAll("strong")).map((el) => el.textContent);
+  const emTexts = Array.from(body.querySelectorAll("em")).map((el) => el.textContent);
+
+  assert.deepEqual(strongTexts, [
+    "one year since the very first time we met and talked to each other!",
+    "the day we first met will always be one of the most beautiful and precious memories I've ever had.",
+  ]);
+  assert.deepEqual(emTexts, [
+    "Happy one year since the day we first met, my pwetty girl.",
+    "AK bener-bener bersyukur karena Tuhan pernah mempertemukan kita. No matter where life takes us, that day will always have a special place in my heart. ❤️",
+  ]);
+});

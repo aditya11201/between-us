@@ -127,14 +127,15 @@ function renderFormattedInline(text) {
       nodes.push(<br key={`br-${lineIndex}`} />);
     }
 
-    const parts = line.split(/(\*\*.*?\*\*)/g);
+    const parts = line.split(/(\*\*(?:(?!\*\*).)+?\*\*|\*[^*]+?\*)/g);
     parts.forEach((part, partIndex) => {
       const partKey = `${lineIndex}-${partIndex}`;
-      if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+      if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
         const content = part.slice(2, -2);
-        if (content) {
-          nodes.push(<strong key={`strong-${partKey}`}>{renderLinks(content, partKey)}</strong>);
-        }
+        nodes.push(<strong key={`strong-${partKey}`}>{renderLinks(content, partKey)}</strong>);
+      } else if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+        const content = part.slice(1, -1);
+        nodes.push(<em key={`em-${partKey}`}>{renderLinks(content, partKey)}</em>);
       } else if (part) {
         nodes.push(renderLinks(part, partKey));
       }

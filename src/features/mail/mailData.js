@@ -41,39 +41,55 @@ export const INITIAL_MESSAGES = [
     subject: "Do you know what day and date it is today?",
     preview: "Helloooo, pretty girl! How are you doing, cantikkk? How's life treating you lately?",
     blurPreviewUntilOpened: true,
-    body: `Helloooo, pretty girl! 
+    body: `Helloooo, my pwetty girl! ❤️ eh masih ga atau udah engga
 
-How are you doing, cantikkk? How's life treating you lately? ak harap km selalu sehat, happy, dan semoga banyak good things yang datang ke hidup km yaaa. Don't forget to take care of yourself, okay
+How are you doing, pwettyyy? How's life treating you lately? ak harap km selalu sehat, happy, dan semoga banyak good things yang datang ke hidup km yaaa. Don't forget to take good care of yourself, okay?
 
-Anywayyy, do you know what day it is today? Atau km inget nggak ada apa sama tanggal hari ini? Hmm, let me guess... km lupa yaaa? Or maybe you didn't even realize it? Hehehe.
+Anywayyy, do you know what day and date it is today? Atau km inget nggak ada sesuatu yang spesial di tanggal ini? Hmm, let me guess... km gatau malah ya wkwk isokey
 
-Well, guess whattt? Today marks exactly one year since the day we first met and talked to each other! Yup, it's been a whole year already! 
+Well, guess whattt?!
 
-Time flies so fast, doesn't it? Rasanya kayak baru kemarin kita pertama kali kenalan, ngobrol, dan mulai saling mengenal. From two complete strangers to two people who have shared so many little moments, stories, and memories together, sampe asing lagi yak? klo gini gini terus stuck mending asing
+Nahhh, Today marks exactly **one year since the very first time we met and talked to each other!** Yup, nggak kerasa yaaa ini adalah malam kita ketemu pertama kali dimana tuhan mempertemukan kita, udah satu tahun aja dah wkwk
 
-And you know what? Those little moments mean a lot to me.
+Nggak kerasa yaaa, tepat setahun yang lalu, di malam yang sama seperti hari ini, Tuhan mempertemukan kita untuk pertama kalinya. A night that seemed so ordinary back then, but somehow became one of the most meaningful memories in my life. Tapi sekarang jadinya asing lagi ga?
 
-Sebenernya ak pengin banget bisa celebrate this special day with you in person. Maybe meet up, spend some time together, ngobrol, ketawa, atau sekadar menikmati hari ini bareng km. But aku udah tau pasti jawabannya ga akan mau km hehehe
+Time flies so fast, doesn't it?
 
-So, if you don't mind, let me celebrate this little milestone in my own way, right here, with you.
+Rasanya kayak baru kemarin kita pertama kali kenalan, ngobrol, dan mulai saling mengenal. From two complete strangers to two people who ended up sharing so many little moments, stories, laughter, and memories together.
 
-It might not be something fancy or extraordinary. Mungkin kelihatannya sederhana, bahkan nggak seberapa. But trust me, every little detail comes straight from my heart.
+Walaupun sekarang mungkin kita udah nggak sedekat dulu, atau malah jadi dua orang asing lagi, hehe. But you know what? Those little moments will always mean so much to me.
 
-Everything you're about to see started as a little idea in my head. Dari imajinasi ak, dari perasaan ak, dari hal-hal kecil yang pengin ak ekspresikan tapi mungkin nggak selalu bisa ak sampaikan lewat kata-kata. So I decided to turn those thoughts and feelings into something real, something you can actually see and experience.
+Sebenernya ak pgn banget bisa celebrate this special day with you in person. Maybe meet up, spend some time together, ngobrol, ketawa, atau sekadar menikmati hari ini berdua.
 
-Because I believe not every special moment needs a grand celebration. Sometimes, the simplest things can carry the deepest feelings.
+But I know things pasti km ga akan mau (karena bukan aku orangnya kan? ehem bersyandaaa), dan that's completely okay. No pressure at all, hehe.
 
-And this little celebration? It's my way of saying that the day we first met is still a beautiful memory to me.
+So, if you don't mind, let me celebrate this little milestone in my own way, right here, with you. Dengan cara sederhana yang ak bisa.
 
-I really hope you like it, pwettyyy. 
+It might not be something fancy or extraordinary. Mungkin buat km ini kelihatan sederhana, biasa aja, atau bahkan nggak seberapa. But trust me, every little detail comes straight from my heart and mind.
 
-Nowwww, are you ready for a little surprise?
+Everything you're about to see started with a little idea in my head.
 
-Go ahead and interact with what's right below this message, okayyy? Hehehe.
+Dari imajinasi ak, dari perasaan ak, dan dari banyak hal kecil yang pengin ak ungkapin, tapi mungkin nggak selalu bisa ak sampaikan lewat kata-kata.
 
-A little something, made with love, just for you.
+So, I decided to turn those thoughts and feelings into something real. Something that you can actually see, interact with, and hopefully enjoy.
 
-Happy one year since we first met, pretty girl. I'm really glad our paths crossed.`,
+And this little celebration?
+
+It's simply my way of saying that **the day we first met will always be one of the most beautiful and precious memories I've ever had.**
+
+ak bener-bener bersyukur sama Allah karena pernah mempertemukan ak dengan km. Dari sekian banyak kemungkinan, waktu, dan orang yang bisa ak temui, somehow our paths crossed that night.
+
+And I'm genuinely grateful that they did.
+
+Karena buat ak, pertemuan itu bukan cuma tentang satu malam atau satu tanggal. Tapi tentang seseorang yang tanpa sadar pernah membawa begitu banyak kebahagiaan, cerita, dan warna baru ke dalam hidup ak.
+
+Thank you for being part of my story, pwetty. Even if things aren't quite the same anymore, I'm still grateful for every little moment we shared. ❤️
+
+Nahhhh, ini dibawah apa ya? coba kamu pencet reveal dehh
+
+*Happy one year since the day we first met, my pwetty girl.*
+
+*AK bener-bener bersyukur karena Tuhan pernah mempertemukan kita. No matter where life takes us, that day will always have a special place in my heart. ❤️*`,
     spoilerPhotos: [
       {
         key: "first-met-memory",
