@@ -647,6 +647,29 @@ test("renderAppContent forwards payload to MusicContent and Terminal SCSS compil
   );
 
   const terminalCss = sass.compile(`${projectRoot}src/styles/components/Terminal/Terminal.scss`).css;
-  assert.match(terminalCss, /\.terminal-cat-stage/);
-  assert.match(terminalCss, /aspect-ratio:\s*964\s*\/\s*720/);
+  const catStageRule = terminalCss.match(/\.terminal-cat-stage\s*\{[^}]*\}/)?.[0] ?? "";
+  const catShellRule = terminalCss.match(/\.terminal-cat-shell\s*\{[^}]*\}/)?.[0] ?? "";
+  const catScreenRule = terminalCss.match(/\.terminal-cat-screen\s*\{[^}]*\}/)?.[0] ?? "";
+  const catCanvasRule = terminalCss.match(/\.terminal-cat-canvas\s*\{[^}]*\}/)?.[0] ?? "";
+
+  assert.match(catStageRule, /width:\s*100%/);
+  assert.match(catStageRule, /height:\s*100%/);
+  assert.match(catStageRule, /padding:\s*0/);
+  assert.doesNotMatch(catStageRule, /1080px/);
+
+  assert.match(catShellRule, /flex:\s*1/);
+  assert.match(catShellRule, /width:\s*100%/);
+  assert.doesNotMatch(catShellRule, /1080px|border:|border-radius:|box-shadow:/);
+
+  assert.match(catScreenRule, /flex:\s*1/);
+  assert.match(catScreenRule, /width:\s*100%/);
+  assert.match(catScreenRule, /background:\s*#05080d/i);
+  assert.doesNotMatch(catScreenRule, /aspect-ratio:\s*964\s*\/\s*720/);
+
+  assert.match(catCanvasRule, /width:\s*100%/);
+  assert.match(catCanvasRule, /height:\s*100%/);
+  assert.match(catCanvasRule, /object-fit:\s*contain/);
+  assert.match(catCanvasRule, /background:\s*transparent/);
+
+  assert.match(terminalCss, /\.terminal-cat-stage--phosphor[^}]*background:\s*#050e09/i);
 });

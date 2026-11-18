@@ -445,44 +445,42 @@ export function CatStoryCanvas({
       className={`terminal-ascii-stage terminal-cat-stage${dark ? "" : " terminal-cat-stage--phosphor"}`}
       aria-label="Cat Story ASCII synced stage"
     >
-      <div className="terminal-ascii-viewport">
-        <div className="terminal-cat-shell">
-          <div className="terminal-cat-screen">
-            <canvas
-              ref={canvasRef}
-              width={W}
-              height={H}
-              className="terminal-cat-canvas"
-              role="img"
-              aria-label="Animated ASCII Cat Story synchronized with Love Me Not"
-            />
-            <div className="terminal-cat-scanlines" aria-hidden="true" />
-            {!ready && (
-              <div className="terminal-cat-loading" role="status">
-                {decodeError
-                  ? `Failed to load animation: ${decodeError}`
-                  : "[ INIT ] DECODING ASCII FRAMES ..."}
-              </div>
-            )}
-          </div>
+      <div className="terminal-cat-shell">
+        <div className="terminal-cat-screen">
+          <canvas
+            ref={canvasRef}
+            width={W}
+            height={H}
+            className="terminal-cat-canvas"
+            role="img"
+            aria-label="Animated ASCII Cat Story synchronized with Love Me Not"
+          />
+          <div className="terminal-cat-scanlines" aria-hidden="true" />
+          {!ready && (
+            <div className="terminal-cat-loading" role="status">
+              {decodeError
+                ? `Failed to load animation: ${decodeError}`
+                : "[ INIT ] DECODING ASCII FRAMES ..."}
+            </div>
+          )}
+        </div>
 
-          <div className="terminal-cat-commandbar">
-            <span className="terminal-cat-user">user11201</span>
-            <span className="terminal-cat-path">@between-us:~/memories$</span>
-            <span className="terminal-cat-command">./cat-story --sync=love-me-not</span>
-            <span className="terminal-cat-cursor" aria-hidden="true" />
-          </div>
+        <div className="terminal-cat-commandbar">
+          <span className="terminal-cat-user">user11201</span>
+          <span className="terminal-cat-path">@between-us:~/memories$</span>
+          <span className="terminal-cat-command">./cat-story --sync=love-me-not</span>
+          <span className="terminal-cat-cursor" aria-hidden="true" />
+        </div>
 
-          <div
-            className="terminal-cat-progress"
-            role="progressbar"
-            aria-label="Cat Story playback progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progressValueNow}
-          >
-            <span style={{ width: `${progressPct}%` }} />
-          </div>
+        <div
+          className="terminal-cat-progress"
+          role="progressbar"
+          aria-label="Cat Story playback progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progressValueNow}
+        >
+          <span style={{ width: `${progressPct}%` }} />
         </div>
       </div>
 

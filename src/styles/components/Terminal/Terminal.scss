@@ -272,28 +272,35 @@
 ========================================================= */
 
 .terminal-cat-stage {
-  background: #03050b;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  gap: 0;
+  background: #05080d;
   font-family: Consolas, Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
 }
 
 .terminal-cat-shell {
-  width: min(100cqw, calc((100cqh - 40px) * 964 / 720), 1080px);
-  max-width: 100%;
-  max-height: 100%;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  background: #080b12;
-  border: 1px solid #57415a;
-  border-radius: 10px;
+  background: #05080d;
   overflow: hidden;
-  box-shadow: 0 0 0 1px #0b0711, 0 20px 64px rgba(0, 0, 0, 0.65), 0 0 48px rgba(225, 75, 136, 0.18);
 }
 
 .terminal-cat-screen {
-  position: relative;
+  flex: 1;
   width: 100%;
-  aspect-ratio: 964 / 720;
-  background: #080a12;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  background: #05080d;
   overflow: hidden;
 
   &::before {
@@ -320,8 +327,7 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #080a12;
-  filter: contrast(1.09) saturate(1.18) drop-shadow(0 0 1.5px rgba(255, 143, 190, 0.5));
+  background: transparent;
 }
 
 .terminal-cat-scanlines {
@@ -345,14 +351,16 @@
   letter-spacing: 0.12em;
   font-size: 12px;
   color: #e99fc7;
-  background: #070a11;
+  background: #05080d;
 }
 
 .terminal-cat-commandbar {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   height: 32px;
+  flex-shrink: 0;
   padding: 0 14px;
   overflow: hidden;
   white-space: nowrap;
@@ -411,8 +419,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
   flex-shrink: 0;
-  padding: 2px 4px 0;
+  padding: 6px 12px;
+  background: #05080d;
 }
 
 .terminal-cat-status {
@@ -444,13 +454,13 @@
 }
 
 .terminal-cat-stage--phosphor {
-  .terminal-cat-shell {
-    border-color: #386a51;
-    box-shadow: 0 0 0 1px #06110c, 0 20px 64px rgba(0, 0, 0, 0.65), 0 0 42px rgba(107, 234, 171, 0.14);
-  }
+  background: #050e09;
 
-  .terminal-cat-canvas {
-    filter: contrast(1.15) drop-shadow(0 0 1.2px rgba(112, 231, 164, 0.44));
+  .terminal-cat-shell,
+  .terminal-cat-screen,
+  .terminal-cat-loading,
+  .terminal-cat-footer {
+    background: #050e09;
   }
 
   .terminal-cat-commandbar {
