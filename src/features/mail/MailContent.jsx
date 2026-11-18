@@ -49,7 +49,7 @@ import {
   BONUS_SONG_ID,
   getBonusStartTime,
 } from "@/features/music/bonusSyncModel.js";
-import { prepareBonusSyncRun } from "@/features/music/bonusSyncCoordinator.js";
+import { prewarmBonusCatStory } from "@/features/music/bonusSyncCoordinator.js";
 
 const MAILBOX_ICONS = {
   inbox: FiInbox,
@@ -1081,19 +1081,12 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
                     const runId = ++nextSurpriseRunId;
                     const startTime = getBonusStartTime();
                     const songId = selectedMessage.bonusSurprise.songId || BONUS_SONG_ID;
-                    prepareBonusSyncRun({ runId, songId, startTime });
+                    prewarmBonusCatStory();
                     openApp?.("music", "Music", {
-                      action: "bonus-sync-prepare",
+                      action: "bonus-play-from-start",
                       songId,
                       startTime,
                       volume: BONUS_DEFAULT_VOLUME,
-                      runId,
-                    });
-                    openApp?.("terminal", "Terminal", {
-                      action: selectedMessage.bonusSurprise.action,
-                      maximize: true,
-                      songId,
-                      startTime,
                       runId,
                     });
                   }}

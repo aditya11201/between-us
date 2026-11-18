@@ -112,6 +112,18 @@ export function subscribeBonusSync(listener) {
   };
 }
 
+export function prewarmBonusCatStory() {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  try {
+    void import("@/features/terminal/Terminal.jsx").catch(() => {});
+    void import("@/features/terminal/CatStoryCanvas.jsx")
+      .then((mod) => mod?.decodeCatStoryFrames?.())
+      .catch(() => {});
+  } catch {
+    // Fail softly in test or non-DOM environments.
+  }
+}
+
 export function resetBonusSyncCoordinator() {
   syncState.runId = null;
   syncState.songId = BONUS_SONG_ID;

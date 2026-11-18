@@ -107,6 +107,18 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
       setMatrixInterval(null);
     }
 
+    if (payload?.immediate) {
+      completed = true;
+      setInput("");
+      setHistory((prev) => [
+        ...prev,
+        { type: "prompt", text: config.command },
+        { type: "output", text: config.status },
+      ]);
+      setStage(payload.action);
+      return undefined;
+    }
+
     setStage("launching");
     setInput("");
 
@@ -142,7 +154,7 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
       launchTimersRef.current.forEach((id) => clearTimeout(id));
       launchTimersRef.current = [];
     };
-  }, [payload?.action, payload?.runId]);
+  }, [payload?.action, payload?.runId, payload?.immediate]);
 
   // Fetch Git log
   useEffect(() => {

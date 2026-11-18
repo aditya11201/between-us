@@ -68,6 +68,7 @@ import {
 import {
   ensureBonusSyncRun,
   markBonusMusicReady,
+  prewarmBonusCatStory,
   resetBonusMusicReady,
   subscribeBonusSync,
 } from "./bonusSyncCoordinator.js";
@@ -210,11 +211,21 @@ function TrackRow({ index, song, isActive, isPlaying, badge, onPlay, action }) {
   );
 }
 
-export function MusicContent({ payload } = {}) {
+export function MusicContent({ openApp, payload } = {}) {
   const { onClose, onMinimize, onZoom, onTitlePointerDown } = useContext(WindowContext);
   const songs = MUSIC_CATALOG;
   const [initialPlayerState] = useState(() => {
     const base = getInitialPlayerState();
+    if (payload?.action === "bonus-play-from-start") {
+      const targetVolume = resolveBonusTargetVolume(payload.volume);
+      return {
+        ...base,
+        activeId: payload.songId || BONUS_SONG_ID,
+        currentTime: 0,
+        volume: targetVolume,
+        isMuted: false,
+      };
+    }
     if (payload?.action === "bonus-sync-prepare") {
       const startTime = Number.isFinite(payload.startTime) ? payload.startTime : getBonusStartTime();
       const targetVolume = resolveBonusTargetVolume(payload.volume);
@@ -259,6 +270,7 @@ export function MusicContent({ payload } = {}) {
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState(null);
   const [addSongId, setAddSongId] = useState("");
+  const [armedBonusCue, setArmedBonusCue] = useState(null);
   useEffect(() => {
     try {
       window.localStorage.setItem(PLAYLISTS_STORAGE_KEY, serializePlaylists(playlists));
@@ -276,6 +288,10 @@ export function MusicContent({ payload } = {}) {
   const playerStateRef = useRef(initialPlayerState);
   const handleEndedRef = useRef(null);
   const bonusRunRef = useRef(null);
+  const openAppRef = useRef(openApp);
+  openAppRef.current = openApp;
+  const armedBonusCueRef = useRef(null);
+  const checkBonusCueRef = useRef(null);
   const filteredSongs = useMemo(
     () => filterMusicCatalog(songs, searchQuery),
     [songs, searchQuery],
@@ -533,7 +549,7 @@ export function MusicContent({ payload } = {}) {
         ? (nextDuration > 0 ? (savedTime < nextDuration ? savedTime : 0) : (isBonusRun ? savedTime : 0))
         : 0;
       metadataLoadedRef.current = true;
-      if (nextTime > 0) audio.currentTime = nextTime;
+      if (nextTime > 0 || audio.currentTime !== nextTime) audio.currentTime = nextTime;
       pendingSeekRef.current = 0;
       setDuration(nextDuration);
       setCurrentTime(nextTime);
@@ -716,6 +732,8 @@ export function MusicContent({ payload } = {}) {
   const selectSongForPlayback = useCallback((song, contextList = null) => {
     if (!song || !isPlayable(song)) return;
     bonusRunRef.current = null;
+    armedBonusCueRef.current = null;
+    setArmedBonusCue(null);
     const playableContext = Array.isArray(contextList) ? contextList.filter(isPlayable) : null;
     if (playableContext) setQueue(playableContext);
     // ponytail: manual pick leaves the mirror; the bridge no longer owns output.
@@ -754,7 +772,216 @@ export function MusicContent({ payload } = {}) {
   }, []);
 
   useEffect(() => {
+    if (payload?.action !== "bonus-play-from-start") return undefined;
+    const songId = payload.songId || BONUS_SONG_ID;
+    const startTime = Number.isFinite(payload.startTime)
+      ? Math.max(0, payload.startTime)
+      : getBonusStartTime();
+    const runId = payload.runId ?? "__bonus-play__";
+    const targetVolume = resolveBonusTargetVolume(payload.volume);
+
+    prewarmBonusCatStory();
+    bonusRunRef.current = null;
+
+    const hadMirror = Boolean(ambientMirrorRef.current);
+    if (hadMirror || ambientState.playing) {
+      stopAmbientBridge();
+    }
+
+    const currentId = playerStateRef.current.activeId;
+    const hadPlaybackError = Boolean(playbackError);
+    setPlaybackError(null);
+    setVolume(targetVolume);
+    setIsMuted(false);
+    setCurrentTime(0);
+
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = targetVolume;
+      audio.muted = false;
+    }
+    playerStateRef.current = {
+      ...playerStateRef.current,
+      activeId: songId,
+      currentTime: 0,
+      volume: targetVolume,
+      isMuted: false,
+    };
+
+    const source = audioSourceRef.current;
+    const sameLoadedSong =
+      currentId === songId
+      && !hadMirror
+      && metadataLoadedRef.current
+      && source.ready
+      && source.id === songId
+      && Boolean(audio);
+
+    const nextCue = { runId, songId, startTime, triggered: false };
+    armedBonusCueRef.current = nextCue;
+    setArmedBonusCue(nextCue);
+
+    if (sameLoadedSong) {
+      pendingSeekRef.current = 0;
+      pendingAutoplayRef.current = false;
+      audio.currentTime = 0;
+      tryPlay();
+      return undefined;
+    }
+
+    if (audio && audio.currentTime !== 0) {
+      audio.currentTime = 0;
+    }
+    pendingSeekRef.current = 0;
+    pendingAutoplayRef.current = true;
+    setIsPlaying(false);
+    if (currentId !== songId) {
+      setActiveId(songId);
+    } else if (hadMirror || !source.ready || hadPlaybackError) {
+      setSourceLoadRequest((value) => value + 1);
+    }
+    return undefined;
+  }, [
+    payload?.action,
+    payload?.songId,
+    payload?.startTime,
+    payload?.runId,
+    payload?.volume,
+    stopAmbientBridge,
+    tryPlay,
+  ]);
+
+  useEffect(() => {
+    if (!armedBonusCue) {
+      checkBonusCueRef.current = null;
+      return undefined;
+    }
+
+    if (activeId !== armedBonusCue.songId) {
+      armedBonusCueRef.current = null;
+      setArmedBonusCue(null);
+      checkBonusCueRef.current = null;
+      return undefined;
+    }
+
+    const audio = audioRef.current;
+    let rafId = null;
+    let disposed = false;
+
+    const stopLoop = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+
+    const checkCue = () => {
+      if (disposed) return;
+      const cue = armedBonusCueRef.current;
+      if (!cue || cue.triggered) {
+        stopLoop();
+        return;
+      }
+      if (playerStateRef.current.activeId !== cue.songId) {
+        armedBonusCueRef.current = null;
+        setArmedBonusCue(null);
+        stopLoop();
+        return;
+      }
+      if (!audio || !Number.isFinite(audio.currentTime)) return;
+      if (audio.currentTime < cue.startTime) return;
+
+      cue.triggered = true;
+      stopLoop();
+      setArmedBonusCue(null);
+      openAppRef.current?.("terminal", "Terminal", {
+        action: "bonus-cat-story",
+        maximize: true,
+        immediate: true,
+        songId: cue.songId,
+        startTime: cue.startTime,
+        runId: cue.runId,
+      });
+    };
+
+    checkBonusCueRef.current = checkCue;
+
+    const startLoop = () => {
+      if (disposed || rafId !== null) return;
+      const cue = armedBonusCueRef.current;
+      if (!cue || cue.triggered) return;
+      if (!audio || audio.paused || audio.ended || document.hidden) return;
+      const tick = () => {
+        rafId = null;
+        if (disposed) return;
+        checkCue();
+        const latestCue = armedBonusCueRef.current;
+        if (
+          latestCue
+          && !latestCue.triggered
+          && audio
+          && !audio.paused
+          && !audio.ended
+          && !document.hidden
+        ) {
+          rafId = requestAnimationFrame(tick);
+        }
+      };
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const onPlay = () => {
+      checkCue();
+      startLoop();
+    };
+    const onPause = () => {
+      stopLoop();
+    };
+    const onTimeUpdate = () => checkCue();
+    const onSeeked = () => checkCue();
+    const onEnded = () => stopLoop();
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        stopLoop();
+      } else {
+        checkCue();
+        startLoop();
+      }
+    };
+
+    checkCue();
+    if (audio && !audio.paused) {
+      startLoop();
+    }
+
+    if (audio) {
+      audio.addEventListener("play", onPlay);
+      audio.addEventListener("pause", onPause);
+      audio.addEventListener("timeupdate", onTimeUpdate);
+      audio.addEventListener("seeked", onSeeked);
+      audio.addEventListener("ended", onEnded);
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      disposed = true;
+      checkBonusCueRef.current = null;
+      stopLoop();
+      if (audio) {
+        audio.removeEventListener("play", onPlay);
+        audio.removeEventListener("pause", onPause);
+        audio.removeEventListener("timeupdate", onTimeUpdate);
+        audio.removeEventListener("seeked", onSeeked);
+        audio.removeEventListener("ended", onEnded);
+      }
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [armedBonusCue, activeId]);
+
+  useEffect(() => {
     if (payload?.action !== "bonus-sync-prepare") return undefined;
+    armedBonusCueRef.current = null;
+    setArmedBonusCue(null);
     const songId = payload.songId || BONUS_SONG_ID;
     const startTime = Number.isFinite(payload.startTime) ? payload.startTime : getBonusStartTime();
     const runId = payload.runId ?? "__bonus-sync__";
@@ -842,6 +1069,8 @@ export function MusicContent({ payload } = {}) {
     const song = songs.find((item) => item.id === songId);
     if (!song || !isPlayable(song)) return null;
     bonusRunRef.current = null;
+    armedBonusCueRef.current = null;
+    setArmedBonusCue(null);
     const hadMirror = Boolean(ambientMirrorRef.current);
     if (hadMirror || ambientState.playing) {
       stopAmbientBridge();
@@ -1034,6 +1263,8 @@ export function MusicContent({ payload } = {}) {
   };
 
   const handleClose = useCallback(() => {
+    armedBonusCueRef.current = null;
+    setArmedBonusCue(null);
     persistAudioTime();
     audioRef.current?.pause();
     onClose();
@@ -1585,6 +1816,7 @@ export function MusicContent({ payload } = {}) {
                 if (audioRef.current) audioRef.current.currentTime = nextTime;
                 playerStateRef.current = { ...playerStateRef.current, currentTime: nextTime };
                 setCurrentTime(nextTime);
+                checkBonusCueRef.current?.();
               }}
               aria-label="Song progress"
               disabled={!duration}

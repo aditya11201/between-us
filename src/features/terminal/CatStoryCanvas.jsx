@@ -237,19 +237,22 @@ export function CatStoryCanvas({
     setDark((prev) => !prev);
   }, []);
 
-  // Decode gzip ASCII payload once and mark Terminal ready for the handshake run.
+  // Decode gzip ASCII payload once and sync directly to live Music audio (or handshake fallback).
   useEffect(() => {
     let cancelled = false;
     setDecodeError(null);
     setReady(false);
     setHasPlayedSinceStart(false);
 
+    const audio = getAudioElement?.() ?? null;
+    const isAlreadyPlaying = Boolean(audio && !audio.paused);
+
     if (runId !== null && runId !== undefined) {
       ensureBonusSyncRun({ runId, songId, startTime });
       const syncSnap = getBonusSyncState();
-      setExpectedToPlay(syncSnap.runId === runId && syncSnap.started);
+      setExpectedToPlay(isAlreadyPlaying || (syncSnap.runId === runId && syncSnap.started));
     } else {
-      setExpectedToPlay(false);
+      setExpectedToPlay(isAlreadyPlaying);
     }
 
     const unsubscribe = subscribeBonusSync((event) => {

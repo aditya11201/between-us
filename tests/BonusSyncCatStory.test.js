@@ -257,7 +257,7 @@ test("bonusSyncModel exports constants, offset resolution, and frame mapping", (
   assert.equal(done.elapsed, BONUS_DURATION);
 });
 
-test("Mail renders Bonus for You below Open Surprise and opens Music behind maximized Terminal", async () => {
+test("Mail renders Bonus for You below Open Surprise and opens ONLY Music with bonus-play-from-start", async () => {
   const openedCalls = [];
   const container = document.createElement("div");
   document.body.append(container);
@@ -302,21 +302,20 @@ test("Mail renders Bonus for You below Open Surprise and opens Music behind maxi
   assert.ok(bonusBtn);
   await dom.click(bonusBtn);
 
-  assert.equal(openedCalls.length, 2);
+  assert.equal(openedCalls.length, 1);
   assert.equal(openedCalls[0][0], "music");
   assert.equal(openedCalls[0][1], "Music");
-  assert.equal(openedCalls[0][2].action, "bonus-sync-prepare");
+  assert.equal(openedCalls[0][2].action, "bonus-play-from-start");
   assert.equal(openedCalls[0][2].songId, "ravyn-lenae-love-me-not");
   assert.equal(openedCalls[0][2].startTime, 56.90);
   assert.equal(openedCalls[0][2].volume, 0.4);
+  assert.equal(typeof openedCalls[0][2].runId, "number");
 
-  assert.equal(openedCalls[1][0], "terminal");
-  assert.equal(openedCalls[1][1], "Terminal");
-  assert.equal(openedCalls[1][2].action, "bonus-cat-story");
-  assert.equal(openedCalls[1][2].maximize, true);
-  assert.equal(openedCalls[1][2].songId, "ravyn-lenae-love-me-not");
-  assert.equal(openedCalls[1][2].startTime, 56.90);
-  assert.equal(openedCalls[0][2].runId, openedCalls[1][2].runId);
+  await dom.click(bonusBtn);
+  assert.equal(openedCalls.length, 2);
+  assert.equal(openedCalls[1][0], "music");
+  assert.equal(openedCalls[1][2].action, "bonus-play-from-start");
+  assert.ok(openedCalls[1][2].runId > openedCalls[0][2].runId);
 });
 
 test("Terminal does not expose any manual cat-story or bonus command", async () => {
@@ -357,195 +356,479 @@ test("Terminal does not expose any manual cat-story or bonus command", async () 
   assert.match(container.textContent, /bonus: command not found/);
 });
 
-test("StrictMode launch + handshake keeps Music paused until Terminal typing & decode finish, then drives CatStoryCanvas from audio", async () => {
-  const clock = installClock(browserWindow);
-  try {
-    await withMockCatCanvas(async ({ putImageCalls, toDataUrlCalls }) => {
-      // Pre-warm gzip decode check and verify exact 338*241*120 byte payload.
-      const decoded = await decodeCatStoryFrames();
-      assert.equal(decoded.length, 338 * 241 * 120);
+test("StrictMode Music bonus-play-from-start plays from 00:00 at 0.4 volume, triggers Terminal once at 00:56.90, and re-arms on re-click", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mountedRoots.push({ container, root });
 
-      const container = document.createElement("div");
-      document.body.append(container);
-      const root = createRoot(container);
-      mountedRoots.push({ container, root });
-
-      const runId = 501;
-      const musicPayload = {
-        action: "bonus-sync-prepare",
-        songId: "ravyn-lenae-love-me-not",
-        startTime: 56.90,
-        runId,
-      };
-      const terminalPayload = {
-        action: "bonus-cat-story",
-        maximize: true,
-        songId: "ravyn-lenae-love-me-not",
-        startTime: 56.90,
-        runId,
-      };
-
-      let bridgeRef = null;
-      function BridgeProbe() {
-        bridgeRef = useMusicPlayer();
-        return null;
-      }
-
-      await act(async () => {
-        root.render(
-          React.createElement(
-            React.StrictMode,
-            null,
-            React.createElement(
-              WindowContext.Provider,
-              { value: createWindowContextValue() },
-              React.createElement(MusicContent, { payload: musicPayload }),
-              React.createElement(TerminalContent, { payload: terminalPayload }),
-              React.createElement(BridgeProbe),
-            ),
-          ),
-        );
-      });
-
-      const audio = bridgeRef.getAudioElement();
-      assert.ok(audio);
-      const controls = instrumentAudioElement(audio, { duration: 213 });
-
-      // Music loads metadata while Terminal is still typing — must seek to 56.90 and stay PAUSED!
-      await act(async () => {
-        controls.emitMetadata();
-      });
-      assert.equal(audio.currentTime, 56.90);
-      assert.equal(audio.paused, true);
-      assert.equal(controls.playCalls, 0);
-
-      // Mid-typing simulated command in Terminal.
-      await advanceTimers(act, clock, 400);
-      assert.ok(container.querySelector(".terminal-interactive-input").value.length > 0);
-      assert.equal(controls.playCalls, 0);
-
-      // Finish simulated typing -> enters bonus-cat-story stage & CatStoryCanvas decodes & signals ready.
-      await advanceTimers(act, clock, 700);
-      clock.restore();
-      await waitForCondition(
-        () => Boolean(container.querySelector(".terminal-cat-stage")) && controls.playCalls === 1,
-        { description: "CatStoryCanvas ready handshake and Music play()" },
-      );
-
-      assert.equal(audio.paused, false);
-      assert.equal(audio.currentTime, 56.90);
-      assert.match(container.textContent, /FRAME 001 \/ 338/);
-      assert.match(container.textContent, /00:00\.00\s+\/\s+00:11\.27/);
-
-      // Ensure no Play/Pause/Seek/Replay/Speed buttons exist in Terminal toolbar.
-      const toolbarButtons = [...container.querySelectorAll(".terminal-ascii-tools button")].map((b) => b.textContent.trim());
-      assert.deepEqual(toolbarButtons, ["◉ PHOSPHOR", "↓ PNG", "Back to Terminal"]);
-
-      // Progress bar is display-only (progressbar, not slider).
-      const progressEl = container.querySelector(".terminal-cat-progress");
-      assert.equal(progressEl?.getAttribute("role"), "progressbar");
-
-      // Advance audio time -> frame updates accordingly.
-      await act(async () => {
-        controls.advanceTo(56.90 + 1.1);
-      });
-      assert.match(container.textContent, /FRAME 034 \/ 338/);
-      assert.match(container.textContent, /00:01\.10\s+\/\s+00:11\.27/);
-
-      // Pause audio -> stays frozen at exact frame for audio.currentTime.
-      await act(async () => {
-        audio.pause();
-      });
-      assert.match(container.textContent, /FRAME 034 \/ 338/);
-
-      // Seek before startTime while paused -> snaps to frame 0.
-      await act(async () => {
-        controls.seekTo(20);
-      });
-      assert.match(container.textContent, /FRAME 001 \/ 338/);
-
-      // Seek past END_TIME -> holds final frame 338/338 without stopping music.
-      await act(async () => {
-        audio.play();
-        controls.seekTo(80);
-      });
-      assert.match(container.textContent, /FRAME 338 \/ 338/);
-      assert.match(container.textContent, /00:11\.27\s+\/\s+00:11\.27/);
-      assert.equal(audio.paused, false);
-
-      // Playback rate change keeps sync alive.
-      await act(async () => {
-        audio.playbackRate = 1.25;
-        controls.seekTo(56.90 + 5.0);
-      });
-      assert.match(container.textContent, /FRAME 151 \/ 338/);
-
-      // Toggle phosphor (D) and save PNG (S).
-      await act(async () => {
-        browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "d", bubbles: true }));
-      });
-      assert.ok(container.querySelector(".terminal-cat-stage--phosphor"));
-      assert.match(container.textContent, /◈ FULL COLOR/);
-
-      await act(async () => {
-        browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "s", bubbles: true }));
-      });
-      assert.equal(toDataUrlCalls.length, 1);
-      assert.ok(putImageCalls.length > 0);
-
-      // Escape exits back to Terminal prompt.
-      await act(async () => {
-        browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-      });
-      assert.equal(container.querySelector(".terminal-cat-stage"), null);
-      assert.match(container.textContent, /\.\/cat-story --sync=love-me-not/);
-
-      // Re-launching with a new runId when the same song's metadata is already loaded
-      // pauses & seeks immediately to 56.90 and waits for Terminal ready before playing.
-      const playCallsBeforeRelaunch = controls.playCalls;
-      const clock2 = installClock(browserWindow);
-      try {
-        const nextRunId = 502;
-        await act(async () => {
-          root.render(
-            React.createElement(
-              React.StrictMode,
-              null,
-              React.createElement(
-                WindowContext.Provider,
-                { value: createWindowContextValue() },
-                React.createElement(MusicContent, {
-                  payload: { ...musicPayload, runId: nextRunId },
-                }),
-                React.createElement(TerminalContent, {
-                  payload: { ...terminalPayload, runId: nextRunId },
-                }),
-                React.createElement(BridgeProbe),
-              ),
-            ),
-          );
-        });
-
-        assert.equal(audio.currentTime, 56.90);
-        assert.equal(audio.paused, true);
-        assert.equal(controls.playCalls, playCallsBeforeRelaunch);
-
-        await advanceTimers(act, clock2, 1100);
-        clock2.restore();
-
-        await waitForCondition(
-          () => Boolean(container.querySelector(".terminal-cat-stage")) && controls.playCalls === playCallsBeforeRelaunch + 1,
-          { description: "re-clicked Bonus starts second synced playback after Terminal ready" },
-        );
-        assert.equal(audio.paused, false);
-        assert.equal(audio.currentTime, 56.90);
-      } finally {
-        clock2.restore();
-      }
-    });
-  } finally {
-    clock.restore();
+  const openedCalls = [];
+  let bridgeRef = null;
+  function BridgeProbe() {
+    bridgeRef = useMusicPlayer();
+    return null;
   }
+
+  const runId1 = 501;
+  await act(async () => {
+    root.render(
+      React.createElement(
+        React.StrictMode,
+        null,
+        React.createElement(
+          WindowContext.Provider,
+          { value: createWindowContextValue() },
+          React.createElement(MusicContent, {
+            openApp: (...args) => openedCalls.push(args),
+            payload: {
+              action: "bonus-play-from-start",
+              songId: "ravyn-lenae-love-me-not",
+              startTime: 56.90,
+              volume: 0.4,
+              runId: runId1,
+            },
+          }),
+          React.createElement(BridgeProbe),
+        ),
+      ),
+    );
+  });
+
+  const audio = bridgeRef.getAudioElement();
+  assert.ok(audio);
+  const controls = instrumentAudioElement(audio, { duration: 213 });
+
+  await act(async () => {
+    controls.emitMetadata();
+  });
+
+  assert.equal(audio.paused, false);
+  assert.equal(audio.currentTime, 0);
+  assert.equal(audio.volume, 0.4);
+  assert.equal(audio.muted, false);
+  assert.equal(controls.playCalls, 1);
+  assert.equal(openedCalls.length, 0);
+
+  // Playback before 56.90s must NOT open Terminal.
+  await act(async () => {
+    controls.advanceTo(25.0);
+  });
+  await act(async () => {
+    controls.advanceTo(56.89);
+  });
+  assert.equal(openedCalls.length, 0);
+
+  // Reaching 56.90s triggers Terminal once with immediate: true.
+  await act(async () => {
+    controls.advanceTo(56.90);
+  });
+  assert.equal(openedCalls.length, 1);
+  assert.deepEqual(openedCalls[0], [
+    "terminal",
+    "Terminal",
+    {
+      action: "bonus-cat-story",
+      maximize: true,
+      immediate: true,
+      songId: "ravyn-lenae-love-me-not",
+      startTime: 56.90,
+      runId: runId1,
+    },
+  ]);
+
+  // Further playback or seeking past 56.90s does NOT trigger Terminal again for runId1.
+  await act(async () => {
+    controls.advanceTo(60.0);
+    controls.seekTo(40.0);
+    controls.advanceTo(58.0);
+  });
+  assert.equal(openedCalls.length, 1);
+
+  // Re-clicking Bonus for You with a new runId restarts from 00:00 and re-arms the cue (tested with seek + rAF).
+  const runId2 = 502;
+  await act(async () => {
+    root.render(
+      React.createElement(
+        React.StrictMode,
+        null,
+        React.createElement(
+          WindowContext.Provider,
+          { value: createWindowContextValue() },
+          React.createElement(MusicContent, {
+            openApp: (...args) => openedCalls.push(args),
+            payload: {
+              action: "bonus-play-from-start",
+              songId: "ravyn-lenae-love-me-not",
+              startTime: 56.90,
+              volume: 0.4,
+              runId: runId2,
+            },
+          }),
+          React.createElement(BridgeProbe),
+        ),
+      ),
+    );
+  });
+
+  assert.equal(audio.currentTime, 0);
+  assert.equal(audio.paused, false);
+  assert.equal(controls.playCalls, 2);
+  assert.equal(openedCalls.length, 1);
+
+  await act(async () => {
+    controls.seekTo(56.95);
+  });
+  assert.equal(openedCalls.length, 2);
+  assert.equal(openedCalls[1][2].runId, runId2);
+  assert.equal(openedCalls[1][2].immediate, true);
+
+  // rAF loop also detects currentTime crossing >= startTime even without timeupdate/seeked events.
+  const runId3 = 503;
+  await act(async () => {
+    root.render(
+      React.createElement(
+        React.StrictMode,
+        null,
+        React.createElement(
+          WindowContext.Provider,
+          { value: createWindowContextValue() },
+          React.createElement(MusicContent, {
+            openApp: (...args) => openedCalls.push(args),
+            payload: {
+              action: "bonus-play-from-start",
+              songId: "ravyn-lenae-love-me-not",
+              startTime: 56.90,
+              volume: 0.4,
+              runId: runId3,
+            },
+          }),
+          React.createElement(BridgeProbe),
+        ),
+      ),
+    );
+  });
+  assert.equal(openedCalls.length, 2);
+  audio.currentTime = 56.92;
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  });
+  assert.equal(openedCalls.length, 3);
+  assert.equal(openedCalls[2][2].runId, runId3);
+  assert.equal(openedCalls[2][2].immediate, true);
+});
+
+test("MusicContent cancels armed Bonus cue on song switch or close, and manual Love Me Not play does not open Terminal", async () => {
+  const openedCalls = [];
+
+  // 1. Switching to another song cancels the armed cue.
+  {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mountedRoots.push({ container, root });
+
+    let bridgeRef = null;
+    function BridgeProbe() {
+      bridgeRef = useMusicPlayer();
+      return null;
+    }
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          WindowContext.Provider,
+          { value: createWindowContextValue() },
+          React.createElement(MusicContent, {
+            openApp: (...args) => openedCalls.push(args),
+            payload: {
+              action: "bonus-play-from-start",
+              songId: "ravyn-lenae-love-me-not",
+              startTime: 56.90,
+              volume: 0.4,
+              runId: 601,
+            },
+          }),
+          React.createElement(BridgeProbe),
+        ),
+      );
+    });
+
+    const audio = bridgeRef.getAudioElement();
+    const controls = instrumentAudioElement(audio, { duration: 213 });
+    await act(async () => {
+      controls.emitMetadata();
+    });
+    assert.equal(audio.paused, false);
+
+    // Switch to another song via track row click.
+    const otherSongBtn = [...container.querySelectorAll(".music-track-main")].find(
+      (btn) => !btn.textContent.includes("Love Me Not"),
+    );
+    assert.ok(otherSongBtn);
+    await dom.click(otherSongBtn);
+
+    await act(async () => {
+      controls.emitMetadata();
+      controls.seekTo(65.0);
+      controls.advanceTo(70.0);
+    });
+    assert.equal(openedCalls.length, 0);
+  }
+
+  // 2. Closing Music before startTime cancels the armed cue.
+  {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mountedRoots.push({ container, root });
+
+    let bridgeRef = null;
+    function BridgeProbe() {
+      bridgeRef = useMusicPlayer();
+      return null;
+    }
+
+    let closedCount = 0;
+    await act(async () => {
+      root.render(
+        React.createElement(
+          WindowContext.Provider,
+          { value: { ...createWindowContextValue(), onClose: () => { closedCount += 1; } } },
+          React.createElement(MusicContent, {
+            openApp: (...args) => openedCalls.push(args),
+            payload: {
+              action: "bonus-play-from-start",
+              songId: "ravyn-lenae-love-me-not",
+              startTime: 56.90,
+              volume: 0.4,
+              runId: 602,
+            },
+          }),
+          React.createElement(BridgeProbe),
+        ),
+      );
+    });
+
+    const audio = bridgeRef.getAudioElement();
+    const controls = instrumentAudioElement(audio, { duration: 213 });
+    await act(async () => {
+      controls.emitMetadata();
+    });
+
+    const closeBtn = container.querySelector('button[aria-label="Close Music"]');
+    assert.ok(closeBtn);
+    await dom.click(closeBtn);
+    assert.equal(closedCount, 1);
+
+    await act(async () => {
+      controls.seekTo(60.0);
+      controls.advanceTo(62.0);
+    });
+    assert.equal(openedCalls.length, 0);
+  }
+
+  // 3. Playing Love Me Not manually from the library does NOT auto-open Terminal at 00:56.90.
+  {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mountedRoots.push({ container, root });
+
+    let bridgeRef = null;
+    function BridgeProbe() {
+      bridgeRef = useMusicPlayer();
+      return null;
+    }
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          WindowContext.Provider,
+          { value: createWindowContextValue() },
+          React.createElement(MusicContent, {
+            openApp: (...args) => openedCalls.push(args),
+          }),
+          React.createElement(BridgeProbe),
+        ),
+      );
+    });
+
+    const loveMeNotBtn = [...container.querySelectorAll(".music-track-main")].find(
+      (btn) => btn.textContent.includes("Love Me Not"),
+    );
+    assert.ok(loveMeNotBtn);
+    await dom.click(loveMeNotBtn);
+
+    const audio = bridgeRef.getAudioElement();
+    const controls = instrumentAudioElement(audio, { duration: 213 });
+    await act(async () => {
+      controls.emitMetadata();
+      controls.advanceTo(56.90);
+      controls.seekTo(60.0);
+    });
+    assert.equal(openedCalls.length, 0);
+  }
+});
+
+test("TerminalContent with immediate: true enters CatStoryCanvas immediately under StrictMode and syncs frames to live audio", async () => {
+  await withMockCatCanvas(async ({ putImageCalls, toDataUrlCalls }) => {
+    const decoded = await decodeCatStoryFrames();
+    assert.equal(decoded.length, 338 * 241 * 120);
+
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mountedRoots.push({ container, root });
+
+    const runId = 701;
+    let bridgeRef = null;
+    function BridgeProbe() {
+      bridgeRef = useMusicPlayer();
+      return null;
+    }
+
+    // First mount Music playing Love Me Not, advance to 56.90s, then open Terminal with immediate: true.
+    await act(async () => {
+      root.render(
+        React.createElement(
+          React.StrictMode,
+          null,
+          React.createElement(
+            WindowContext.Provider,
+            { value: createWindowContextValue() },
+            React.createElement(MusicContent, {
+              payload: {
+                action: "bonus-play-from-start",
+                songId: "ravyn-lenae-love-me-not",
+                startTime: 56.90,
+                volume: 0.4,
+                runId,
+              },
+            }),
+            React.createElement(BridgeProbe),
+          ),
+        ),
+      );
+    });
+
+    const audio = bridgeRef.getAudioElement();
+    assert.ok(audio);
+    const controls = instrumentAudioElement(audio, { duration: 213 });
+    await act(async () => {
+      controls.emitMetadata();
+      controls.advanceTo(56.90);
+    });
+    assert.equal(audio.paused, false);
+
+    // Mount TerminalContent with immediate: true under StrictMode while audio is already playing.
+    await act(async () => {
+      root.render(
+        React.createElement(
+          React.StrictMode,
+          null,
+          React.createElement(
+            WindowContext.Provider,
+            { value: createWindowContextValue() },
+            React.createElement(MusicContent, {
+              payload: {
+                action: "bonus-play-from-start",
+                songId: "ravyn-lenae-love-me-not",
+                startTime: 56.90,
+                volume: 0.4,
+                runId,
+              },
+            }),
+            React.createElement(TerminalContent, {
+              payload: {
+                action: "bonus-cat-story",
+                maximize: true,
+                immediate: true,
+                songId: "ravyn-lenae-love-me-not",
+                startTime: 56.90,
+                runId,
+              },
+            }),
+            React.createElement(BridgeProbe),
+          ),
+        ),
+      );
+    });
+
+    // Immediate launch skips typing delay and renders .terminal-cat-stage right away.
+    await waitForCondition(
+      () => Boolean(container.querySelector(".terminal-cat-stage")) && putImageCalls.length > 0,
+      { description: "CatStoryCanvas renders immediately and draws frame 0" },
+    );
+
+    assert.equal(audio.paused, false);
+    assert.equal(audio.currentTime, 56.90);
+    assert.match(container.textContent, /FRAME 001 \/ 338/);
+    assert.match(container.textContent, /00:00\.00\s+\/\s+00:11\.27/);
+
+    // Ensure no Play/Pause/Seek/Replay/Speed buttons exist in Terminal toolbar.
+    const toolbarButtons = [...container.querySelectorAll(".terminal-ascii-tools button")].map((b) => b.textContent.trim());
+    assert.deepEqual(toolbarButtons, ["◉ PHOSPHOR", "↓ PNG", "Back to Terminal"]);
+
+    // Progress bar is display-only (progressbar, not slider).
+    const progressEl = container.querySelector(".terminal-cat-progress");
+    assert.equal(progressEl?.getAttribute("role"), "progressbar");
+
+    // Advance audio time -> frame updates accordingly.
+    await act(async () => {
+      controls.advanceTo(56.90 + 1.1);
+    });
+    assert.match(container.textContent, /FRAME 034 \/ 338/);
+    assert.match(container.textContent, /00:01\.10\s+\/\s+00:11\.27/);
+
+    // Pause audio -> stays frozen at exact frame for audio.currentTime.
+    await act(async () => {
+      audio.pause();
+    });
+    assert.match(container.textContent, /FRAME 034 \/ 338/);
+
+    // Seek before startTime while paused -> snaps to frame 0.
+    await act(async () => {
+      controls.seekTo(20);
+    });
+    assert.match(container.textContent, /FRAME 001 \/ 338/);
+
+    // Seek past END_TIME -> holds final frame 338/338 without stopping music.
+    await act(async () => {
+      audio.play();
+      controls.seekTo(80);
+    });
+    assert.match(container.textContent, /FRAME 338 \/ 338/);
+    assert.match(container.textContent, /00:11\.27\s+\/\s+00:11\.27/);
+    assert.equal(audio.paused, false);
+
+    // Playback rate change keeps sync alive.
+    await act(async () => {
+      audio.playbackRate = 1.25;
+      controls.seekTo(56.90 + 5.0);
+    });
+    assert.match(container.textContent, /FRAME 151 \/ 338/);
+
+    // Toggle phosphor (D) and save PNG (S).
+    await act(async () => {
+      browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "d", bubbles: true }));
+    });
+    assert.ok(container.querySelector(".terminal-cat-stage--phosphor"));
+    assert.match(container.textContent, /◈ FULL COLOR/);
+
+    await act(async () => {
+      browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "s", bubbles: true }));
+    });
+    assert.equal(toDataUrlCalls.length, 1);
+    assert.ok(putImageCalls.length > 0);
+
+    // Escape exits back to Terminal prompt and history has the launch command exactly once.
+    await act(async () => {
+      browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    assert.equal(container.querySelector(".terminal-cat-stage"), null);
+    const matches = container.textContent.match(/\.\/cat-story --sync=love-me-not/g) || [];
+    assert.equal(matches.length, 1);
+  });
 });
 
 test("Autoplay-blocked Music shows Play Audio fallback in CatStoryCanvas and resumes on click", async () => {
@@ -634,9 +917,10 @@ test("renderAppContent forwards payload to MusicContent and Terminal SCSS compil
           maximizeWindow() {},
           openApp() {},
           payload: {
-            action: "bonus-sync-prepare",
+            action: "bonus-play-from-start",
             songId: "ravyn-lenae-love-me-not",
             startTime: 56.90,
+            volume: 0.4,
             runId: 888,
           },
         }),
@@ -677,7 +961,7 @@ test("renderAppContent forwards payload to MusicContent and Terminal SCSS compil
   assert.match(terminalCss, /\.terminal-cat-stage--phosphor[^}]*background:\s*#050e09/i);
 });
 
-test("MusicContent sets volume to 0.4 and unmutes on bonus-sync-prepare despite saved localStorage volume", async () => {
+test("MusicContent sets volume to 0.4, unmutes, and starts at 0 on bonus-play-from-start despite saved localStorage state", async () => {
   const { PLAYER_STORAGE_KEY } = await vite.ssrLoadModule("/src/features/music/musicModel.js");
   browserWindow.localStorage.setItem(
     PLAYER_STORAGE_KEY,
@@ -700,7 +984,7 @@ test("MusicContent sets volume to 0.4 and unmutes on bonus-sync-prepare despite 
     return null;
   }
 
-  // 1. Fresh mount with bonus-sync-prepare overrides stored 0.7 / muted.
+  // 1. Fresh mount with bonus-play-from-start overrides stored 0.7 / muted / currentTime 12.
   await act(async () => {
     root.render(
       React.createElement(
@@ -708,7 +992,7 @@ test("MusicContent sets volume to 0.4 and unmutes on bonus-sync-prepare despite 
         { value: createWindowContextValue() },
         React.createElement(MusicContent, {
           payload: {
-            action: "bonus-sync-prepare",
+            action: "bonus-play-from-start",
             songId: "ravyn-lenae-love-me-not",
             startTime: 56.90,
             volume: 0.4,
@@ -726,6 +1010,7 @@ test("MusicContent sets volume to 0.4 and unmutes on bonus-sync-prepare despite 
   assert.ok(audio);
   assert.ok(slider);
   assert.ok(muteBtn);
+  assert.equal(audio.currentTime, 0);
   assert.equal(audio.volume, 0.4);
   assert.equal(audio.muted, false);
   assert.equal(Number(slider.value), 0.4);
@@ -750,7 +1035,7 @@ test("MusicContent sets volume to 0.4 and unmutes on bonus-sync-prepare despite 
   assert.equal(audio.muted, true);
   assert.equal(Number(slider.value), 0);
 
-  // 3. Re-launching bonus-sync-prepare while Music is already open resets to 0.4 and unmutes.
+  // 3. Re-launching bonus-play-from-start while Music is already open resets to 0.4, unmutes, and seeks to 0.
   await act(async () => {
     root.render(
       React.createElement(
@@ -758,7 +1043,7 @@ test("MusicContent sets volume to 0.4 and unmutes on bonus-sync-prepare despite 
         { value: createWindowContextValue() },
         React.createElement(MusicContent, {
           payload: {
-            action: "bonus-sync-prepare",
+            action: "bonus-play-from-start",
             songId: "ravyn-lenae-love-me-not",
             startTime: 56.90,
             runId: 902,
@@ -769,6 +1054,7 @@ test("MusicContent sets volume to 0.4 and unmutes on bonus-sync-prepare despite 
     );
   });
 
+  assert.equal(audio.currentTime, 0);
   assert.equal(audio.volume, 0.4);
   assert.equal(audio.muted, false);
   assert.equal(Number(slider.value), 0.4);
