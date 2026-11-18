@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-const W = 1080;
+const BASE_COLS = 135;
+const MAX_COLS = 280;
 const H = 960;
 const CW = 8;
 const CH = 12;
-const COLS = W / CW;
 const ROWS = Math.floor(H / CH);
-const COUNT = COLS * ROWS;
-const ASPECT = (COLS * CW) / (ROWS * CH);
+const BASE_W = BASE_COLS * CW;
+const BASE_ASPECT = (BASE_COLS * CW) / (ROWS * CH);
 const TAU = Math.PI * 2;
 
 const M = {
@@ -229,6 +229,18 @@ function composeWishLine(width, row, group, beat) {
   return text.slice(0, width);
 }
 
+const cellHash = (r, c) => (r * 7919 + c * 104729) % 9973;
+
+function createHashes(cols, rows) {
+  const hashes = new Uint16Array(cols * rows);
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      hashes[y * cols + x] = cellHash(y, x);
+    }
+  }
+  return hashes;
+}
+
 let cachedSceneData = null;
 
 function getSceneData() {
@@ -236,7 +248,6 @@ function getSceneData() {
 
   const rr = rand(2408);
   const uni = (a, b) => a + (b - a) * rr();
-  const hash = (r, c) => (r * 7919 + c * 104729) % 9973;
 
   const POS = [];
   const NOR = [];
@@ -753,18 +764,11 @@ function getSceneData() {
   const view = normal(-fwd[0], -fwd[1], -fwd[2]);
   const half = normal(key[0] + view[0], key[1] + view[1], key[2] + view[2]);
 
-  const hashes = new Uint16Array(COUNT);
-  for (let y = 0; y < ROWS; y++) {
-    for (let x = 0; x < COLS; x++) {
-      hashes[y * COLS + x] = hash(y, x);
-    }
-  }
-
   const confetti = [];
   const cr = rand(88);
   for (let i = 0; i < 140; i++) {
     confetti.push({
-      x: cr() * COLS,
+      xFrac: cr(),
       speed: 3 + cr() * 6,
       delay: cr() * 4.5,
       w: 1 + cr() * 1.5,
@@ -800,7 +804,6 @@ function getSceneData() {
     up,
     key,
     half,
-    hashes,
     confetti,
     burstConfetti,
   };
@@ -955,6 +958,7 @@ export function AnniversaryGiftCanvas({
   showPlayAudio = false,
   onPlayAudio,
 }) {
+  const viewportRef = useRef(null);
   const canvasRef = useRef(null);
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
@@ -993,6 +997,10 @@ export function AnniversaryGiftCanvas({
     } catch {
       ctx = null;
     }
+
+    let cols = BASE_COLS;
+    let W = cols * CW;
+    let count = cols * ROWS;
 
     const makeCanvas = () => {
       const c = document.createElement("canvas");
@@ -1092,16 +1100,49 @@ export function AnniversaryGiftCanvas({
     }
 
     const scene = getSceneData();
-    const { BGEO, G, eye, fwd, right, up, key, half, hashes, confetti, burstConfetti } = scene;
+    const { BGEO, G, eye, fwd, right, up, key, half, confetti, burstConfetti } = scene;
     const LILY_TEXTURES = FLOWERS.map((_, i) => makeLilyTexture(i));
 
-    const depth = new Float32Array(COUNT);
-    const parts = new Uint16Array(COUNT);
-    const brightness = new Float32Array(COUNT);
-    const tags = new Uint8Array(COUNT);
-    const characters = new Array(COUNT).fill(" ");
-    const customChars = new Array(COUNT).fill("");
+    let depth = new Float32Array(count);
+    let parts = new Uint16Array(count);
+    let brightness = new Float32Array(count);
+    let tags = new Uint8Array(count);
+    let characters = new Array(count).fill(" ");
+    let customChars = new Array(count).fill("");
+    let hashes = createHashes(cols, ROWS);
     const typeCache = new Map();
+
+    const computeTargetCols = (rect) => {
+      if (!rect || !(rect.width > 0 && rect.height > 0)) return null;
+      return Math.max(
+        BASE_COLS,
+        Math.min(MAX_COLS, Math.round(((rect.width / rect.height) * H) / CW)),
+      );
+    };
+
+    const resizeGrid = (targetCols, shouldRedraw = true) => {
+      if (disposed || targetCols === null || targetCols === cols) return;
+      cols = targetCols;
+      W = cols * CW;
+      count = cols * ROWS;
+      cvs.width = W;
+      ink.width = W;
+      trail.width = W;
+      txt.width = W;
+      depth = new Float32Array(count);
+      parts = new Uint16Array(count);
+      brightness = new Float32Array(count);
+      tags = new Uint8Array(count);
+      characters = new Array(count).fill(" ");
+      customChars = new Array(count).fill("");
+      hashes = createHashes(cols, ROWS);
+      typeCache.clear();
+      tCtx.fillStyle = "#030204";
+      tCtx.fillRect(0, 0, W, H);
+      if (shouldRedraw) {
+        renderFrame(t);
+      }
+    };
 
     const bouquetWorld = (p) => [
       right[0] * p[0] - right[2] * (p[2] + 0.45),
@@ -1122,8 +1163,8 @@ export function AnniversaryGiftCanvas({
       const yy = x * up[0] + y * up[1] + z * up[2];
       const zz = x * fwd[0] + y * fwd[1] + z * fwd[2];
       return [
-        (0.5 + (xx / Math.max(0.2, zz)) * 1.45) * COLS,
-        (0.5 - (yy / Math.max(0.2, zz)) * 1.45 * ASPECT) * ROWS + 4,
+        0.5 * cols + (xx / Math.max(0.2, zz)) * 1.45 * BASE_COLS,
+        (0.5 - (yy / Math.max(0.2, zz)) * 1.45 * BASE_ASPECT) * ROWS + 4,
         zz,
       ];
     }
@@ -1133,8 +1174,8 @@ export function AnniversaryGiftCanvas({
       const cx = p[0] | 0;
       const cy = p[1] | 0;
       const d = p[2];
-      if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS || d < 0.15) return;
-      const i = cy * COLS + cx;
+      if (cx < 0 || cy < 0 || cx >= cols || cy >= ROWS || d < 0.15) return;
+      const i = cy * cols + cx;
       if (d < depth[i]) {
         depth[i] = d;
         parts[i] = group;
@@ -1148,16 +1189,16 @@ export function AnniversaryGiftCanvas({
       const beat = Math.floor(now / 4.8);
       for (let y = 0; y < ROWS; y++) {
         let x = 0;
-        while (x < COLS) {
-          let i = y * COLS + x;
+        while (x < cols) {
+          let i = y * cols + x;
           if (parts[i] === 0 || tags[i] === M.TITLE || tags[i] === M.HALO || tags[i] === M.SPARK || brightness[i] < 0.009) {
             x++;
             continue;
           }
           const begin = x;
           const kind = tags[i] >= 23 ? 1 : 0;
-          while (x < COLS) {
-            i = y * COLS + x;
+          while (x < cols) {
+            i = y * cols + x;
             if (
               parts[i] === 0 ||
               tags[i] === M.TITLE ||
@@ -1172,7 +1213,7 @@ export function AnniversaryGiftCanvas({
           }
           const n = x - begin;
           const line = composeWishLine(n, y, kind + Math.floor(begin / 5), beat);
-          for (let k = 0; k < n; k++) characters[y * COLS + begin + k] = line[k];
+          for (let k = 0; k < n; k++) characters[y * cols + begin + k] = line[k];
         }
       }
     }
@@ -1187,16 +1228,16 @@ export function AnniversaryGiftCanvas({
       txtCtx.font = `900 ${Math.round(117 * scale)}px "Arial Black", Arial, sans-serif`;
       txtCtx.fillText(word, W * 0.5, cy * CH);
       const dat = txtCtx.getImageData(0, 0, W, H).data;
-      const co = new Float32Array(COUNT);
+      const co = new Float32Array(count);
       for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
+        for (let x = 0; x < cols; x++) {
           let sum = 0;
           for (let oy = 0; oy < CH; oy += 2) {
             for (let ox = 0; ox < CW; ox++) {
               sum += dat[((y * CH + oy) * W + x * CW + ox) * 4 + 3];
             }
           }
-          co[y * COLS + x] = sum / (Math.ceil(CH / 2) * CW * 255);
+          co[y * cols + x] = sum / (Math.ceil(CH / 2) * CW * 255);
         }
       }
       if (typeCache.size > 50) typeCache.clear();
@@ -1206,8 +1247,8 @@ export function AnniversaryGiftCanvas({
 
     function star(cx, cy, reach) {
       const putStar = (x, y, ch, light) => {
-        if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return;
-        const p = y * COLS + x;
+        if (x < 0 || y < 0 || x >= cols || y >= ROWS) return;
+        const p = y * cols + x;
         if (brightness[p] < light) {
           characters[p] = ch;
           brightness[p] = light;
@@ -1308,12 +1349,12 @@ export function AnniversaryGiftCanvas({
       iCtx.font = '12px Consolas,Menlo,"DejaVu Sans Mono",monospace';
       iCtx.textAlign = "center";
       iCtx.textBaseline = "middle";
-      for (let i = 0; i < COUNT; i++) {
+      for (let i = 0; i < count; i++) {
         if (characters[i] === " " || brightness[i] < 0.009) continue;
         const rgb = COL[tags[i]];
         const a = clamp(brightness[i], 0, 1.15);
         iCtx.fillStyle = `rgb(${Math.floor(Math.min(255, rgb[0] * a))},${Math.floor(Math.min(255, rgb[1] * a))},${Math.floor(Math.min(255, rgb[2] * a))})`;
-        iCtx.fillText(characters[i], (i % COLS) * CW + CW * 0.5, Math.floor(i / COLS) * CH + CH * 0.5);
+        iCtx.fillText(characters[i], (i % cols) * CW + CW * 0.5, Math.floor(i / cols) * CH + CH * 0.5);
       }
       drawLilyDetail(now);
       tCtx.globalCompositeOperation = "source-over";
@@ -1442,8 +1483,8 @@ export function AnniversaryGiftCanvas({
       }
 
       for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
-          const id = y * COLS + x;
+        for (let x = 0; x < cols; x++) {
+          const id = y * cols + x;
           if (!parts[id]) continue;
           let edge = false;
           let gx = 0;
@@ -1453,11 +1494,11 @@ export function AnniversaryGiftCanvas({
               if (!ox && !oy) continue;
               const xx = x + ox;
               const yy = y + oy;
-              const other = yy * COLS + xx;
+              const other = yy * cols + xx;
               const outside =
                 xx < 0 ||
                 yy < 0 ||
-                xx >= COLS ||
+                xx >= cols ||
                 yy >= ROWS ||
                 !parts[other] ||
                 (parts[other] !== parts[id] && depth[other] > depth[id] + 0.05);
@@ -1558,8 +1599,8 @@ export function AnniversaryGiftCanvas({
         const cy = butterflyLight[1] | 0;
         const rad = 6.2 + 1.4 * Math.sin(now * 8);
         for (let y = Math.max(0, Math.floor(cy - rad)); y < Math.min(ROWS, Math.ceil(cy + rad)); y++) {
-          for (let x = Math.max(0, Math.floor(cx - rad * 1.7)); x < Math.min(COLS, Math.ceil(cx + rad * 1.7)); x++) {
-            const k = y * COLS + x;
+          for (let x = Math.max(0, Math.floor(cx - rad * 1.7)); x < Math.min(cols, Math.ceil(cx + rad * 1.7)); x++) {
+            const k = y * cols + x;
             const fall = 1 - Math.hypot(y - cy, (x - cx) / 1.7) / rad;
             if (characters[k] === " " && fall > 0 && (hashes[k] + Math.floor(now * 9)) % 3 !== 0) {
               characters[k] = fall < 0.4 ? "." : fall < 0.74 ? ":" : "+";
@@ -1584,8 +1625,8 @@ export function AnniversaryGiftCanvas({
         const flutter = p.drift * Math.sin(age * 4.1 + j * 0.79) * Math.min(1, age);
         const x = Math.floor(sx + horizontal + flutter);
         const y = Math.floor(sy + p.vy * age + 0.5 * p.gravity * age * age);
-        if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
-        const k = y * COLS + x;
+        if (x < 0 || x >= cols || y < 0 || y >= ROWS) continue;
+        const k = y * cols + x;
         if (characters[k] === " " || tags[k] === M.HALO) {
           const glyphs = p.glyphSet;
           characters[k] = glyphs[Math.floor(age * p.spin + j) % glyphs.length];
@@ -1595,8 +1636,8 @@ export function AnniversaryGiftCanvas({
         if (age < 1.45 && j % 5 === 0) {
           const nx = x + (j % 2 ? 1 : -1);
           const ny = y - 1;
-          if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
-            const k2 = ny * COLS + nx;
+          if (nx >= 0 && nx < cols && ny >= 0 && ny < ROWS) {
+            const k2 = ny * cols + nx;
             if (characters[k2] === " " || tags[k2] === M.HALO) {
               characters[k2] = ".";
               brightness[k2] = 0.47 * (1 - age / 1.45);
@@ -1611,9 +1652,9 @@ export function AnniversaryGiftCanvas({
         const age = now - 6.3 - p.delay;
         if (age < 0) continue;
         const y = Math.floor((age * p.speed) % (ROWS + 4)) - 2;
-        const x = Math.floor(p.x + p.amp * Math.sin(now * p.w + p.phase));
-        if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
-        const k = y * COLS + x;
+        const x = Math.floor(p.xFrac * cols + p.amp * Math.sin(now * p.w + p.phase));
+        if (x < 0 || x >= cols || y < 0 || y >= ROWS) continue;
+        const k = y * cols + x;
         if (characters[k] === " " || tags[k] === M.HALO) {
           characters[k] = j % 8 ? "|/-\\"[Math.floor(now * p.w * 3 + p.phase) % 4] : "o";
           brightness[k] = 0.84;
@@ -1630,14 +1671,14 @@ export function AnniversaryGiftCanvas({
         if (p <= 0 || fade <= 0) continue;
         const cov = coverage(word, scale + 0.13 * (1 - p), ROWS * row);
         for (let y = 0; y < ROWS; y++) {
-          for (let x = 0; x < COLS; x++) {
-            const k = y * COLS + x;
+          for (let x = 0; x < cols; x++) {
+            const k = y * cols + x;
             const h = hashes[k];
             if (cov[k] < 0.44 || (h % 997) / 997 > smooth(p * 1.55)) continue;
-            const nx = x + 1 < COLS ? cov[k + 1] : 0;
+            const nx = x + 1 < cols ? cov[k + 1] : 0;
             const px = x > 0 ? cov[k - 1] : 0;
-            const ny = y + 1 < ROWS ? cov[k + COLS] : 0;
-            const py = y > 0 ? cov[k - COLS] : 0;
+            const ny = y + 1 < ROWS ? cov[k + cols] : 0;
+            const py = y > 0 ? cov[k - cols] : 0;
             const isEdge = Math.min(nx, px, ny, py) < 0.44;
             const wish = dotText(TEXT_WISHES[(y + Math.floor(now / 4.8)) % TEXT_WISHES.length]);
             characters[k] = isEdge
@@ -1653,10 +1694,10 @@ export function AnniversaryGiftCanvas({
         const q = Math.floor(now * 1.45);
         for (let j = 0; j < 2; j++) {
           const ids = [];
-          for (let k = 0; k < COUNT; k++) if (tags[k] === M.TITLE) ids.push(k);
+          for (let k = 0; k < count; k++) if (tags[k] === M.TITLE) ids.push(k);
           if (ids.length) {
             const id = ids[(q * 7919 + j * 104729) % ids.length];
-            star(id % COLS, Math.floor(id / COLS), 2 + Math.floor(3 * Math.sin(fract(now * 1.45 + j * 0.54) * Math.PI)));
+            star(id % cols, Math.floor(id / cols), 2 + Math.floor(3 * Math.sin(fract(now * 1.45 + j * 0.54) * Math.PI)));
           }
         }
       }
@@ -1695,6 +1736,38 @@ export function AnniversaryGiftCanvas({
       rafId = requestAnimationFrame(tick);
     };
 
+    const viewport = viewportRef.current;
+    const syncViewportSize = (rect, shouldRedraw = true) => {
+      if (disposed) return;
+      const targetCols = computeTargetCols(rect);
+      if (targetCols !== null && targetCols !== cols) {
+        resizeGrid(targetCols, shouldRedraw);
+      }
+    };
+
+    if (viewport) {
+      syncViewportSize(viewport.getBoundingClientRect?.(), false);
+    }
+
+    const onWindowResize = () => {
+      if (!viewport) return;
+      syncViewportSize(viewport.getBoundingClientRect?.(), activeRef.current);
+    };
+
+    let resizeObserver = null;
+    if (viewport && typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver((entries) => {
+        const entryRect = entries?.[0]?.contentRect;
+        const rect =
+          entryRect && entryRect.width > 0 && entryRect.height > 0
+            ? entryRect
+            : viewport.getBoundingClientRect?.();
+        syncViewportSize(rect, activeRef.current);
+      });
+      resizeObserver.observe(viewport);
+    }
+    window.addEventListener("resize", onWindowResize);
+
     controlsRef.current = {
       restart,
       save,
@@ -1705,6 +1778,9 @@ export function AnniversaryGiftCanvas({
           return;
         }
         if (rafId !== null) return;
+        if (viewport) {
+          syncViewportSize(viewport.getBoundingClientRect?.(), false);
+        }
         last = 0;
         lastDraw = 0;
         frame(t);
@@ -1720,6 +1796,8 @@ export function AnniversaryGiftCanvas({
     return () => {
       disposed = true;
       stopRaf();
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", onWindowResize);
       controlsRef.current = {
         toggle: () => {},
         restart: () => {},
@@ -1738,11 +1816,11 @@ export function AnniversaryGiftCanvas({
 
   return (
     <div className="terminal-ascii-stage" aria-label="1st Anniversary ASCII Gift Box stage">
-      <div className="terminal-ascii-viewport">
+      <div className="terminal-ascii-viewport" ref={viewportRef}>
         <div className="terminal-ascii-scene">
           <canvas
             ref={canvasRef}
-            width={W}
+            width={BASE_W}
             height={H}
             className="terminal-ascii-canvas"
             role="img"

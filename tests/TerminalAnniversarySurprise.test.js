@@ -259,9 +259,22 @@ test("Terminal and Mail SCSS compile cleanly with anniversary surprise styles", 
   const terminalCss = sass.compile(`${projectRoot}src/styles/components/Terminal/Terminal.scss`).css;
   const mailCss = sass.compile(`${projectRoot}src/styles/components/Mail/Mail.scss`).css;
 
+  const stageRule = terminalCss.match(/\.terminal-ascii-stage\s*\{[^}]*\}/)?.[0] ?? "";
+  const sceneRule = terminalCss.match(/\.terminal-ascii-scene\s*\{[^}]*\}/)?.[0] ?? "";
+  const canvasRule = terminalCss.match(/\.terminal-ascii-canvas\s*\{[^}]*\}/)?.[0] ?? "";
+
   assert.match(terminalCss, /\.terminal-ascii-slot/);
-  assert.match(terminalCss, /\.terminal-ascii-scene/);
-  assert.match(terminalCss, /aspect-ratio:\s*1080\s*\/\s*960/);
+  assert.match(stageRule, /width:\s*100%/);
+  assert.match(stageRule, /height:\s*100%/);
+  assert.match(stageRule, /padding:\s*0/);
+  assert.doesNotMatch(stageRule, /1080px/);
+  assert.match(sceneRule, /width:\s*100%/);
+  assert.match(sceneRule, /height:\s*100%/);
+  assert.doesNotMatch(sceneRule, /1080px|aspect-ratio:\s*1080\s*\/\s*960|box-shadow:/);
+  assert.match(canvasRule, /width:\s*100%/);
+  assert.match(canvasRule, /height:\s*100%/);
+  assert.match(canvasRule, /object-fit:\s*contain/);
+  assert.match(canvasRule, /background:\s*#030204/i);
   assert.match(mailCss, /\.mail__surprise-card/);
 });
 
@@ -591,5 +604,136 @@ test("AnniversaryGiftCanvas pauses rAF and ignores shortcuts when active=false a
   } finally {
     globalThis.requestAnimationFrame = originalRaf;
     globalThis.cancelAnimationFrame = originalCancelRaf;
+  }
+});
+
+test("AnniversaryGiftCanvas updates canvas.width dynamically via ResizeObserver while keeping height=960 and t uninterrupted", async () => {
+  const originalRaf = globalThis.requestAnimationFrame;
+  const originalCancelRaf = globalThis.cancelAnimationFrame;
+  const originalResizeObserver = globalThis.ResizeObserver;
+  let nextRafId = 1;
+  const rafQueue = new Map();
+  const observerRecords = [];
+
+  globalThis.requestAnimationFrame = (cb) => {
+    const id = nextRafId++;
+    rafQueue.set(id, cb);
+    return id;
+  };
+  globalThis.cancelAnimationFrame = (id) => {
+    rafQueue.delete(id);
+  };
+
+  class MockResizeObserver {
+    constructor(callback) {
+      this.callback = callback;
+      this.observed = [];
+      this.disconnected = false;
+      observerRecords.push(this);
+    }
+    observe(target) {
+      this.observed.push(target);
+    }
+    disconnect() {
+      this.disconnected = true;
+    }
+  }
+  globalThis.ResizeObserver = MockResizeObserver;
+
+  try {
+    await withMockCanvas(async ({ mainFillTexts, trailClearRects }) => {
+      const container = document.createElement("div");
+      document.body.append(container);
+      const root = createRoot(container);
+      const mount = { container, root };
+      mountedRoots.push(mount);
+
+      await act(async () => {
+        root.render(React.createElement(AnniversaryGiftCanvas, { onExit() {} }));
+      });
+
+      const viewport = container.querySelector(".terminal-ascii-viewport");
+      const canvas = container.querySelector("canvas.terminal-ascii-canvas");
+      assert.ok(viewport);
+      assert.ok(canvas);
+      assert.equal(canvas.width, 1080);
+      assert.equal(canvas.height, 960);
+      assert.equal(observerRecords.length, 1);
+      assert.deepEqual(observerRecords[0].observed, [viewport]);
+
+      const timerCalls = () => mainFillTexts.filter((call) => /t \d{2,}\.\d{2}s$/.test(call.text));
+      const parseTimerSeconds = (text) => {
+        const match = /t (\d+\.\d{2})s$/.exec(text || "");
+        return match ? Number(match[1]) : NaN;
+      };
+
+      let ms = 100;
+      const stepTicks = async (count, stepMs = 100) => {
+        await act(async () => {
+          for (let i = 0; i < count; i += 1) {
+            const entries = [...rafQueue.entries()];
+            rafQueue.clear();
+            for (const [, cb] of entries) {
+              cb(ms);
+            }
+            ms += stepMs;
+          }
+        });
+      };
+
+      await stepTicks(25);
+      const tBeforeResize = parseTimerSeconds(timerCalls().at(-1)?.text);
+      assert.ok(tBeforeResize >= 1.4, `expected t to advance before resize, got ${tBeforeResize}`);
+
+      const triggerResize = async (width, height) => {
+        viewport.getBoundingClientRect = () => ({ width, height });
+        await act(async () => {
+          observerRecords[0].callback([{ target: viewport, contentRect: { width, height } }]);
+        });
+      };
+
+      // Wide viewport (2:1): targetCols = 240 -> W = 1920, H = 960, t preserved.
+      await triggerResize(1600, 800);
+      assert.equal(canvas.width, 1920);
+      assert.equal(canvas.height, 960);
+      const timerAfterWide = timerCalls().at(-1);
+      assert.equal(parseTimerSeconds(timerAfterWide?.text), tBeforeResize, "resize must preserve t");
+      assert.equal(timerAfterWide?.x, 1920 - 64, "top-right timer should track new canvas width");
+      assert.equal(trailClearRects.at(-1)?.w, 1920);
+
+      // Zero-sized viewport (e.g. display: none while Cat Story is active) must preserve current width.
+      await triggerResize(0, 0);
+      assert.equal(canvas.width, 1920);
+      assert.equal(canvas.height, 960);
+
+      // Animation keeps advancing smoothly from tBeforeResize after resize.
+      await stepTicks(5);
+      const tAfterAdvance = parseTimerSeconds(timerCalls().at(-1)?.text);
+      assert.ok(tAfterAdvance > tBeforeResize, `expected t to keep advancing (${tAfterAdvance} > ${tBeforeResize})`);
+
+      // Ultra-wide viewport clamps at MAX_COLS = 280 -> W = 2240.
+      await triggerResize(3000, 800);
+      assert.equal(canvas.width, 2240);
+      assert.equal(canvas.height, 960);
+      assert.equal(timerCalls().at(-1)?.x, 2240 - 64);
+
+      // Narrow viewport clamps at BASE_COLS = 135 -> W = 1080.
+      await triggerResize(600, 800);
+      assert.equal(canvas.width, 1080);
+      assert.equal(canvas.height, 960);
+      assert.equal(timerCalls().at(-1)?.x, 1080 - 64);
+
+      await unmountMount(act, mount);
+      mountedRoots.pop();
+      assert.equal(observerRecords[0].disconnected, true);
+    });
+  } finally {
+    globalThis.requestAnimationFrame = originalRaf;
+    globalThis.cancelAnimationFrame = originalCancelRaf;
+    if (originalResizeObserver === undefined) {
+      delete globalThis.ResizeObserver;
+    } else {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
   }
 });

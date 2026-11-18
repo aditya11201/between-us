@@ -209,12 +209,18 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 0;
+  padding: 0;
   background: #030204;
   overflow: hidden;
+
+  > .terminal-ascii-tools {
+    padding: 8px 12px;
+  }
 }
 
 .terminal-ascii-viewport {
@@ -222,26 +228,26 @@
   min-width: 0;
   min-height: 0;
   width: 100%;
-  display: grid;
-  place-items: center;
-  container-type: size;
+  height: 100%;
+  position: relative;
+  background: #030204;
+  overflow: hidden;
 }
 
 .terminal-ascii-scene {
   position: relative;
-  width: min(100cqw, calc(100cqh * 1.125), 1080px);
-  max-width: 100%;
-  max-height: 100%;
-  aspect-ratio: 1080 / 960;
+  width: 100%;
+  height: 100%;
   background: #030204;
   isolation: isolate;
-  box-shadow: 0 0 80px rgba(75, 35, 50, 0.18);
 }
 
 .terminal-ascii-canvas {
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: contain;
+  background: #030204;
 }
 
 .terminal-ascii-tools {
