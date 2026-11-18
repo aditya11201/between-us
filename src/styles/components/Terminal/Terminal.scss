@@ -252,13 +252,18 @@
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s, background-color 0.15s;
 
-  &:hover,
-  &:focus-visible {
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled) {
     border-color: #f5b7e1;
     background: #231829;
     color: #fff;
     outline: 2px solid #f5b7e1;
     outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
   }
 
   &--exit {

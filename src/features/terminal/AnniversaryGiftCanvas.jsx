@@ -953,7 +953,9 @@ function makeLilyTexture(index) {
 export function AnniversaryGiftCanvas({ onExit }) {
   const canvasRef = useRef(null);
   const [paused, setPaused] = useState(false);
+  const [ended, setEnded] = useState(false);
   const pausedRef = useRef(false);
+  const endedRef = useRef(false);
   const controlsRef = useRef({
     toggle: () => {},
     restart: () => {},
@@ -963,6 +965,7 @@ export function AnniversaryGiftCanvas({ onExit }) {
   onExitRef.current = onExit;
 
   const handleTogglePause = useCallback(() => {
+    if (endedRef.current) return;
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
@@ -1014,19 +1017,26 @@ export function AnniversaryGiftCanvas({ onExit }) {
     let last = 0;
     let lastDraw = 0;
     let rafId = null;
+    let disposed = false;
 
     let renderFrame = () => {};
+    let startLoop = () => {};
 
     const restart = () => {
+      if (disposed) return;
       t = 0;
       last = 0;
+      lastDraw = 0;
       pausedRef.current = false;
+      endedRef.current = false;
       setPaused(false);
+      setEnded(false);
       if (tCtx) {
         tCtx.fillStyle = "#030204";
         tCtx.fillRect(0, 0, W, H);
       }
       renderFrame(0);
+      startLoop();
     };
 
     const save = () => {
@@ -1649,17 +1659,32 @@ export function AnniversaryGiftCanvas({ onExit }) {
     }
 
     renderFrame = frame;
+    startLoop = () => {
+      if (disposed) return;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      rafId = requestAnimationFrame(tick);
+    };
 
     function tick(ms) {
+      if (disposed || endedRef.current) {
+        rafId = null;
+        return;
+      }
       if (!last) last = ms;
       const dt = Math.min((ms - last) / 1000, 1 / 15);
       last = ms;
       if (!pausedRef.current) {
         t += dt;
         if (t >= LOOP) {
-          t = 0;
-          tCtx.fillStyle = "#030204";
-          tCtx.fillRect(0, 0, W, H);
+          t = LOOP;
+          endedRef.current = true;
+          setEnded(true);
+          lastDraw = ms;
+          frame(LOOP);
+          rafId = null;
+          return;
         }
       }
       if (ms - lastDraw > 1000 / 26) {
@@ -1670,10 +1695,12 @@ export function AnniversaryGiftCanvas({ onExit }) {
     }
 
     frame(0);
-    rafId = requestAnimationFrame(tick);
+    startLoop();
 
     return () => {
+      disposed = true;
       if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = null;
       window.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
@@ -1698,6 +1725,7 @@ export function AnniversaryGiftCanvas({ onExit }) {
           type="button"
           className="terminal-ascii-btn"
           onClick={handleTogglePause}
+          disabled={ended}
           title="Space"
           aria-pressed={paused}
         >

@@ -264,10 +264,12 @@ test("Terminal and Mail SCSS compile cleanly with anniversary surprise styles", 
   assert.match(mailCss, /\.mail__surprise-card/);
 });
 
-test("AnniversaryGiftCanvas draws the top-right timer without bottom-left status or wish caption overlays", async () => {
+async function withMockCanvas(run) {
   const originalGetContext = browserWindow.HTMLCanvasElement.prototype.getContext;
   const originalPath2D = globalThis.Path2D;
   const mainFillTexts = [];
+  const trailClearRects = [];
+  let offscreen1080Count = 0;
 
   class MockPath2D {
     moveTo() {}
@@ -277,6 +279,11 @@ test("AnniversaryGiftCanvas draws the top-right timer without bottom-left status
 
   function makeMockContext(targetCanvas) {
     const isMainCanvas = targetCanvas.className === "terminal-ascii-canvas";
+    let isTrailCanvas = false;
+    if (!isMainCanvas && targetCanvas.width === 1080 && targetCanvas.height === 960) {
+      offscreen1080Count += 1;
+      isTrailCanvas = offscreen1080Count === 2;
+    }
     const gradient = { addColorStop() {} };
     return {
       fillStyle: "",
@@ -306,7 +313,11 @@ test("AnniversaryGiftCanvas draws the top-right timer without bottom-left status
       ellipse() {},
       fill() {},
       stroke() {},
-      fillRect() {},
+      fillRect(x, y, w, h) {
+        if (isTrailCanvas && this.fillStyle === "#030204") {
+          trailClearRects.push({ x, y, w, h });
+        }
+      },
       clearRect() {},
       drawImage() {},
       createLinearGradient: () => gradient,
@@ -327,6 +338,19 @@ test("AnniversaryGiftCanvas draws the top-right timer without bottom-left status
   };
 
   try {
+    await run({ mainFillTexts, trailClearRects });
+  } finally {
+    browserWindow.HTMLCanvasElement.prototype.getContext = originalGetContext;
+    if (originalPath2D === undefined) {
+      delete globalThis.Path2D;
+    } else {
+      globalThis.Path2D = originalPath2D;
+    }
+  }
+}
+
+test("AnniversaryGiftCanvas draws the top-right timer without bottom-left status or wish caption overlays", async () => {
+  await withMockCanvas(async ({ mainFillTexts }) => {
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -353,12 +377,104 @@ test("AnniversaryGiftCanvas draws the top-right timer without bottom-left status
       false,
       "bottom-left wish caption should be removed",
     );
+  });
+});
+
+test("AnniversaryGiftCanvas stops at LOOP (29.00s) instead of auto-looping and restarts on REPLAY", async () => {
+  const originalRaf = globalThis.requestAnimationFrame;
+  const originalCancelRaf = globalThis.cancelAnimationFrame;
+  let nextRafId = 1;
+  const rafQueue = new Map();
+
+  globalThis.requestAnimationFrame = (cb) => {
+    const id = nextRafId++;
+    rafQueue.set(id, cb);
+    return id;
+  };
+  globalThis.cancelAnimationFrame = (id) => {
+    rafQueue.delete(id);
+  };
+
+  try {
+    await withMockCanvas(async ({ mainFillTexts, trailClearRects }) => {
+      const container = document.createElement("div");
+      document.body.append(container);
+      const root = createRoot(container);
+      mountedRoots.push({ container, root });
+
+      await act(async () => {
+        root.render(React.createElement(AnniversaryGiftCanvas, { onExit() {} }));
+      });
+
+      const timerCalls = () => mainFillTexts.filter((call) => /t \d{2}\.\d{2}s$/.test(call.text));
+      assert.equal(timerCalls().at(-1)?.text, "● t 00.00s");
+      assert.equal(rafQueue.size, 1);
+
+      let ms = 100;
+      let steps = 0;
+      await act(async () => {
+        while (rafQueue.size > 0 && steps < 600) {
+          const entries = [...rafQueue.entries()];
+          rafQueue.clear();
+          for (const [, cb] of entries) {
+            cb(ms);
+          }
+          ms += 100;
+          steps += 1;
+        }
+      });
+
+      assert.ok(steps < 600, "expected animation loop to stop at LOOP without looping");
+      assert.equal(rafQueue.size, 0, "no further requestAnimationFrame ticks should be scheduled after LOOP");
+      assert.equal(timerCalls().at(-1)?.text, "● t 29.00s");
+      assert.equal(trailClearRects.length, 0, "trail canvas must not be cleared when reaching LOOP");
+
+      const pauseButton = [...container.querySelectorAll("button")].find(
+        (btn) => btn.textContent.trim() === "II PAUSE",
+      );
+      const replayButton = [...container.querySelectorAll("button")].find(
+        (btn) => btn.textContent.trim() === "↻ REPLAY",
+      );
+      assert.ok(pauseButton);
+      assert.ok(replayButton);
+      assert.equal(pauseButton.disabled, true);
+      assert.equal(replayButton.disabled, false);
+
+      // Space key and clicking disabled pause button remain a no-op once ended.
+      await act(async () => {
+        browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: " ", bubbles: true }));
+      });
+      assert.equal(pauseButton.textContent.trim(), "II PAUSE");
+      assert.equal(pauseButton.disabled, true);
+
+      // Clicking REPLAY resets to 00.00s, clears trail canvas, re-enables pause, and restarts rAF loop.
+      await act(async () => {
+        replayButton.dispatchEvent(new browserWindow.MouseEvent("click", { bubbles: true }));
+      });
+
+      assert.equal(timerCalls().at(-1)?.text, "● t 00.00s");
+      assert.equal(trailClearRects.length, 1, "REPLAY should clear the trail canvas once");
+      assert.equal(pauseButton.disabled, false);
+      assert.equal(pauseButton.textContent.trim(), "II PAUSE");
+      assert.equal(rafQueue.size, 1, "REPLAY should restart the requestAnimationFrame loop");
+
+      // Advancing two ticks after REPLAY progresses time forward from 00.00s.
+      await act(async () => {
+        for (let i = 0; i < 2; i += 1) {
+          const entries = [...rafQueue.entries()];
+          rafQueue.clear();
+          for (const [, cb] of entries) {
+            cb(ms);
+          }
+          ms += 100;
+        }
+      });
+
+      assert.match(timerCalls().at(-1)?.text, /t 00\.0[1-9]s$/);
+      assert.equal(rafQueue.size, 1);
+    });
   } finally {
-    browserWindow.HTMLCanvasElement.prototype.getContext = originalGetContext;
-    if (originalPath2D === undefined) {
-      delete globalThis.Path2D;
-    } else {
-      globalThis.Path2D = originalPath2D;
-    }
+    globalThis.requestAnimationFrame = originalRaf;
+    globalThis.cancelAnimationFrame = originalCancelRaf;
   }
 });
