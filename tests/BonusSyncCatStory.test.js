@@ -92,7 +92,7 @@ async function withMockCatCanvas(run) {
   const toDataUrlCalls = [];
 
   browserWindow.HTMLCanvasElement.prototype.getContext = function getContext() {
-    const isMain = this.className === "terminal-cat-canvas";
+    const isMain = this.className === "terminal-ascii-canvas";
     return {
       fillStyle: "",
       font: "",
@@ -841,51 +841,58 @@ test("TerminalContent with immediate: true enters CatStoryCanvas immediately und
       );
     });
 
-    // Immediate launch skips typing delay and renders .terminal-cat-stage right away.
+    // Immediate launch skips typing delay and renders unified .terminal-ascii-stage.terminal-cat-stage right away.
     await waitForCondition(
       () => Boolean(container.querySelector(".terminal-cat-stage")) && putImageCalls.length > 0,
       { description: "CatStoryCanvas renders immediately and draws frame 0" },
     );
 
+    const catStage = container.querySelector(".terminal-cat-stage");
+    assert.ok(catStage.classList.contains("terminal-ascii-stage"));
+    assert.ok(catStage.querySelector(".terminal-ascii-viewport > .terminal-ascii-scene > canvas.terminal-ascii-canvas"));
+    assert.equal(catStage.querySelector(".terminal-cat-commandbar"), null);
+    assert.equal(catStage.querySelector(".terminal-cat-progress"), null);
+    assert.equal(catStage.querySelector(".terminal-cat-status"), null);
+    assert.equal(catStage.querySelector(".terminal-cat-scanlines"), null);
+    assert.doesNotMatch(catStage.textContent, /PHOSPHOR|FULL COLOR/i);
+
     assert.equal(audio.paused, false);
     assert.equal(audio.currentTime, 56.90);
-    assert.match(container.textContent, /FRAME 001 \/ 338/);
-    assert.match(container.textContent, /00:00\.00\s+\/\s+00:11\.27/);
+    assert.equal(catStage.getAttribute("data-frame"), "1");
+    assert.equal(catStage.getAttribute("data-status"), "playing");
 
-    // Ensure no Play/Pause/Seek/Replay/Speed buttons exist in Terminal toolbar.
+    // Ensure only unified ↓ PNG and Back to Terminal buttons exist in Terminal toolbar.
     const toolbarButtons = [...container.querySelectorAll(".terminal-ascii-tools button")].map((b) => b.textContent.trim());
-    assert.deepEqual(toolbarButtons, ["◉ PHOSPHOR", "↓ PNG", "Back to Terminal"]);
-
-    // Progress bar is display-only (progressbar, not slider).
-    const progressEl = container.querySelector(".terminal-cat-progress");
-    assert.equal(progressEl?.getAttribute("role"), "progressbar");
+    assert.deepEqual(toolbarButtons, ["↓ PNG", "Back to Terminal"]);
 
     // Advance audio time -> frame updates accordingly.
     await act(async () => {
       controls.advanceTo(56.90 + 1.1);
     });
-    assert.match(container.textContent, /FRAME 034 \/ 338/);
-    assert.match(container.textContent, /00:01\.10\s+\/\s+00:11\.27/);
+    assert.equal(catStage.getAttribute("data-frame"), "34");
+    assert.equal(catStage.getAttribute("data-status"), "playing");
 
     // Pause audio -> stays frozen at exact frame for audio.currentTime.
     await act(async () => {
       audio.pause();
     });
-    assert.match(container.textContent, /FRAME 034 \/ 338/);
+    assert.equal(catStage.getAttribute("data-frame"), "34");
+    assert.equal(catStage.getAttribute("data-status"), "playing");
 
-    // Seek before startTime while paused -> snaps to frame 0.
+    // Seek before startTime while paused -> snaps to frame 1 ("before").
     await act(async () => {
       controls.seekTo(20);
     });
-    assert.match(container.textContent, /FRAME 001 \/ 338/);
+    assert.equal(catStage.getAttribute("data-frame"), "1");
+    assert.equal(catStage.getAttribute("data-status"), "before");
 
-    // Seek past END_TIME -> holds final frame 338/338 without stopping music.
+    // Seek past END_TIME -> holds final frame 338 without stopping music.
     await act(async () => {
       audio.play();
       controls.seekTo(80);
     });
-    assert.match(container.textContent, /FRAME 338 \/ 338/);
-    assert.match(container.textContent, /00:11\.27\s+\/\s+00:11\.27/);
+    assert.equal(catStage.getAttribute("data-frame"), "338");
+    assert.equal(catStage.getAttribute("data-status"), "completed");
     assert.equal(audio.paused, false);
 
     // Playback rate change keeps sync alive.
@@ -893,14 +900,14 @@ test("TerminalContent with immediate: true enters CatStoryCanvas immediately und
       audio.playbackRate = 1.25;
       controls.seekTo(56.90 + 5.0);
     });
-    assert.match(container.textContent, /FRAME 151 \/ 338/);
+    assert.equal(catStage.getAttribute("data-frame"), "151");
+    assert.equal(catStage.getAttribute("data-status"), "playing");
 
-    // Toggle phosphor (D) and save PNG (S).
+    // D key does not activate removed phosphor mode; S saves PNG.
     await act(async () => {
       browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "d", bubbles: true }));
     });
-    assert.ok(container.querySelector(".terminal-cat-stage--phosphor"));
-    assert.match(container.textContent, /◈ FULL COLOR/);
+    assert.equal(container.querySelector(".terminal-cat-stage--phosphor"), null);
 
     await act(async () => {
       browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "s", bubbles: true }));
@@ -1021,31 +1028,49 @@ test("renderAppContent forwards payload to MusicContent and Terminal SCSS compil
   );
 
   const terminalCss = sass.compile(`${projectRoot}src/styles/components/Terminal/Terminal.scss`).css;
-  const catStageRule = terminalCss.match(/\.terminal-cat-stage\s*\{[^}]*\}/)?.[0] ?? "";
-  const catShellRule = terminalCss.match(/\.terminal-cat-shell\s*\{[^}]*\}/)?.[0] ?? "";
-  const catScreenRule = terminalCss.match(/\.terminal-cat-screen\s*\{[^}]*\}/)?.[0] ?? "";
-  const catCanvasRule = terminalCss.match(/\.terminal-cat-canvas\s*\{[^}]*\}/)?.[0] ?? "";
+  const asciiStageRule = terminalCss.match(/\.terminal-ascii-stage\s*\{[^}]*\}/)?.[0] ?? "";
+  const asciiToolsRule = terminalCss.match(/\.terminal-ascii-stage\s*>\s*\.terminal-ascii-tools\s*\{[^}]*\}/)?.[0] ?? "";
+  const asciiViewportRule = terminalCss.match(/\.terminal-ascii-viewport\s*\{[^}]*\}/)?.[0] ?? "";
+  const asciiSceneRule = terminalCss.match(/\.terminal-ascii-scene\s*\{[^}]*\}/)?.[0] ?? "";
+  const asciiCanvasRule = terminalCss.match(/\.terminal-ascii-canvas\s*\{[^}]*\}/)?.[0] ?? "";
+  const catLoadingRule = terminalCss.match(/\.terminal-cat-loading\s*\{[^}]*\}/)?.[0] ?? "";
+  const catPrimaryBtnRule = terminalCss.match(/\.terminal-cat-btn--primary\s*\{[^}]*\}/)?.[0] ?? "";
 
-  assert.match(catStageRule, /width:\s*100%/);
-  assert.match(catStageRule, /height:\s*100%/);
-  assert.match(catStageRule, /padding:\s*0/);
-  assert.doesNotMatch(catStageRule, /1080px/);
+  assert.match(asciiStageRule, /width:\s*100%/);
+  assert.match(asciiStageRule, /height:\s*100%/);
+  assert.match(asciiStageRule, /padding:\s*0/);
+  assert.match(asciiStageRule, /background:\s*#030204/i);
 
-  assert.match(catShellRule, /flex:\s*1/);
-  assert.match(catShellRule, /width:\s*100%/);
-  assert.doesNotMatch(catShellRule, /1080px|border:|border-radius:|box-shadow:/);
+  assert.match(asciiToolsRule, /padding:\s*8px 24px 8px 12px/);
 
-  assert.match(catScreenRule, /flex:\s*1/);
-  assert.match(catScreenRule, /width:\s*100%/);
-  assert.match(catScreenRule, /background:\s*#05080d/i);
-  assert.doesNotMatch(catScreenRule, /aspect-ratio:\s*964\s*\/\s*720/);
+  assert.match(asciiViewportRule, /flex:\s*1/);
+  assert.match(asciiViewportRule, /background:\s*#030204/i);
 
-  assert.match(catCanvasRule, /width:\s*100%/);
-  assert.match(catCanvasRule, /height:\s*100%/);
-  assert.match(catCanvasRule, /object-fit:\s*contain/);
-  assert.match(catCanvasRule, /background:\s*transparent/);
+  assert.match(asciiSceneRule, /width:\s*100%/);
+  assert.match(asciiSceneRule, /height:\s*100%/);
+  assert.match(asciiSceneRule, /background:\s*#030204/i);
 
-  assert.match(terminalCss, /\.terminal-cat-stage--phosphor[^}]*background:\s*#050e09/i);
+  assert.match(asciiCanvasRule, /width:\s*100%/);
+  assert.match(asciiCanvasRule, /height:\s*100%/);
+  assert.match(asciiCanvasRule, /object-fit:\s*contain/);
+  assert.match(asciiCanvasRule, /background:\s*#030204/i);
+
+  assert.match(catLoadingRule, /background:\s*#030204/i);
+  assert.match(catPrimaryBtnRule, /background:\s*#662748/i);
+
+  for (const obsoleteSelector of [
+    /\.terminal-cat-shell/,
+    /\.terminal-cat-screen/,
+    /\.terminal-cat-canvas/,
+    /\.terminal-cat-scanlines/,
+    /\.terminal-cat-commandbar/,
+    /\.terminal-cat-progress/,
+    /\.terminal-cat-footer/,
+    /\.terminal-cat-status/,
+    /\.terminal-cat-stage--phosphor/,
+  ]) {
+    assert.doesNotMatch(terminalCss, obsoleteSelector);
+  }
 });
 
 test("MusicContent sets volume to 0.4, unmutes, and starts at 0 on bonus-play-from-start despite saved localStorage state", async () => {
@@ -1222,8 +1247,8 @@ async function withMockUnifiedCanvases(run) {
 
   globalThis.Path2D = MockPath2D;
   browserWindow.HTMLCanvasElement.prototype.getContext = function getContext() {
-    const isGift = this.className === "terminal-ascii-canvas";
-    const isCat = this.className === "terminal-cat-canvas";
+    const isCat = this.className === "terminal-ascii-canvas" && Boolean(this.closest?.(".terminal-cat-stage"));
+    const isGift = this.className === "terminal-ascii-canvas" && !isCat;
     let isTrailCanvas = false;
     if (!isGift && !isCat && this.width === 1080 && this.height === 960) {
       offscreen1080Count += 1;
@@ -1407,13 +1432,21 @@ test("Unified Terminal + Music switches seamlessly Gift Box -> Chorus 1 Cat Stor
         { description: "CatStoryCanvas activates at Chorus 1 (56.90s)" },
       );
       assert.equal(container.querySelector(".terminal-ascii-slot")?.style.display, "none");
-      assert.match(container.textContent, /FRAME 001 \/ 338/);
+      const catStage1 = container.querySelector(".terminal-cat-stage");
+      assert.ok(catStage1.classList.contains("terminal-ascii-stage"));
+      assert.ok(catStage1.querySelector(".terminal-ascii-viewport > .terminal-ascii-scene > canvas.terminal-ascii-canvas"));
+      assert.equal(catStage1.querySelector(".terminal-cat-commandbar"), null);
+      assert.equal(catStage1.querySelector(".terminal-cat-progress"), null);
+      assert.equal(catStage1.querySelector(".terminal-cat-status"), null);
+      assert.doesNotMatch(catStage1.textContent, /PHOSPHOR|FULL COLOR/i);
+      assert.equal(catStage1.getAttribute("data-frame"), "1");
+      assert.equal(catStage1.getAttribute("data-status"), "playing");
 
       await act(async () => {
         controls.advanceTo(56.90 + 1.1);
       });
-      assert.match(container.textContent, /FRAME 034 \/ 338/);
-      assert.match(container.textContent, /00:01\.10\s+\/\s+00:11\.27/);
+      assert.equal(catStage1.getAttribute("data-frame"), "34");
+      assert.equal(catStage1.getAttribute("data-status"), "playing");
 
       // Exit Chorus 1 (01:08.17) -> CatStoryCanvas unmounts, Gift Box returns already open & bloomed.
       await act(async () => {
@@ -1433,13 +1466,15 @@ test("Unified Terminal + Music switches seamlessly Gift Box -> Chorus 1 Cat Stor
         () => Boolean(container.querySelector(".terminal-cat-stage")),
         { description: "CatStoryCanvas activates at Chorus 2 (132.68s)" },
       );
-      assert.match(container.textContent, /FRAME 001 \/ 338/);
+      const catStage2 = container.querySelector(".terminal-cat-stage");
+      assert.equal(catStage2.getAttribute("data-frame"), "1");
+      assert.equal(catStage2.getAttribute("data-status"), "playing");
 
       await act(async () => {
         controls.advanceTo(132.68 + 1.1);
       });
-      assert.match(container.textContent, /FRAME 034 \/ 338/);
-      assert.match(container.textContent, /00:01\.10\s+\/\s+00:11\.27/);
+      assert.equal(catStage2.getAttribute("data-frame"), "34");
+      assert.equal(catStage2.getAttribute("data-status"), "playing");
 
       // Exit Chorus 2 (02:23.95) -> returns to Gift Box again.
       await act(async () => {

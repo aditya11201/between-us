@@ -219,7 +219,7 @@
   overflow: hidden;
 
   > .terminal-ascii-tools {
-    padding: 8px 12px;
+    padding: 8px 24px 8px 12px;
   }
 }
 
@@ -285,79 +285,6 @@
   }
 }
 
-/* =========================================================
-   CAT STORY SYNCED STAGE (964x720)
-========================================================= */
-
-.terminal-cat-stage {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  gap: 0;
-  background: #05080d;
-  font-family: Consolas, Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
-}
-
-.terminal-cat-shell {
-  flex: 1;
-  width: 100%;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #05080d;
-  overflow: hidden;
-}
-
-.terminal-cat-screen {
-  flex: 1;
-  width: 100%;
-  min-width: 0;
-  min-height: 0;
-  position: relative;
-  background: #05080d;
-  overflow: hidden;
-
-  &::before {
-    pointer-events: none;
-    position: absolute;
-    inset: 0;
-    z-index: 3;
-    content: "";
-    box-shadow: inset 0 0 52px rgba(3, 4, 7, 0.73), inset 0 0 4px rgba(250, 144, 176, 0.11);
-  }
-
-  &::after {
-    pointer-events: none;
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    content: "";
-    background: radial-gradient(ellipse at center, transparent 52%, rgba(0, 0, 0, 0.125) 100%);
-  }
-}
-
-.terminal-cat-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: transparent;
-}
-
-.terminal-cat-scanlines {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  opacity: 0.19;
-  background: repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, #000 4px, #000 5px);
-  mix-blend-mode: multiply;
-}
-
 .terminal-cat-loading {
   position: absolute;
   inset: 0;
@@ -367,153 +294,21 @@
   padding: 20px;
   text-align: center;
   letter-spacing: 0.12em;
-  font-size: 12px;
+  font: 12px/1.4 "SF Mono", Consolas, Menlo, monospace;
   color: #e99fc7;
-  background: #05080d;
-}
-
-.terminal-cat-commandbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  height: 32px;
-  flex-shrink: 0;
-  padding: 0 14px;
-  overflow: hidden;
-  white-space: nowrap;
-  border-top: 1px solid #272b38;
-  border-bottom: 1px solid #272334;
-  background: #090d14;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-}
-
-.terminal-cat-user {
-  color: #8bf7c1;
-}
-
-.terminal-cat-path {
-  color: #86b6e3;
-}
-
-.terminal-cat-command {
-  color: #dfd0df;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.terminal-cat-cursor {
-  display: inline-block;
-  width: 7px;
-  height: 13px;
-  background: #e4a5cf;
-  box-shadow: 0 0 7px rgba(255, 118, 182, 0.6);
-  animation: terminal-cat-blink 1s steps(1) infinite;
-}
-
-@keyframes terminal-cat-blink {
-  50% { opacity: 0; }
-}
-
-.terminal-cat-progress {
-  position: relative;
-  width: 100%;
-  height: 4px;
-  background: #201824;
-  flex-shrink: 0;
-
-  > span {
-    display: block;
-    height: 100%;
-    width: 0;
-    background: linear-gradient(90deg, #87d4ed, #df71c0, #ffb38e);
-    box-shadow: 0 0 10px #ff8dc6;
-  }
-}
-
-.terminal-cat-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  flex-shrink: 0;
-  padding: 6px 12px;
-  background: #05080d;
-}
-
-.terminal-cat-status {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 3px;
-  min-width: 0;
-  font-size: 10px;
-  color: #d0a9c6;
-  white-space: nowrap;
-
-  strong {
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    color: #e6b7d6;
-  }
-
-  small {
-    font-size: 9px;
-    color: #8e92a6;
-  }
+  background: #030204;
 }
 
 .terminal-cat-btn--primary {
   border-color: #e97db1;
   color: #fff4fa;
   background: #662748;
-}
 
-.terminal-cat-stage--phosphor {
-  background: #050e09;
-
-  .terminal-cat-shell,
-  .terminal-cat-screen,
-  .terminal-cat-loading,
-  .terminal-cat-footer {
-    background: #050e09;
-  }
-
-  .terminal-cat-commandbar {
-    background: #06110c;
-  }
-
-  .terminal-cat-cursor {
-    background: #81fda7;
-  }
-
-  .terminal-cat-progress > span {
-    background: linear-gradient(90deg, #1c8650, #8ef8b6);
-    box-shadow: 0 0 10px #6beaab;
-  }
-
-  .terminal-cat-status strong {
-    color: #8afaaf;
-  }
-
-  .terminal-ascii-btn {
-    background: #14291f;
-    color: #d1ffe3;
-    border-color: #386a51;
-
-    &:hover,
-    &:focus-visible {
-      background: #224634;
-      border-color: #80e6a1;
-      outline-color: #80e6a1;
-    }
-  }
-
-  .terminal-cat-btn--primary {
-    background: #246847;
-    border-color: #80e6a1;
+  &:hover,
+  &:focus-visible {
+    border-color: #f5b7e1;
+    background: #7d3158;
+    color: #fff;
   }
 }
 
@@ -521,9 +316,5 @@
   .terminal-ascii-btn,
   .terminal-btn {
     transition: none;
-  }
-
-  .terminal-cat-cursor {
-    animation: none;
   }
 }

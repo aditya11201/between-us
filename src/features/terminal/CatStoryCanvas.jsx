@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useMusicPlayer } from "@/features/music/MusicContent.jsx";
 import {
   BONUS_BASE_START_TIME,
-  BONUS_DURATION,
-  BONUS_FPS,
   BONUS_FRAME_COUNT,
   BONUS_SONG_ID,
   resolveCatStoryFrame,
@@ -23,7 +21,7 @@ const CH = 6;
 const COLS = 241;
 const ROWS = 120;
 const CELLS = COLS * ROWS;
-const DARK_BG_U32 = 0xff0d0805;
+const DARK_BG_U32 = 0xff040203;
 
 const GLYPHS = [" ", ".", ":", "-", "|", "/", "\\", "+", "x", "o", "0", "8", "B", "#", "@", "%"];
 const PALETTE = [
@@ -73,7 +71,7 @@ export async function decodeCatStoryFrames() {
   return cachedRawFramesPromise;
 }
 
-function makeTiles(dark) {
+function makeTiles() {
   const scale = 4;
   const w = CW * scale;
   const h = CH * scale;
@@ -106,7 +104,7 @@ function makeTiles(dark) {
     return opacity;
   });
 
-  const bg = dark ? [5, 8, 13] : [5, 14, 9];
+  const bg = [3, 2, 4];
   const output = new Array(256);
   for (let code = 1; code < 256; code++) {
     const glyph = code & 15;
@@ -114,27 +112,15 @@ function makeTiles(dark) {
     const colorId = code >> 4;
     const base = PALETTE[colorId] || PALETTE[0];
     let c;
-    if (dark) {
-      if (colorId <= 6) {
-        const brightness = [250, 239, 219, 193, 162, 125, 94][colorId];
-        c = [brightness, Math.round(brightness * 0.87), Math.min(255, brightness + 6)];
-      } else if (colorId === 7) {
-        c = [253, 129, 166];
-      } else if (colorId === 8) {
-        c = [255, 86, 174];
-      } else {
-        c = base;
-      }
+    if (colorId <= 6) {
+      const brightness = [250, 239, 219, 193, 162, 125, 94][colorId];
+      c = [brightness, Math.round(brightness * 0.87), Math.min(255, brightness + 6)];
+    } else if (colorId === 7) {
+      c = [253, 129, 166];
+    } else if (colorId === 8) {
+      c = [255, 86, 174];
     } else {
-      const luminosity =
-        colorId <= 6
-          ? [249, 231, 208, 176, 144, 118, 84][colorId]
-          : 0.21 * base[0] + 0.72 * base[1] + 0.07 * base[2];
-      c = [
-        Math.round(luminosity * 0.4),
-        Math.min(255, Math.round(luminosity * 1.02)),
-        Math.round(luminosity * 0.61),
-      ];
+      c = base;
     }
     const tile = new Uint32Array(CW * CH);
     const mask = masks[glyph];
@@ -148,10 +134,6 @@ function makeTiles(dark) {
     output[code] = tile;
   }
   return output;
-}
-
-function formatSeconds(sec) {
-  return `00:${sec.toFixed(2).padStart(5, "0")}`;
 }
 
 export function CatStoryCanvas({
@@ -176,10 +158,6 @@ export function CatStoryCanvas({
   const onExitRef = useRef(onExit);
   onExitRef.current = onExit;
 
-  const [dark, setDark] = useState(true);
-  const darkRef = useRef(dark);
-  darkRef.current = dark;
-
   const [ready, setReady] = useState(false);
   const [decodeError, setDecodeError] = useState(null);
   const [expectedToPlay, setExpectedToPlay] = useState(false);
@@ -198,8 +176,7 @@ export function CatStoryCanvas({
     if (!raw || !tiles || !surface) return;
 
     const { ctx, pixels, buf } = surface;
-    const bg = darkRef.current ? DARK_BG_U32 : pack(5, 14, 9);
-    buf.fill(bg);
+    buf.fill(DARK_BG_U32);
     const start = index * CELLS;
     let off = start;
     for (let row = 0; row < ROWS; row++) {
@@ -231,10 +208,6 @@ export function CatStoryCanvas({
     a.href = canvas.toDataURL("image/png");
     a.download = `ascii-cat-story-${lastHudRef.current.elapsed.toFixed(2).replace(".", "-")}s.png`;
     a.click();
-  }, []);
-
-  const toggleTheme = useCallback(() => {
-    setDark((prev) => !prev);
   }, []);
 
   // Decode gzip ASCII payload once and sync directly to live Music audio (or handshake fallback).
@@ -278,7 +251,7 @@ export function CatStoryCanvas({
         if (cancelled) return;
         rawRef.current = raw;
         if (!tilesRef.current) {
-          tilesRef.current = makeTiles(darkRef.current);
+          tilesRef.current = makeTiles();
         }
         setReady(true);
         if (runId !== null && runId !== undefined) {
@@ -296,14 +269,7 @@ export function CatStoryCanvas({
     };
   }, [runId, songId]);
 
-  // Rebuild glyph tiles when toggling Full Color / Phosphor mode.
-  useEffect(() => {
-    if (!ready) return;
-    tilesRef.current = makeTiles(dark);
-    drawFrame(lastHudRef.current.frameIndex);
-  }, [dark, ready, drawFrame]);
-
-  // Keyboard shortcuts: D (theme), S (PNG), Escape (Back to Terminal).
+  // Keyboard shortcuts: S (PNG), Escape (Back to Terminal).
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -315,18 +281,14 @@ export function CatStoryCanvas({
       }
       const tagName = document.activeElement?.tagName;
       if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") return;
-      const key = e.key.toLowerCase();
-      if (key === "d") {
-        e.preventDefault();
-        toggleTheme();
-      } else if (key === "s") {
+      if (e.key.toLowerCase() === "s") {
         e.preventDefault();
         handleSave();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleTheme, handleSave]);
+  }, [handleSave]);
 
   // Audio-driven single source of truth frame synchronization.
   useEffect(() => {
@@ -440,94 +402,60 @@ export function CatStoryCanvas({
     ready
       && (playbackError || (expectedToPlay && !hasPlayedSinceStart && (!audio || audio.paused))),
   );
-  const progressPct = ((hud.frameIndex + 1) / BONUS_FRAME_COUNT) * 100;
-  const progressValueNow = Math.round((hud.frameIndex * 100) / (BONUS_FRAME_COUNT - 1));
 
   return (
     <div
-      className={`terminal-ascii-stage terminal-cat-stage${dark ? "" : " terminal-cat-stage--phosphor"}`}
+      className="terminal-ascii-stage terminal-cat-stage"
       aria-label="Cat Story ASCII synced stage"
+      data-frame={hud.frameIndex + 1}
+      data-status={hud.status}
     >
-      <div className="terminal-cat-shell">
-        <div className="terminal-cat-screen">
+      <div className="terminal-ascii-viewport">
+        <div className="terminal-ascii-scene">
           <canvas
             ref={canvasRef}
             width={W}
             height={H}
-            className="terminal-cat-canvas"
+            className="terminal-ascii-canvas"
             role="img"
             aria-label="Animated ASCII Cat Story synchronized with Love Me Not"
           />
-          <div className="terminal-cat-scanlines" aria-hidden="true" />
-          {!ready && (
-            <div className="terminal-cat-loading" role="status">
-              {decodeError
-                ? `Failed to load animation: ${decodeError}`
-                : "[ INIT ] DECODING ASCII FRAMES ..."}
-            </div>
-          )}
         </div>
-
-        <div className="terminal-cat-commandbar">
-          <span className="terminal-cat-user">user11201</span>
-          <span className="terminal-cat-path">@between-us:~/memories$</span>
-          <span className="terminal-cat-command">./cat-story --sync=love-me-not</span>
-          <span className="terminal-cat-cursor" aria-hidden="true" />
-        </div>
-
-        <div
-          className="terminal-cat-progress"
-          role="progressbar"
-          aria-label="Cat Story playback progress"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={progressValueNow}
-        >
-          <span style={{ width: `${progressPct}%` }} />
-        </div>
+        {!ready && (
+          <div className="terminal-cat-loading" role="status">
+            {decodeError
+              ? `Failed to load animation: ${decodeError}`
+              : "[ INIT ] DECODING ASCII FRAMES ..."}
+          </div>
+        )}
       </div>
-
-      <footer className="terminal-cat-footer">
-        <div className="terminal-cat-status">
-          <strong>{`${formatSeconds(hud.elapsed)}  /  ${formatSeconds(BONUS_DURATION)}`}</strong>
-          <small>{`FRAME ${String(hud.frameIndex + 1).padStart(3, "0")} / ${BONUS_FRAME_COUNT}  •  ${BONUS_FPS} FPS`}</small>
-        </div>
-        <div className="terminal-ascii-tools" role="toolbar" aria-label="Cat Story visual controls">
-          {showPlayFallback && (
-            <button
-              type="button"
-              className="terminal-ascii-btn terminal-cat-btn--primary"
-              onClick={() => resumePlayback?.()}
-            >
-              ▶ Play Audio
-            </button>
-          )}
+      <div className="terminal-ascii-tools" role="toolbar" aria-label="Cat Story visual controls">
+        {showPlayFallback && (
           <button
             type="button"
-            className="terminal-ascii-btn"
-            onClick={toggleTheme}
-            title="D"
+            className="terminal-ascii-btn terminal-cat-btn--primary"
+            onClick={() => resumePlayback?.()}
           >
-            {dark ? "◉ PHOSPHOR" : "◈ FULL COLOR"}
+            ▶ Play Audio
           </button>
-          <button
-            type="button"
-            className="terminal-ascii-btn"
-            onClick={handleSave}
-            title="S"
-          >
-            ↓ PNG
-          </button>
-          <button
-            type="button"
-            className="terminal-ascii-btn terminal-ascii-btn--exit"
-            onClick={() => onExit?.()}
-            title="Escape"
-          >
-            Back to Terminal
-          </button>
-        </div>
-      </footer>
+        )}
+        <button
+          type="button"
+          className="terminal-ascii-btn"
+          onClick={handleSave}
+          title="S"
+        >
+          ↓ PNG
+        </button>
+        <button
+          type="button"
+          className="terminal-ascii-btn terminal-ascii-btn--exit"
+          onClick={() => onExit?.()}
+          title="Escape"
+        >
+          Back to Terminal
+        </button>
+      </div>
     </div>
   );
 }
