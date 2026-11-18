@@ -1990,7 +1990,7 @@ test("decodeCatStoryFrames strips left/right vertical border bars while preservi
   assert.ok(countCol(175, 238) > 0);
 });
 
-test("CatStoryCanvas expands canvas.width dynamically via ResizeObserver and resize while preserving height=720 and PNG export", async () => {
+test("CatStoryCanvas fits wide and portrait viewports dynamically via ResizeObserver and resize while preserving PNG export", async () => {
   const originalResizeObserver = globalThis.ResizeObserver;
   const observerRecords = [];
 
@@ -2069,7 +2069,8 @@ test("CatStoryCanvas expands canvas.width dynamically via ResizeObserver and res
         [...container.querySelectorAll(".terminal-ascii-tools button")].map((b) => b.textContent.trim()),
         ["↓ PNG", "Back to Terminal"],
       );
-      assert.equal(canvas.width, 964);
+      // Default/fallback size on 0x0 viewport: SRC_COLS (239) * 4 = 956, BASE_ROWS (120) * 6 = 720.
+      assert.equal(canvas.width, 956);
       assert.equal(canvas.height, 720);
       assert.equal(observerRecords.length, 1);
       assert.deepEqual(observerRecords[0].observed, [viewport]);
@@ -2081,47 +2082,68 @@ test("CatStoryCanvas expands canvas.width dynamically via ResizeObserver and res
         });
       };
 
-      // Wide 2:1 viewport -> targetCols = 360 -> width = 1440, height = 720.
-      await triggerResize(1600, 800);
+      // Wide 2:1 viewport (1440x720) expands canvas.width = 1440, canvas.height = 720 (width/height === 2.0).
+      await triggerResize(1440, 720);
       assert.equal(canvas.width, 1440);
       assert.equal(canvas.height, 720);
+      assert.equal(canvas.width / canvas.height, 2.0);
       assert.equal(putImageCalls.at(-1)?.width, 1440);
       assert.equal(putImageCalls.at(-1)?.height, 720);
 
-      // Frame advances (triggering React HUD re-render) while keeping widened canvas width intact.
+      // Frame advances (triggering React HUD re-render) while keeping widened canvas dimensions intact.
       const callsBeforeAdvance = putImageCalls.length;
       await act(async () => {
         controls.advanceTo(56.90 + 1.1);
       });
       assert.equal(container.querySelector(".terminal-cat-stage")?.getAttribute("data-frame"), "34");
       assert.equal(canvas.width, 1440);
+      assert.equal(canvas.height, 720);
       assert.ok(putImageCalls.length > callsBeforeAdvance);
       assert.equal(putImageCalls.at(-1)?.width, 1440);
 
-      // Zero-sized viewport (0x0) preserves current width cleanly.
+      // Zero-sized viewport (0x0) preserves current dimensions cleanly.
       await triggerResize(0, 0);
       assert.equal(canvas.width, 1440);
       assert.equal(canvas.height, 720);
 
-      // Ultra-wide viewport clamps at MAX_COLS = 440 -> width = 1760.
+      // Full-HD wide viewport (1920x1000) scales smoothly keeping exact viewport aspect ratio.
+      await triggerResize(1920, 1000);
+      assert.equal(canvas.width, 1920);
+      assert.equal(canvas.height, 1000);
+      assert.ok(Math.abs(canvas.width / canvas.height - 1920 / 1000) < 1e-6);
+      assert.equal(putImageCalls.at(-1)?.width, 1920);
+      assert.equal(putImageCalls.at(-1)?.height, 1000);
+
+      // Ultra-wide viewport clamps cleanly at max width 2400 while maintaining aspect or BASE_H floor.
+      await triggerResize(3000, 1200);
+      assert.equal(canvas.width, 2400);
+      assert.equal(canvas.height, 960);
+      assert.equal(putImageCalls.at(-1)?.width, 2400);
+      assert.equal(putImageCalls.at(-1)?.height, 960);
+
       await triggerResize(3000, 800);
-      assert.equal(canvas.width, 1760);
+      assert.equal(canvas.width, 2400);
       assert.equal(canvas.height, 720);
-      assert.equal(putImageCalls.at(-1)?.width, 1760);
+      assert.equal(putImageCalls.at(-1)?.width, 2400);
+      assert.equal(putImageCalls.at(-1)?.height, 720);
 
-      // Narrower than 4:3 viewport clamps cleanly at BASE_COLS = 241 -> width = 964.
-      await triggerResize(600, 800);
-      assert.equal(canvas.width, 964);
-      assert.equal(canvas.height, 720);
+      // Tall/portrait viewport (390x600) preserves canvas.width = 956 and expands canvas.height (~1471).
+      await triggerResize(390, 600);
+      assert.equal(canvas.width, 956);
+      assert.equal(canvas.height, 1471);
+      assert.ok(Math.abs(canvas.width / canvas.height - 390 / 600) < 0.002);
+      assert.equal(putImageCalls.at(-1)?.width, 956);
+      assert.equal(putImageCalls.at(-1)?.height, 1471);
 
-      // Window resize fallback also updates canvas.width.
-      viewport.getBoundingClientRect = () => ({ width: 1600, height: 800 });
+      // Window resize fallback also updates dynamic canvas dimensions.
+      viewport.getBoundingClientRect = () => ({ width: 1440, height: 720 });
       await act(async () => {
         browserWindow.dispatchEvent(new browserWindow.Event("resize"));
       });
       assert.equal(canvas.width, 1440);
+      assert.equal(canvas.height, 720);
 
-      // PNG export continues working cleanly at widened canvas dimensions.
+      // PNG export continues working cleanly at dynamic canvas dimensions.
       const saveBtn = [...container.querySelectorAll(".terminal-ascii-tools button")].find(
         (b) => b.textContent.trim() === "↓ PNG",
       );
@@ -2142,7 +2164,7 @@ test("CatStoryCanvas expands canvas.width dynamically via ResizeObserver and res
   }
 });
 
-test("CatStoryCanvas renders seamless low-luminance starfield, preserves interior edge lyrics, feathers edge art, and honors reduced motion", async () => {
+test("CatStoryCanvas renders edge-to-edge interior columns without horizontal vignette, supports portrait vertical feathering, and honors reduced motion", async () => {
   const originalGetContext = browserWindow.HTMLCanvasElement.prototype.getContext;
   const originalMatchMedia = browserWindow.matchMedia;
   const originalResizeObserver = globalThis.ResizeObserver;
@@ -2253,41 +2275,45 @@ test("CatStoryCanvas renders seamless low-luminance starfield, preserves interio
     );
 
     const viewport = container.querySelector(".terminal-ascii-viewport");
-    viewport.getBoundingClientRect = () => ({ width: 1600, height: 800 });
-    await act(async () => {
-      observerRecords[0].callback([{ target: viewport, contentRect: { width: 1600, height: 800 } }]);
-    });
+    const triggerResize = async (width, height) => {
+      viewport.getBoundingClientRect = () => ({ width, height });
+      await act(async () => {
+        observerRecords[0].callback([{ target: viewport, contentRect: { width, height } }]);
+      });
+    };
 
-    const pixelAtCell = (frame, row, col) => {
-      const idx = ((row * 6 + 2) * frame.width + (col * 4 + 2)) * 4;
+    const pixelAtCell = (frame, row, col, totalRows = 120) => {
+      const x0 = Math.round((col * frame.width) / 239);
+      const x1 = Math.round(((col + 1) * frame.width) / 239);
+      const y0 = Math.round((row * frame.height) / totalRows);
+      const y1 = Math.round(((row + 1) * frame.height) / totalRows);
+      const px = Math.floor((x0 + x1) / 2);
+      const py = Math.floor((y0 + y1) / 2);
+      const idx = (py * frame.width + px) * 4;
       return [frame.data[idx], frame.data[idx + 1], frame.data[idx + 2]];
     };
     const isDarkBg = ([r, g, b]) => r === 3 && g === 2 && b === 4;
     const maxChan = ([r, g, b]) => Math.max(r, g, b);
-
-    // Frame 0 at wide 360 cols (padLeft = 59): ambient stars exist across left margin, empty inner sky, and right margin at <=25% luminance.
-    const wideF0 = capturedFrames.at(-1);
-    assert.equal(wideF0.width, 1440);
-    const padLeft = Math.floor((360 - 241) / 2);
-
-    const collectStars = (colStart, colEnd, rowEnd = 120) => {
+    const collectStars = (frame, totalRows, rowStart, rowEnd) => {
       const found = [];
-      for (let r = 0; r < rowEnd; r += 1) {
-        for (let c = colStart; c < colEnd; c += 1) {
-          const rgb = pixelAtCell(wideF0, r, c);
+      for (let r = rowStart; r < rowEnd; r += 1) {
+        for (let c = 0; c < 239; c += 1) {
+          const rgb = pixelAtCell(frame, r, c, totalRows);
           if (!isDarkBg(rgb)) found.push({ r, c, rgb });
         }
       }
       return found;
     };
 
-    const leftMarginStars = collectStars(0, padLeft);
-    const innerTopStars = collectStars(padLeft, padLeft + 241, 12);
-    const rightMarginStars = collectStars(padLeft + 241, 360);
-    assert.ok(leftMarginStars.length > 10);
-    assert.ok(innerTopStars.length > 5);
-    assert.ok(rightMarginStars.length > 10);
-    for (const star of [...leftMarginStars, ...innerTopStars, ...rightMarginStars]) {
+    // Wide 2:1 viewport (1440x720): full edge-to-edge 239-column rendering with dim ambient stars.
+    await triggerResize(1440, 720);
+    const wideF0 = capturedFrames.at(-1);
+    assert.equal(wideF0.width, 1440);
+    assert.equal(wideF0.height, 720);
+
+    const wideTopStars = collectStars(wideF0, 120, 0, 12);
+    assert.ok(wideTopStars.length > 5);
+    for (const star of wideTopStars) {
       assert.ok(maxChan(star.rgb) <= 68, `star luminance should stay dim (<=68), got ${star.rgb}`);
     }
 
@@ -2296,35 +2322,78 @@ test("CatStoryCanvas renders seamless low-luminance starfield, preserves interio
       controls.seekTo(56.90 + 102 / 30);
     });
     const f102 = capturedFrames.at(-1);
-    assert.ok(maxChan(pixelAtCell(f102, 50, padLeft + 235)) >= 180, "frame 102 letter D near edge should remain unclipped");
+    assert.ok(maxChan(pixelAtCell(f102, 50, 234)) >= 180, "frame 102 letter D near edge should remain unclipped");
 
     await act(async () => {
       controls.seekTo(56.90 + 175 / 30);
     });
     const f175 = capturedFrames.at(-1);
-    assert.ok(maxChan(pixelAtCell(f175, 38, padLeft + 238)) >= 180, "frame 175 edge lettering should remain unclipped");
+    assert.ok(maxChan(pixelAtCell(f175, 38, 237)) >= 180, "frame 175 edge lettering should remain unclipped");
 
-    // Frame 155 clears col 0 border and gently feathers edge swirl artwork (col 1 dimmer than col 6).
+    // Frame 155 omits col 0/240 border bars and renders interior swirls edge-to-edge without horizontal fade.
     await act(async () => {
       controls.seekTo(56.90 + 155 / 30);
     });
     const f155 = capturedFrames.at(-1);
-    for (let r = 0; r < 120; r += 1) {
-      assert.ok(maxChan(pixelAtCell(f155, r, padLeft + 0)) <= 68, `frame 155 col 0 row ${r} must not render border bar`);
-    }
-    assert.ok(
-      maxChan(pixelAtCell(f155, 19, padLeft + 1)) < maxChan(pixelAtCell(f155, 19, padLeft + 6)) * 0.5,
-      "frame 155 edge swirl at col 1 should feather gently compared to interior col 6",
-    );
+    assert.ok(maxChan(pixelAtCell(f155, 19, 0)) >= 180, "frame 155 srcCol 1 should render un-feathered at true left edge col 0");
+    assert.ok(maxChan(pixelAtCell(f155, 10, 238)) >= 180, "frame 155 srcCol 239 should render un-feathered at true right edge col 238");
+    assert.ok(maxChan(pixelAtCell(f155, 0, 7)) >= 180, "frame 155 top row should stay un-feathered when padTop=0");
 
-    // Frame 292 feathers edge burst artwork cleanly without sharp vertical cutoff.
+    // Frame 193 ("HERE") reaches cleanly to true right edge (destCol 238).
+    await act(async () => {
+      controls.seekTo(56.90 + 193 / 30);
+    });
+    const f193 = capturedFrames.at(-1);
+    assert.ok(maxChan(pixelAtCell(f193, 64, 238)) >= 180, "frame 193 right-edge artwork should reach destCol 238 cleanly");
+
+    // Frame 292 ("YOU" cats) reaches both true left and right edges at full brightness without horizontal vignette.
     await act(async () => {
       controls.seekTo(56.90 + 292 / 30);
     });
     const f292 = capturedFrames.at(-1);
+    assert.ok(maxChan(pixelAtCell(f292, 83, 0)) >= 180, "frame 292 left cat should reach true left edge un-feathered");
+    assert.ok(maxChan(pixelAtCell(f292, 107, 238)) >= 180, "frame 292 right cat should reach true right edge un-feathered");
+    assert.ok(maxChan(pixelAtCell(f292, 119, 57)) >= 180, "frame 292 bottom row stays un-feathered when padTop=0");
+
+    // Portrait viewport (390x600 -> 956x1471, totalRows=245, padTop=62): subtle sky extensions + 4-row vertical feathering only.
+    await triggerResize(390, 600);
+    const portraitTotalRows = 245;
+    const padTop = 62;
+    const p292 = capturedFrames.at(-1);
+    assert.equal(p292.width, 956);
+    assert.equal(p292.height, 1471);
+
+    const topExtStars = collectStars(p292, portraitTotalRows, 0, padTop);
+    const botExtStars = collectStars(p292, portraitTotalRows, padTop + 120, portraitTotalRows);
+    assert.ok(topExtStars.length > 10);
+    assert.ok(botExtStars.length > 10);
+    for (const star of [...topExtStars, ...botExtStars]) {
+      assert.ok(maxChan(star.rgb) <= 68, `portrait extension star luminance should stay dim (<=68), got ${star.rgb}`);
+    }
+
     assert.ok(
-      maxChan(pixelAtCell(f292, 83, padLeft + 0)) < maxChan(pixelAtCell(f292, 83, padLeft + 6)) * 0.3,
-      "frame 292 outer edge art at col 0 should feather gently into background",
+      maxChan(pixelAtCell(p292, padTop + 119, 57, portraitTotalRows))
+        < maxChan(pixelAtCell(p292, padTop + 112, 57, portraitTotalRows)) * 0.35,
+      "portrait frame 292 bottom row should feather gently into starfield extension",
+    );
+    assert.ok(
+      maxChan(pixelAtCell(p292, padTop + 83, 0, portraitTotalRows)) >= 180,
+      "portrait frame 292 horizontal edges remain un-feathered edge-to-edge",
+    );
+
+    await act(async () => {
+      controls.seekTo(56.90 + 155 / 30);
+    });
+    const p155 = capturedFrames.at(-1);
+    assert.ok(
+      maxChan(pixelAtCell(p155, padTop + 0, 7, portraitTotalRows))
+        < maxChan(pixelAtCell(p155, padTop + 6, 7, portraitTotalRows)) * 0.35,
+      "portrait frame 155 top boundary swirl should feather gently into top extension",
+    );
+    assert.ok(
+      maxChan(pixelAtCell(p155, padTop + 119, 23, portraitTotalRows))
+        < maxChan(pixelAtCell(p155, padTop + 112, 23, portraitTotalRows)) * 0.35,
+      "portrait frame 155 bottom boundary swirl should feather gently into bottom extension",
     );
 
     // Reduced motion keeps ambient starfield static across different audio timestamps on the same frame.

@@ -14,25 +14,30 @@ import {
 } from "@/features/music/bonusSyncCoordinator.js";
 import { CAT_STORY_B64 } from "./catStoryData.js";
 
-const BASE_COLS = 241;
-const MAX_COLS = 440;
-const ROWS = 120;
-const CW = 4;
-const CH = 6;
-const BASE_W = BASE_COLS * CW;
-const H = ROWS * CH;
-const CELLS = BASE_COLS * ROWS;
+const SRC_COLS = 239;
+const RAW_COLS = 241;
+const BASE_ROWS = 120;
+const BASE_CW = 4;
+const BASE_CH = 6;
+const BASE_W = SRC_COLS * BASE_CW;
+const BASE_H = BASE_ROWS * BASE_CH;
+const BASE_ASPECT = BASE_W / BASE_H;
+const MAX_WIDE_W = 2400;
+const MAX_WIDE_H = 1200;
+const MAX_PORTRAIT_H = 2400;
+const RAW_CELLS = RAW_COLS * BASE_ROWS;
+const DEFAULT_GEOMETRY = { width: BASE_W, height: BASE_H, totalRows: BASE_ROWS, padTop: 0 };
 const DARK_BG = [3, 2, 4];
 const DARK_BG_U32 = 0xff040203;
 const BORDER_COL_THRESHOLD = 100;
-const FEATHER_EDGE_COL_THRESHOLD = 8;
-const FEATHER_INNER_COL_THRESHOLD = 15;
-const FEATHER_COLS = 6;
-const FEATHER_LEFT_BIT = 1;
-const FEATHER_RIGHT_BIT = 2;
+const FEATHER_EDGE_ROW_THRESHOLD = 8;
+const FEATHER_INNER_ROW_THRESHOLD = 15;
+const V_FEATHER_ROWS = 4;
+const FEATHER_TOP_BIT = 1;
+const FEATHER_BOTTOM_BIT = 2;
 
-const FEATHER_GAINS_256 = Array.from({ length: FEATHER_COLS }, (_, d) => {
-  const t = (d + 1) / (FEATHER_COLS + 1);
+const V_FEATHER_GAINS_256 = Array.from({ length: V_FEATHER_ROWS }, (_, d) => {
+  const t = (d + 1) / (V_FEATHER_ROWS + 1);
   return Math.round(t * t * (3 - 2 * t) * 256);
 });
 
@@ -68,14 +73,28 @@ const pack = (r, g, b) => (255 << 24) | (b << 16) | (g << 8) | r;
 
 let cachedRawFrames = null;
 let cachedRawFramesPromise = null;
-const featherFlagsCache = new WeakMap();
+const verticalFeatherFlagsCache = new WeakMap();
 
-function computeTargetCols(rect) {
+function computeTargetGeometry(rect) {
   if (!rect || !(rect.width > 0 && rect.height > 0)) return null;
-  return Math.max(
-    BASE_COLS,
-    Math.min(MAX_COLS, Math.round(((rect.width / rect.height) * H) / CW)),
-  );
+  const aspect = rect.width / rect.height;
+
+  if (aspect >= BASE_ASPECT) {
+    let height = Math.max(BASE_H, Math.min(MAX_WIDE_H, Math.round(rect.height)));
+    let width = Math.round(height * aspect);
+    if (width > MAX_WIDE_W) {
+      width = MAX_WIDE_W;
+      height = Math.max(BASE_H, Math.round(width * (rect.height / rect.width)));
+    }
+    width = Math.max(BASE_W, width);
+    return { width, height, totalRows: BASE_ROWS, padTop: 0 };
+  }
+
+  const width = BASE_W;
+  const height = Math.min(MAX_PORTRAIT_H, Math.max(BASE_H, Math.round(width * (rect.height / rect.width))));
+  const totalRows = Math.max(BASE_ROWS, Math.round(height / BASE_CH));
+  const padTop = Math.floor((totalRows - BASE_ROWS) / 2);
+  return { width, height, totalRows, padTop };
 }
 
 function isReducedMotionPreferred() {
@@ -88,8 +107,8 @@ function isReducedMotionPreferred() {
 
 function countColumnCells(raw, frameOffset, col) {
   let count = 0;
-  for (let row = 0; row < ROWS; row++) {
-    if (raw[frameOffset + row * BASE_COLS + col] !== 0) {
+  for (let row = 0; row < BASE_ROWS; row++) {
+    if (raw[frameOffset + row * RAW_COLS + col] !== 0) {
       count += 1;
     }
   }
@@ -97,46 +116,54 @@ function countColumnCells(raw, frameOffset, col) {
 }
 
 function clearColumnCells(raw, frameOffset, col) {
-  for (let row = 0; row < ROWS; row++) {
-    raw[frameOffset + row * BASE_COLS + col] = 0;
+  for (let row = 0; row < BASE_ROWS; row++) {
+    raw[frameOffset + row * RAW_COLS + col] = 0;
   }
 }
 
-// Strip solid full-height border bars on col 0 / col 240 and detect frames where edge artwork touches the margin.
+function countInteriorRowCells(raw, frameOffset, row) {
+  let count = 0;
+  const rowBase = frameOffset + row * RAW_COLS;
+  for (let col = 1; col < RAW_COLS - 1; col++) {
+    if (raw[rowBase + col] !== 0) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+// Strip solid full-height border bars on col 0 / col 240 and flag frames with dense top/bottom boundary art.
 function sanitizeCatStoryFrames(raw) {
-  const featherFlags = new Uint8Array(BONUS_FRAME_COUNT);
+  const verticalFeatherFlags = new Uint8Array(BONUS_FRAME_COUNT);
   for (let f = 0; f < BONUS_FRAME_COUNT; f++) {
-    const base = f * CELLS;
-    let leftEdgeCount = countColumnCells(raw, base, 0);
-    let rightEdgeCount = countColumnCells(raw, base, BASE_COLS - 1);
-
-    if (leftEdgeCount >= BORDER_COL_THRESHOLD) {
+    const base = f * RAW_CELLS;
+    if (countColumnCells(raw, base, 0) >= BORDER_COL_THRESHOLD) {
       clearColumnCells(raw, base, 0);
-      leftEdgeCount = 0;
     }
-    if (rightEdgeCount >= BORDER_COL_THRESHOLD) {
-      clearColumnCells(raw, base, BASE_COLS - 1);
-      rightEdgeCount = 0;
+    if (countColumnCells(raw, base, RAW_COLS - 1) >= BORDER_COL_THRESHOLD) {
+      clearColumnCells(raw, base, RAW_COLS - 1);
     }
 
-    const leftInnerCount = countColumnCells(raw, base, 1);
-    const rightInnerCount = countColumnCells(raw, base, BASE_COLS - 2);
+    const topEdgeCount = countInteriorRowCells(raw, base, 0);
+    const topInnerCount = countInteriorRowCells(raw, base, 1);
+    const bottomEdgeCount = countInteriorRowCells(raw, base, BASE_ROWS - 1);
+    const bottomInnerCount = countInteriorRowCells(raw, base, BASE_ROWS - 2);
     let flags = 0;
-    if (leftEdgeCount >= FEATHER_EDGE_COL_THRESHOLD || leftInnerCount >= FEATHER_INNER_COL_THRESHOLD) {
-      flags |= FEATHER_LEFT_BIT;
+    if (topEdgeCount >= FEATHER_EDGE_ROW_THRESHOLD || topInnerCount >= FEATHER_INNER_ROW_THRESHOLD) {
+      flags |= FEATHER_TOP_BIT;
     }
-    if (rightEdgeCount >= FEATHER_EDGE_COL_THRESHOLD || rightInnerCount >= FEATHER_INNER_COL_THRESHOLD) {
-      flags |= FEATHER_RIGHT_BIT;
+    if (bottomEdgeCount >= FEATHER_EDGE_ROW_THRESHOLD || bottomInnerCount >= FEATHER_INNER_ROW_THRESHOLD) {
+      flags |= FEATHER_BOTTOM_BIT;
     }
-    featherFlags[f] = flags;
+    verticalFeatherFlags[f] = flags;
   }
-  featherFlagsCache.set(raw, featherFlags);
-  return featherFlags;
+  verticalFeatherFlagsCache.set(raw, verticalFeatherFlags);
+  return verticalFeatherFlags;
 }
 
-function getEdgeFeatherFlags(raw) {
+function getVerticalFeatherFlags(raw) {
   if (!raw) return null;
-  const cached = featherFlagsCache.get(raw);
+  const cached = verticalFeatherFlagsCache.get(raw);
   if (cached) return cached;
   return sanitizeCatStoryFrames(raw);
 }
@@ -151,7 +178,7 @@ export async function decodeCatStoryFrames() {
       const gz = Uint8Array.from(atob(CAT_STORY_B64), (s) => s.charCodeAt(0));
       const stream = new Blob([gz]).stream().pipeThrough(new DecompressionStream("gzip"));
       const raw = new Uint8Array(await new Response(stream).arrayBuffer());
-      if (raw.length !== BONUS_FRAME_COUNT * CELLS) {
+      if (raw.length !== BONUS_FRAME_COUNT * RAW_CELLS) {
         throw new Error("Incomplete ASCII frame payload.");
       }
       sanitizeCatStoryFrames(raw);
@@ -171,14 +198,15 @@ function hashCell2D(row, worldCol) {
   return (h ^ (h >>> 16)) >>> 0;
 }
 
-// Generate deterministic star coordinates relative to horizontal center so widened margins remain seamless.
-function createStarfield(cols, rows = ROWS) {
+// Generate deterministic star coordinates centered on the 120-row story so portrait extensions stay seamless.
+function createStarfield(cols, totalRows = BASE_ROWS, padTop = 0) {
   const stars = [];
   const centerCol = Math.floor(cols / 2);
   const stride = STAR_COLORS.length * STAR_LEVELS.length;
-  for (let row = 0; row < rows; row++) {
+  for (let row = 0; row < totalRows; row++) {
+    const worldRow = row - padTop;
     for (let col = 0; col < cols; col++) {
-      const h = hashCell2D(row, col - centerCol);
+      const h = hashCell2D(worldRow, col - centerCol);
       if (h % 1000 >= 11) continue;
       const glyphPick = (h >>> 10) % 100;
       const glyphIdx = glyphPick < 56 ? 0 : glyphPick < 82 ? 1 : glyphPick < 94 ? 2 : 3;
@@ -199,31 +227,35 @@ function createStarfield(cols, rows = ROWS) {
   return stars;
 }
 
-function rasterizeGlyphMask(gc, char, w, h, scale) {
+function rasterizeGlyphMask(gc, char, cellW, cellH, scale, fontPx) {
+  const w = cellW * scale;
+  const h = cellH * scale;
   gc.clearRect(0, 0, w, h);
   gc.fillStyle = "white";
-  gc.font = `bold ${6.8 * scale}px 'DejaVu Sans Mono','Liberation Mono',monospace`;
+  gc.font = `bold ${(fontPx * scale).toFixed(2)}px 'DejaVu Sans Mono','Liberation Mono',monospace`;
   gc.textAlign = "center";
   gc.textBaseline = "middle";
-  gc.fillText(char, w / 2, h / 2 + 0.6 * scale);
+  gc.fillText(char, w / 2, h / 2 + fontPx * 0.09 * scale);
   const dat = gc.getImageData(0, 0, w, h).data;
-  const opacity = new Uint8Array(CW * CH);
-  for (let y = 0; y < CH; y++) {
-    for (let x = 0; x < CW; x++) {
+  const opacity = new Uint8Array(cellW * cellH);
+  const invArea = scale * scale;
+  for (let y = 0; y < cellH; y++) {
+    for (let x = 0; x < cellW; x++) {
       let sum = 0;
       for (let dy = 0; dy < scale; dy++) {
+        const rowOff = (y * scale + dy) * w + x * scale;
         for (let dx = 0; dx < scale; dx++) {
-          sum += dat[((y * scale + dy) * w + (x * scale + dx)) * 4 + 3];
+          sum += dat[(rowOff + dx) * 4 + 3];
         }
       }
-      opacity[y * CW + x] = Math.round(sum / (scale * scale));
+      opacity[y * cellW + x] = Math.round(sum / invArea);
     }
   }
   return opacity;
 }
 
 function buildBlendedTile(mask, color) {
-  const tile = new Uint32Array(CW * CH);
+  const tile = new Uint32Array(mask.length);
   for (let p = 0; p < tile.length; p++) {
     const a = clamp((mask[p] / 255) * 1.25, 0, 1);
     const r = Math.round(DARK_BG[0] + (color[0] - DARK_BG[0]) * a);
@@ -234,17 +266,16 @@ function buildBlendedTile(mask, color) {
   return tile;
 }
 
-function makeTiles() {
-  const scale = 4;
-  const w = CW * scale;
-  const h = CH * scale;
+function makeTileSet(cellW, cellH) {
+  const scale = cellW * cellH <= 64 ? 4 : 2;
   const maskCanvas = document.createElement("canvas");
-  maskCanvas.width = w;
-  maskCanvas.height = h;
+  maskCanvas.width = cellW * scale;
+  maskCanvas.height = cellH * scale;
   const gc = maskCanvas.getContext("2d", { willReadFrequently: true });
   if (!gc) return null;
 
-  const masks = GLYPHS.map((char) => rasterizeGlyphMask(gc, char, w, h, scale));
+  const fontPx = Math.min(cellH * 1.13, cellW * 1.65);
+  const masks = GLYPHS.map((char) => rasterizeGlyphMask(gc, char, cellW, cellH, scale, fontPx));
   const tiles = new Array(256);
   for (let code = 1; code < 256; code++) {
     const glyph = code & 15;
@@ -265,7 +296,7 @@ function makeTiles() {
     tiles[code] = buildBlendedTile(masks[glyph], c);
   }
 
-  const starMasks = STAR_GLYPHS.map((char) => rasterizeGlyphMask(gc, char, w, h, scale));
+  const starMasks = STAR_GLYPHS.map((char) => rasterizeGlyphMask(gc, char, cellW, cellH, scale, fontPx));
   const starTiles = [];
   for (let gIdx = 0; gIdx < starMasks.length; gIdx++) {
     const mask = starMasks[gIdx];
@@ -297,26 +328,25 @@ function blendPixelTowardBg(pixel, gain256) {
   );
 }
 
-function blitTile(buf, row, destCol, widthPx, tile, gain256 = 256) {
-  const x = row * CH * widthPx + destCol * CW;
+function blitTile(buf, x0, y0, cellW, cellH, widthPx, tile, gain256 = 256) {
+  let dstRowOff = y0 * widthPx + x0;
+  let srcRowOff = 0;
   if (gain256 >= 256) {
-    for (let py = 0; py < CH; py++) {
-      const dy = x + py * widthPx;
-      const sy = py * CW;
-      buf[dy] = tile[sy];
-      buf[dy + 1] = tile[sy + 1];
-      buf[dy + 2] = tile[sy + 2];
-      buf[dy + 3] = tile[sy + 3];
+    for (let py = 0; py < cellH; py++) {
+      for (let px = 0; px < cellW; px++) {
+        buf[dstRowOff + px] = tile[srcRowOff + px];
+      }
+      dstRowOff += widthPx;
+      srcRowOff += cellW;
     }
     return;
   }
-  for (let py = 0; py < CH; py++) {
-    const dy = x + py * widthPx;
-    const sy = py * CW;
-    buf[dy] = blendPixelTowardBg(tile[sy], gain256);
-    buf[dy + 1] = blendPixelTowardBg(tile[sy + 1], gain256);
-    buf[dy + 2] = blendPixelTowardBg(tile[sy + 2], gain256);
-    buf[dy + 3] = blendPixelTowardBg(tile[sy + 3], gain256);
+  for (let py = 0; py < cellH; py++) {
+    for (let px = 0; px < cellW; px++) {
+      buf[dstRowOff + px] = blendPixelTowardBg(tile[srcRowOff + px], gain256);
+    }
+    dstRowOff += widthPx;
+    srcRowOff += cellW;
   }
 }
 
@@ -338,11 +368,11 @@ export function CatStoryCanvas({
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
   const surfaceRef = useRef(null);
-  const colsRef = useRef(BASE_COLS);
+  const geomRef = useRef(DEFAULT_GEOMETRY);
   const starsRef = useRef(null);
   const rawRef = useRef(null);
-  const featherFlagsRef = useRef(null);
-  const tilesRef = useRef(null);
+  const verticalFeatherFlagsRef = useRef(null);
+  const tileSetCacheRef = useRef(new Map());
   const readyRef = useRef(false);
   const lastDrawRef = useRef(-1);
   const lastDrawTimeRef = useRef(0);
@@ -361,85 +391,145 @@ export function CatStoryCanvas({
   });
   const lastHudRef = useRef(hud);
 
-  const ensureSurface = useCallback((targetCols) => {
+  const getTileSet = useCallback((cellW, cellH) => {
+    const key = (cellW << 8) | cellH;
+    const cache = tileSetCacheRef.current;
+    if (cache.has(key)) return cache.get(key);
+    const built = makeTileSet(cellW, cellH);
+    if (built) {
+      cache.set(key, built);
+    }
+    return built;
+  }, []);
+
+  const ensureSurface = useCallback((geom) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
+    const cur = surfaceRef.current;
     if (
-      surfaceRef.current
-      && surfaceRef.current.cols === targetCols
-      && canvas.width === targetCols * CW
+      cur
+      && cur.width === geom.width
+      && cur.height === geom.height
+      && cur.totalRows === geom.totalRows
+      && cur.padTop === geom.padTop
+      && canvas.width === geom.width
+      && canvas.height === geom.height
     ) {
-      return surfaceRef.current;
+      return cur;
     }
     const ctx = ctxRef.current || canvas.getContext("2d", { alpha: false });
     if (!ctx || typeof ctx.createImageData !== "function") return null;
     ctxRef.current = ctx;
-    const width = targetCols * CW;
-    if (canvas.width !== width) {
-      canvas.width = width;
+    if (canvas.width !== geom.width) {
+      canvas.width = geom.width;
     }
-    const pixels = ctx.createImageData(width, H);
+    if (canvas.height !== geom.height) {
+      canvas.height = geom.height;
+    }
+    const pixels = ctx.createImageData(geom.width, geom.height);
     const buf = new Uint32Array(pixels.data.buffer);
-    surfaceRef.current = { ctx, pixels, buf, cols: targetCols, width };
-    colsRef.current = targetCols;
-    starsRef.current = createStarfield(targetCols, ROWS);
+    const colX = new Int32Array(SRC_COLS + 1);
+    for (let c = 0; c <= SRC_COLS; c++) {
+      colX[c] = Math.round((c * geom.width) / SRC_COLS);
+    }
+    const rowY = new Int32Array(geom.totalRows + 1);
+    for (let r = 0; r <= geom.totalRows; r++) {
+      rowY[r] = Math.round((r * geom.height) / geom.totalRows);
+    }
+    surfaceRef.current = {
+      ctx,
+      pixels,
+      buf,
+      width: geom.width,
+      height: geom.height,
+      totalRows: geom.totalRows,
+      padTop: geom.padTop,
+      colX,
+      rowY,
+    };
+    geomRef.current = geom;
+    starsRef.current = createStarfield(SRC_COLS, geom.totalRows, geom.padTop);
     return surfaceRef.current;
   }, []);
 
   const drawFrame = useCallback((index, timeSec = lastAudioTimeRef.current) => {
     const raw = rawRef.current;
-    const tileSet = tilesRef.current;
     const surface = surfaceRef.current;
-    if (!raw || !tileSet || !surface) return;
+    if (!raw || !surface) return;
 
-    const { tiles, starTiles } = tileSet;
-    const { ctx, pixels, buf, cols, width } = surface;
-    const padLeft = Math.floor((cols - BASE_COLS) / 2);
-    const featherFlags = featherFlagsRef.current?.[index] ?? 0;
-    const featherLeft = Boolean(featherFlags & FEATHER_LEFT_BIT);
-    const featherRight = Boolean(featherFlags & FEATHER_RIGHT_BIT);
+    const { ctx, pixels, buf, width, padTop, colX, rowY } = surface;
+    const vFlags = padTop > 0 ? (verticalFeatherFlagsRef.current?.[index] ?? 0) : 0;
+    const featherTop = Boolean(vFlags & FEATHER_TOP_BIT);
+    const featherBottom = Boolean(vFlags & FEATHER_BOTTOM_BIT);
+
+    const localTiles = new Map();
+    const resolveTileSet = (cellW, cellH) => {
+      const key = (cellW << 8) | cellH;
+      let ts = localTiles.get(key);
+      if (ts === undefined) {
+        ts = getTileSet(cellW, cellH);
+        localTiles.set(key, ts);
+      }
+      return ts;
+    };
 
     buf.fill(DARK_BG_U32);
-    const start = index * CELLS;
-    let off = start;
-    for (let row = 0; row < ROWS; row++) {
-      for (let col = 0; col < BASE_COLS; col++) {
-        const code = raw[off++];
+    const start = index * RAW_CELLS;
+
+    for (let row = 0; row < BASE_ROWS; row++) {
+      const destRow = padTop + row;
+      const y0 = rowY[destRow];
+      const cellH = rowY[destRow + 1] - y0;
+      if (cellH <= 0) continue;
+
+      let gain256 = 256;
+      if (featherTop && row < V_FEATHER_ROWS) {
+        gain256 = V_FEATHER_GAINS_256[row];
+      } else if (featherBottom && row >= BASE_ROWS - V_FEATHER_ROWS) {
+        gain256 = V_FEATHER_GAINS_256[BASE_ROWS - 1 - row];
+      }
+
+      const rowBase = start + row * RAW_COLS;
+      for (let col = 0; col < SRC_COLS; col++) {
+        const code = raw[rowBase + col + 1];
         if (!code) continue;
-        const tile = tiles[code];
+        const x0 = colX[col];
+        const cellW = colX[col + 1] - x0;
+        if (cellW <= 0) continue;
+        const tileSet = resolveTileSet(cellW, cellH);
+        const tile = tileSet?.tiles[code];
         if (!tile) continue;
-        let gain256 = 256;
-        if (featherLeft && col < FEATHER_COLS) {
-          gain256 = FEATHER_GAINS_256[col];
-        } else if (featherRight && col >= BASE_COLS - FEATHER_COLS) {
-          gain256 = FEATHER_GAINS_256[BASE_COLS - 1 - col];
-        }
-        blitTile(buf, row, padLeft + col, width, tile, gain256);
+        blitTile(buf, x0, y0, cellW, cellH, width, tile, gain256);
       }
     }
 
-    if (starTiles) {
-      const reducedMotion = isReducedMotionPreferred();
-      const stars = starsRef.current;
-      if (stars) {
-        for (let i = 0; i < stars.length; i++) {
-          const star = stars[i];
-          const srcCol = star.col - padLeft;
-          if (srcCol >= 0 && srcCol < BASE_COLS && raw[start + star.row * BASE_COLS + srcCol] !== 0) {
-            continue;
-          }
-          const levelIdx = reducedMotion
-            ? star.baseLevel
-            : Math.round((STAR_LEVELS.length - 1) * (0.5 + 0.5 * Math.sin(timeSec * star.speed + star.phase)));
-          blitTile(buf, star.row, star.col, width, starTiles[star.tileBase + levelIdx]);
+    const reducedMotion = isReducedMotionPreferred();
+    const stars = starsRef.current;
+    if (stars) {
+      for (let i = 0; i < stars.length; i++) {
+        const star = stars[i];
+        const srcRow = star.row - padTop;
+        if (srcRow >= 0 && srcRow < BASE_ROWS && raw[start + srcRow * RAW_COLS + star.col + 1] !== 0) {
+          continue;
         }
+        const x0 = colX[star.col];
+        const cellW = colX[star.col + 1] - x0;
+        const y0 = rowY[star.row];
+        const cellH = rowY[star.row + 1] - y0;
+        if (cellW <= 0 || cellH <= 0) continue;
+        const tileSet = resolveTileSet(cellW, cellH);
+        if (!tileSet?.starTiles) continue;
+        const levelIdx = reducedMotion
+          ? star.baseLevel
+          : Math.round((STAR_LEVELS.length - 1) * (0.5 + 0.5 * Math.sin(timeSec * star.speed + star.phase)));
+        blitTile(buf, x0, y0, cellW, cellH, width, tileSet.starTiles[star.tileBase + levelIdx]);
       }
     }
 
     ctx.putImageData(pixels, 0, 0);
     lastDrawRef.current = index;
     lastDrawTimeRef.current = timeSec;
-  }, []);
+  }, [getTileSet]);
 
   const handleSave = useCallback(() => {
     const canvas = canvasRef.current;
@@ -450,26 +540,32 @@ export function CatStoryCanvas({
     a.click();
   }, []);
 
-  // Track viewport size dynamically via ResizeObserver + window resize so wide monitors fill smoothly.
+  // Track viewport size dynamically via ResizeObserver + window resize so wide & portrait screens fill seamlessly.
   useEffect(() => {
     const viewport = viewportRef.current;
     let disposed = false;
 
     const syncViewportSize = (rect, shouldRedraw = true) => {
       if (disposed) return;
-      const targetCols = computeTargetCols(rect);
-      if (targetCols !== null && targetCols !== colsRef.current) {
-        ensureSurface(targetCols);
+      const nextGeom = computeTargetGeometry(rect);
+      if (!nextGeom) return;
+      const curGeom = geomRef.current;
+      if (
+        nextGeom.width !== curGeom.width
+        || nextGeom.height !== curGeom.height
+        || nextGeom.totalRows !== curGeom.totalRows
+        || nextGeom.padTop !== curGeom.padTop
+      ) {
+        ensureSurface(nextGeom);
         if (shouldRedraw && readyRef.current) {
           drawFrame(lastDrawRef.current >= 0 ? lastDrawRef.current : 0, lastAudioTimeRef.current);
         }
       }
     };
 
-    ensureSurface(colsRef.current);
-    if (viewport) {
-      syncViewportSize(viewport.getBoundingClientRect?.(), false);
-    }
+    const initialRect = viewport?.getBoundingClientRect?.();
+    const initialGeom = computeTargetGeometry(initialRect) || geomRef.current;
+    ensureSurface(initialGeom);
 
     const onWindowResize = () => {
       if (!viewport) return;
@@ -524,16 +620,13 @@ export function CatStoryCanvas({
       }
     });
 
-    ensureSurface(colsRef.current);
+    ensureSurface(geomRef.current);
 
     decodeCatStoryFrames()
       .then((raw) => {
         if (cancelled) return;
         rawRef.current = raw;
-        featherFlagsRef.current = getEdgeFeatherFlags(raw);
-        if (!tilesRef.current) {
-          tilesRef.current = makeTiles();
-        }
+        verticalFeatherFlagsRef.current = getVerticalFeatherFlags(raw);
         readyRef.current = true;
         setReady(true);
         if (runId !== null && runId !== undefined) {
@@ -702,7 +795,7 @@ export function CatStoryCanvas({
           <canvas
             ref={canvasRef}
             width={BASE_W}
-            height={H}
+            height={BASE_H}
             className="terminal-ascii-canvas"
             role="img"
             aria-label="Animated ASCII Cat Story synchronized with Love Me Not"
