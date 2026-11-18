@@ -28,6 +28,7 @@ import {
 } from "react-icons/fi";
 import { useWindowManager } from "@/core/providers";
 import { WindowContext } from "@/windows";
+import firstMetMemoryPhotoUrl from "@/assets/images/first-met-memory-photo.png";
 import messageForYouPhotoUrl from "@/assets/images/message-for-you-photo.png";
 import { CATEGORIES, MAILBOX_GROUPS, createInitialMessages } from "./mailData";
 import {
@@ -80,6 +81,10 @@ const COMPOSE_LABELS = {
   reply: "Reply",
   "reply-all": "Reply All",
   forward: "Forward",
+};
+
+const SPOILER_PHOTOS = {
+  "first-met-memory": firstMetMemoryPhotoUrl,
 };
 
 let nextSurpriseRunId = 0;
@@ -137,30 +142,93 @@ function renderFormattedInline(text) {
   return nodes;
 }
 
-function SurpriseCard({ surprise, defaultLabel, onLaunch }) {
+function SpoilerPhoto({ photo, isRevealed, onReveal }) {
+  const src = SPOILER_PHOTOS[photo.key];
+  if (!src) return null;
+
+  return (
+    <div className={`mail__spoiler-photo${isRevealed ? " is-revealed" : ""}`}>
+      <img
+        alt={isRevealed ? photo.alt : ""}
+        aria-hidden={isRevealed ? undefined : "true"}
+        className="mail__spoiler-photo-img"
+        height={photo.height}
+        src={src}
+        width={photo.width}
+      />
+      {!isRevealed && (
+        <div className="mail__reveal-overlay">
+          <button
+            type="button"
+            className="mail__reveal-button"
+            aria-label="Reveal hidden photo"
+            onClick={onReveal}
+          >
+            {photo.revealLabel || "Reveal"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SurpriseCard({ surprise, defaultLabel, isRevealed, onReveal, onLaunch }) {
   return (
     <section
-      className="mail__surprise-card"
-      aria-label={surprise.title}
+      className={`mail__surprise-card mail__spoiler-card${isRevealed ? " is-revealed" : ""}`}
+      aria-label={isRevealed ? surprise.title : "Hidden surprise"}
     >
-      <div className="mail__surprise-icon" aria-hidden="true">
-        <FiTerminal />
-      </div>
-      <div className="mail__surprise-copy">
-        <div className="mail__surprise-title">
-          {surprise.title}
+      {isRevealed ? (
+        <div className="mail__spoiler-card-inner">
+          <div className="mail__surprise-icon" aria-hidden="true">
+            <FiTerminal />
+          </div>
+          <div className="mail__surprise-copy">
+            <div className="mail__surprise-title">
+              {surprise.title}
+            </div>
+            <div className="mail__surprise-subtitle">
+              {surprise.subtitle}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="mail__button mail__button--primary mail__surprise-button"
+            onClick={onLaunch}
+          >
+            {surprise.buttonLabel || defaultLabel}
+          </button>
         </div>
-        <div className="mail__surprise-subtitle">
-          {surprise.subtitle}
-        </div>
-      </div>
-      <button
-        type="button"
-        className="mail__button mail__button--primary mail__surprise-button"
-        onClick={onLaunch}
-      >
-        {surprise.buttonLabel || defaultLabel}
-      </button>
+      ) : (
+        <>
+          <div className="mail__spoiler-card-content" aria-hidden="true">
+            <div className="mail__surprise-icon">
+              <FiTerminal />
+            </div>
+            <div className="mail__surprise-copy">
+              <div className="mail__surprise-title">
+                Hidden Surprise
+              </div>
+              <div className="mail__surprise-subtitle">
+                Click Reveal to uncover this surprise
+              </div>
+            </div>
+            <span className="mail__button mail__button--primary mail__surprise-button mail__spoiler-placeholder-button">
+              Locked
+            </span>
+          </div>
+          <div className="mail__reveal-overlay">
+            <button
+              type="button"
+              className="mail__reveal-button"
+              aria-label="Reveal surprise action"
+              onClick={onReveal}
+            >
+              {surprise.revealLabel || "Reveal"}
+            </button>
+          </div>
+        </>
+      )}
     </section>
   );
 }
@@ -193,6 +261,8 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
+  const [revealedSpoilerPhotos, setRevealedSpoilerPhotos] = useState({});
+  const [revealedSurprises, setRevealedSurprises] = useState({});
   const mailWindow = windows.find((window) => window.id === "mail");
   const isMailActive = activeWin === "mail";
   const isMaximized = mailWindow?.x === 0 && mailWindow?.y === 28;
@@ -243,6 +313,8 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
     setView(lockedState.view);
     setQuery(lockedState.query);
     setUnlockError(lockedState.unlockError);
+    setRevealedSpoilerPhotos(lockedState.revealedSpoilerPhotos);
+    setRevealedSurprises(lockedState.revealedSurprises);
   };
 
   const submitImportantUnlock = async (event) => {
@@ -1061,10 +1133,25 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
                   );
                 })}
               </div>
+              {selectedMessage.spoilerPhoto && (
+                <SpoilerPhoto
+                  photo={selectedMessage.spoilerPhoto}
+                  isRevealed={Boolean(revealedSpoilerPhotos[selectedMessage.id])}
+                  onReveal={() => {
+                    const messageId = selectedMessage.id;
+                    setRevealedSpoilerPhotos((current) => ({ ...current, [messageId]: true }));
+                  }}
+                />
+              )}
               {selectedMessage.terminalSurprise && (
                 <SurpriseCard
                   surprise={selectedMessage.terminalSurprise}
                   defaultLabel="Open Surprise"
+                  isRevealed={Boolean(revealedSurprises[selectedMessage.id])}
+                  onReveal={() => {
+                    const messageId = selectedMessage.id;
+                    setRevealedSurprises((current) => ({ ...current, [messageId]: true }));
+                  }}
                   onLaunch={() => {
                     const runId = ++nextSurpriseRunId;
                     const songId = selectedMessage.terminalSurprise.songId || BONUS_SONG_ID;

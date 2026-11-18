@@ -329,7 +329,7 @@ test("bonusSyncModel exports constants, offset resolution, multi-window LRC sync
   assert.equal(shiftedInW2.startTime, 133.18);
 });
 
-test("Mail renders only the single Open Surprise card and launches Music (00:00, 0.4) + maximized Terminal (syncWithMusic)", async () => {
+test("Mail gates the memory photo and Open Surprise card behind Reveal, then launches Music (00:00, 0.4) + maximized Terminal (syncWithMusic)", async () => {
   const openedCalls = [];
   const container = document.createElement("div");
   document.body.append(container);
@@ -361,12 +361,39 @@ test("Mail renders only the single Open Surprise card and launches Music (00:00,
   assert.ok(anniversaryOption);
   await dom.click(anniversaryOption);
 
+  const photoGate = container.querySelector(".mail__spoiler-photo");
   const cards = [...container.querySelectorAll(".mail__surprise-card")];
+  assert.ok(photoGate);
   assert.equal(cards.length, 1);
+  assert.ok(
+    Boolean(photoGate.compareDocumentPosition(cards[0]) & browserWindow.Node.DOCUMENT_POSITION_FOLLOWING),
+  );
+
+  // Before clicking Reveal: photo is blurred and Open Surprise is hidden behind card Reveal.
+  assert.equal(photoGate.classList.contains("is-revealed"), false);
+  assert.equal(cards[0].classList.contains("is-revealed"), false);
+  assert.doesNotMatch(cards[0].textContent, /1st Anniversary Gift Box/);
+  assert.doesNotMatch(cards[0].textContent, /Open Surprise/);
+  assert.doesNotMatch(container.textContent, /Bonus for You/);
+
+  const photoRevealBtn = photoGate.querySelector('button[aria-label="Reveal hidden photo"]');
+  const cardRevealBtn = cards[0].querySelector('button[aria-label="Reveal surprise action"]');
+  assert.ok(photoRevealBtn);
+  assert.ok(cardRevealBtn);
+
+  // Clicking photo Reveal uncovers the photo without exposing Open Surprise.
+  await dom.click(photoRevealBtn);
+  assert.equal(photoGate.classList.contains("is-revealed"), true);
+  assert.equal(photoGate.querySelector("img")?.getAttribute("alt"), "First met memory screenshot from 18 November 2025");
+  assert.equal(cards[0].classList.contains("is-revealed"), false);
+  assert.doesNotMatch(cards[0].textContent, /Open Surprise/);
+
+  // Clicking card Reveal reveals the 1st Anniversary Gift Box card and Open Surprise button.
+  await dom.click(cardRevealBtn);
+  assert.equal(cards[0].classList.contains("is-revealed"), true);
   assert.match(cards[0].textContent, /1st Anniversary Gift Box/);
   assert.match(cards[0].textContent, /Open interactive ASCII surprise with Love Me Not/);
   assert.match(cards[0].textContent, /Open Surprise/);
-  assert.doesNotMatch(container.textContent, /Bonus for You/);
 
   const openBtn = [...cards[0].querySelectorAll("button")].find(
     (btn) => btn.textContent.trim() === "Open Surprise",

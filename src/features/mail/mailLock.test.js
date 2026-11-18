@@ -437,7 +437,7 @@ test("minimizing Mail outside Important preserves the current message state", as
   assert.ok(mount.container.querySelector(".mail__reader"));
 });
 
-test("anniversary email renders the unified Open Surprise launcher card and invokes openApp for Music and Terminal", async () => {
+test("anniversary email gates the memory photo and Open Surprise launcher behind independent Reveal controls", async () => {
   const openedCalls = [];
   const mount = await renderMail({
     openApp: (...args) => openedCalls.push(args),
@@ -447,11 +447,51 @@ test("anniversary email renders the unified Open Surprise launcher card and invo
     name: /user11201: Happy One Year, Pretty Girl/,
   }));
 
+  const reader = mount.container.querySelector(".mail__reader");
+  const photoGate = mount.container.querySelector(".mail__spoiler-photo");
   const cards = [...mount.container.querySelectorAll(".mail__surprise-card")];
+  assert.ok(reader);
+  assert.ok(photoGate);
   assert.equal(cards.length, 1);
+  assert.ok(
+    Boolean(photoGate.compareDocumentPosition(cards[0]) & browserWindow.Node.DOCUMENT_POSITION_FOLLOWING),
+    "Expected blurred memory photo to render before .mail__surprise-card",
+  );
+
+  // Before reveal: photo is blurred and Open Surprise is hidden behind card Reveal.
+  const photoImg = photoGate.querySelector("img");
+  assert.ok(photoImg);
+  assert.equal(photoGate.classList.contains("is-revealed"), false);
+  assert.equal(photoImg.getAttribute("aria-hidden"), "true");
+  assert.equal(photoImg.getAttribute("alt"), "");
+
+  assert.equal(cards[0].classList.contains("is-revealed"), false);
+  assert.equal(queryByRole(mount.container, "button", { name: "Open Surprise" }), null);
+  assert.equal(queryByText(mount.container, "1st Anniversary Gift Box"), null);
+  assert.equal(queryByText(mount.container, "Open interactive ASCII surprise with Love Me Not"), null);
+  assert.equal(queryByRole(mount.container, "button", { name: "Bonus for You" }), null);
+
+  const photoRevealBtn = getByRole(mount.container, "button", { name: "Reveal hidden photo" });
+  const cardRevealBtn = getByRole(mount.container, "button", { name: "Reveal surprise action" });
+  assert.equal(photoRevealBtn.textContent.trim(), "Reveal");
+  assert.equal(cardRevealBtn.textContent.trim(), "Reveal");
+
+  // Revealing the photo uncovers the photo independently without revealing Open Surprise.
+  await click(photoRevealBtn);
+  assert.equal(photoGate.classList.contains("is-revealed"), true);
+  assert.equal(photoImg.getAttribute("aria-hidden"), null);
+  assert.equal(photoImg.getAttribute("alt"), "First met memory screenshot from 18 November 2025");
+  assert.equal(queryByRole(mount.container, "button", { name: "Reveal hidden photo" }), null);
+  assert.equal(cards[0].classList.contains("is-revealed"), false);
+  assert.equal(queryByRole(mount.container, "button", { name: "Open Surprise" }), null);
+  assert.ok(queryByRole(mount.container, "button", { name: "Reveal surprise action" }));
+
+  // Revealing the surprise card exposes Open Surprise and launches Music + Terminal.
+  await click(cardRevealBtn);
+  assert.equal(cards[0].classList.contains("is-revealed"), true);
+  assert.equal(queryByRole(mount.container, "button", { name: "Reveal surprise action" }), null);
   getByText(mount.container, "1st Anniversary Gift Box");
   getByText(mount.container, "Open interactive ASCII surprise with Love Me Not");
-  assert.equal(queryByRole(mount.container, "button", { name: "Bonus for You" }), null);
 
   const button = getByRole(mount.container, "button", { name: "Open Surprise" });
   await click(button);
@@ -484,6 +524,41 @@ test("clicking Open Surprise without an openApp handler is safely guarded", asyn
   await click(getByRole(mount.container, "option", {
     name: /user11201: Happy One Year, Pretty Girl/,
   }));
+  await click(getByRole(mount.container, "button", { name: "Reveal surprise action" }));
   await click(getByRole(mount.container, "button", { name: "Open Surprise" }));
   assert.ok(mount.container.querySelector(".mail__surprise-card"));
+});
+
+test("locking Mail resets spoiler photo and surprise reveal state", async () => {
+  assert.deepEqual(getLockedMailState(), {
+    importantUnlocked: false,
+    selectedId: null,
+    draft: null,
+    view: "message",
+    query: "",
+    unlockError: "",
+    revealedSpoilerPhotos: {},
+    revealedSurprises: {},
+  });
+
+  const mount = await renderMail();
+  await click(getByRole(mount.container, "option", {
+    name: /user11201: Happy One Year, Pretty Girl/,
+  }));
+  await click(getByRole(mount.container, "button", { name: "Reveal hidden photo" }));
+  await click(getByRole(mount.container, "button", { name: "Reveal surprise action" }));
+  assert.ok(queryByRole(mount.container, "button", { name: "Open Surprise" }));
+
+  await unlockImportant(mount);
+  await click(getByRole(mount.container, "button", { name: "Lock Important mailbox" }));
+  await click(getByRole(mount.container, "button", { name: /^Inbox/ }));
+  await click(getByRole(mount.container, "option", {
+    name: /user11201: Happy One Year, Pretty Girl/,
+  }));
+
+  assert.equal(mount.container.querySelector(".mail__spoiler-photo")?.classList.contains("is-revealed"), false);
+  assert.equal(mount.container.querySelector(".mail__surprise-card")?.classList.contains("is-revealed"), false);
+  assert.ok(queryByRole(mount.container, "button", { name: "Reveal hidden photo" }));
+  assert.ok(queryByRole(mount.container, "button", { name: "Reveal surprise action" }));
+  assert.equal(queryByRole(mount.container, "button", { name: "Open Surprise" }), null);
 });

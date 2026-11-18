@@ -73,6 +73,13 @@ Go ahead and interact with what's right below this message, okayyy? Hehehe.
 A little something, made with love, just for you.
 
 Happy one year since we first met, pretty girl. I'm really glad our paths crossed.`,
+    spoilerPhoto: {
+      key: "first-met-memory",
+      alt: "First met memory screenshot from 18 November 2025",
+      width: 1262,
+      height: 612,
+      revealLabel: "Reveal",
+    },
     terminalSurprise: {
       title: "1st Anniversary Gift Box",
       subtitle: "Open interactive ASCII surprise with Love Me Not",
