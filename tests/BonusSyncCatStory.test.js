@@ -356,7 +356,7 @@ test("Mail gates both memory photos and Open Surprise card behind Reveal, then l
   });
 
   const anniversaryOption = [...container.querySelectorAll('[role="option"]')].find((el) =>
-    /Happy One Year, Pretty Girl/.test(el.textContent),
+    /Do you know what day and date it is today\?/.test(el.textContent),
   );
   assert.ok(anniversaryOption);
   await dom.click(anniversaryOption);

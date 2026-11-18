@@ -38,7 +38,7 @@ export const INITIAL_MESSAGES = [
     sender: "user11201",
     senderEmail: "user11201@gmail.com",
     sentAt: "2026-11-18T00:00:00+07:00",
-    subject: "Happy One Year, Pretty Girl 🤍",
+    subject: "Do you know what day and date it is today?",
     preview: "Helloooo, pretty girl! How are you doing, cantikkk? How's life treating you lately?",
     blurPreviewUntilOpened: true,
     body: `Helloooo, pretty girl! 
