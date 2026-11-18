@@ -6,5 +6,8 @@ export function getLockedMailState() {
     view: "message",
     query: "",
     unlockError: "",
+    revealedSpoilerPhotos: {},
+    revealedSurprises: {},
+    revealedPreviews: {},
   };
 }

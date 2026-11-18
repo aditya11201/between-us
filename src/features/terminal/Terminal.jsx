@@ -4,6 +4,27 @@ import { MUSIC_CATALOG } from "@/features/music/musicCatalog.js";
 import { useMusicPlayer } from "@/features/music/MusicContent.jsx";
 import { resolveSongQuery } from "@/features/music/musicModel.js";
 import { parseLRC } from "@/features/music/lyricsParser.js";
+import {
+  BONUS_BASE_START_TIME,
+  BONUS_SONG_ID,
+  getBonusStartTime,
+  resolveUnifiedSurpriseScene,
+} from "@/features/music/bonusSyncModel.js";
+import { AnniversaryGiftCanvas } from "./AnniversaryGiftCanvas.jsx";
+import { CatStoryCanvas, decodeCatStoryFrames } from "./CatStoryCanvas.jsx";
+
+const SURPRISE_LAUNCH_CONFIG = {
+  "anniversary-gift": {
+    command: "./anniversary-gift.sh",
+    status: "\x1b[35mLaunching 1st Anniversary ASCII Gift Box...\x1b[0m",
+    title: "Terminal — 1st Anniversary Gift Box",
+  },
+  "bonus-cat-story": {
+    command: "./cat-story --sync=love-me-not",
+    status: "\x1b[35mLaunching Cat Story ASCII (synced with Love Me Not)...\x1b[0m",
+    title: "Terminal — Cat Story ASCII",
+  },
+};
 
 // Массив для команды fortune
 const FORTUNES = [
@@ -26,9 +47,20 @@ const randomMatrixString = (length = 20) => {
   return result;
 };
 
-export function TerminalContent({ openApp }) {
+export function TerminalContent({ openApp, payload, onMaximize }) {
   const { onClose, onMinimize, onZoom, onTitlePointerDown } = useContext(WindowContext);
-  const { activeSong, pause, playSongById, armLyricFx, disarmLyricFx } = useMusicPlayer();
+  const {
+    activeSong,
+    isPlaying,
+    playbackError,
+    getAudioElement,
+    resumePlayback,
+    pause,
+    playSongById,
+    armLyricFx,
+    disarmLyricFx,
+  } = useMusicPlayer();
+  const handleZoom = onMaximize || onZoom;
 
   const [history, setHistory] = useState([
     { type: "output", text: `\x1b[33mLast login:\x1b[0m ${new Date().toDateString()} on ttys001` },
@@ -42,6 +74,15 @@ export function TerminalContent({ openApp }) {
   const [cmdHistory, setCmdHistory] = useState([]);
   const [cmdIdx, setCmdIdx] = useState(-1);
   const [matrixInterval, setMatrixInterval] = useState(null);
+  const [stage, setStage] = useState("terminal");
+  const [syncSessionActive, setSyncSessionActive] = useState(false);
+  const [syncSongId, setSyncSongId] = useState(BONUS_SONG_ID);
+  const [unifiedScene, setUnifiedScene] = useState({
+    mode: "gift-box",
+    windowIndex: -1,
+    startTime: null,
+  });
+  const [hasPlayedInSession, setHasPlayedInSession] = useState(false);
 
   const [gitLogLines, setGitLogLines] = useState([]);
   const [gitLogLoading, setGitLogLoading] = useState(true);
@@ -49,11 +90,274 @@ export function TerminalContent({ openApp }) {
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const matrixIntervalRef = useRef(null);
+  const lastRunIdRef = useRef(null);
+  const launchTimersRef = useRef([]);
+  const surpriseLyricArmedRef = useRef(false);
+  const syncSessionActiveRef = useRef(false);
+  const disarmLyricFxRef = useRef(disarmLyricFx);
+
+  matrixIntervalRef.current = matrixInterval;
+  syncSessionActiveRef.current = syncSessionActive;
+  disarmLyricFxRef.current = disarmLyricFx;
 
   // Авто-скролл
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [history]);
+
+  useEffect(() => {
+    return () => {
+      launchTimersRef.current.forEach((id) => clearTimeout(id));
+      launchTimersRef.current = [];
+      if (matrixIntervalRef.current) {
+        clearInterval(matrixIntervalRef.current);
+        matrixIntervalRef.current = null;
+      }
+      if (syncSessionActiveRef.current || surpriseLyricArmedRef.current) {
+        surpriseLyricArmedRef.current = false;
+        syncSessionActiveRef.current = false;
+        disarmLyricFxRef.current?.();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const config = SURPRISE_LAUNCH_CONFIG[payload?.action];
+    if (!config) return undefined;
+    const runKey = `${payload.action}:${payload.runId ?? `__${payload.action}__`}`;
+    if (lastRunIdRef.current === runKey) return undefined;
+    lastRunIdRef.current = runKey;
+
+    const shouldSync = payload.action === "anniversary-gift" && Boolean(payload.syncWithMusic);
+    const targetSongId = payload.songId || BONUS_SONG_ID;
+    let completed = false;
+
+    if (shouldSync) {
+      void decodeCatStoryFrames().catch(() => {});
+    }
+
+    launchTimersRef.current.forEach((id) => clearTimeout(id));
+    launchTimersRef.current = [];
+
+    if (matrixIntervalRef.current) {
+      clearInterval(matrixIntervalRef.current);
+      matrixIntervalRef.current = null;
+      setMatrixInterval(null);
+    }
+
+    if (payload?.immediate) {
+      completed = true;
+      setInput("");
+      setHistory((prev) => [
+        ...prev,
+        { type: "prompt", text: config.command },
+        { type: "output", text: config.status },
+      ]);
+      setSyncSessionActive(shouldSync);
+      setSyncSongId(targetSongId);
+      setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
+      setHasPlayedInSession(false);
+      setStage(payload.action);
+      return undefined;
+    }
+
+    setSyncSessionActive(false);
+    setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
+    setHasPlayedInSession(false);
+    setStage("launching");
+    setInput("");
+
+    const charStepMs = 28;
+    for (let i = 1; i <= config.command.length; i++) {
+      const timerId = setTimeout(() => {
+        setInput(config.command.slice(0, i));
+      }, i * charStepMs);
+      launchTimersRef.current.push(timerId);
+    }
+
+    const typingDoneMs = config.command.length * charStepMs + 60;
+    const commitTimer = setTimeout(() => {
+      setInput("");
+      setHistory((prev) => [
+        ...prev,
+        { type: "prompt", text: config.command },
+        { type: "output", text: config.status },
+      ]);
+    }, typingDoneMs);
+    launchTimersRef.current.push(commitTimer);
+
+    const enterStageTimer = setTimeout(() => {
+      completed = true;
+      setSyncSessionActive(shouldSync);
+      setSyncSongId(targetSongId);
+      setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
+      setHasPlayedInSession(false);
+      setStage(payload.action);
+    }, typingDoneMs + 150);
+    launchTimersRef.current.push(enterStageTimer);
+
+    return () => {
+      if (!completed) {
+        lastRunIdRef.current = null;
+      }
+      launchTimersRef.current.forEach((id) => clearTimeout(id));
+      launchTimersRef.current = [];
+    };
+  }, [payload?.action, payload?.runId, payload?.immediate, payload?.syncWithMusic, payload?.songId]);
+
+  const isSyncedGiftStage = stage === "anniversary-gift" && syncSessionActive;
+  const isSyncedSongActive = Boolean(activeSong?.id && activeSong.id === syncSongId);
+  const isCatStoryOverlay = isSyncedGiftStage && isSyncedSongActive && unifiedScene.mode === "cat-story";
+
+  useEffect(() => {
+    if (!isSyncedGiftStage) return;
+
+    if (!isSyncedSongActive) {
+      if (surpriseLyricArmedRef.current) {
+        surpriseLyricArmedRef.current = false;
+        disarmLyricFx();
+      }
+      return;
+    }
+
+    if (isCatStoryOverlay) {
+      surpriseLyricArmedRef.current = false;
+      disarmLyricFx();
+      return;
+    }
+
+    surpriseLyricArmedRef.current = true;
+    armLyricFx(syncSongId);
+  }, [
+    isSyncedGiftStage,
+    isSyncedSongActive,
+    isCatStoryOverlay,
+    syncSongId,
+    armLyricFx,
+    disarmLyricFx,
+  ]);
+
+  useEffect(() => {
+    if (!isSyncedGiftStage || !isSyncedSongActive) {
+      setUnifiedScene((prev) => (
+        prev.mode === "gift-box" && prev.windowIndex === -1 && prev.startTime === null
+          ? prev
+          : { mode: "gift-box", windowIndex: -1, startTime: null }
+      ));
+      return undefined;
+    }
+
+    const audio = getAudioElement?.() ?? null;
+    if (!audio) {
+      setUnifiedScene((prev) => (
+        prev.mode === "gift-box" && prev.windowIndex === -1 && prev.startTime === null
+          ? prev
+          : { mode: "gift-box", windowIndex: -1, startTime: null }
+      ));
+      return undefined;
+    }
+
+    let rafId = null;
+    let disposed = false;
+
+    const evaluateScene = () => {
+      if (disposed) return;
+      if (!audio.paused) {
+        setHasPlayedInSession(true);
+      }
+      const audioTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      const next = resolveUnifiedSurpriseScene(audioTime);
+      setUnifiedScene((prev) => {
+        if (
+          prev.mode === next.mode
+          && prev.windowIndex === next.windowIndex
+          && prev.startTime === next.startTime
+        ) {
+          return prev;
+        }
+        return {
+          mode: next.mode,
+          windowIndex: next.windowIndex,
+          startTime: next.startTime,
+        };
+      });
+    };
+
+    const stopLoop = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+
+    const startLoop = () => {
+      if (disposed || rafId !== null) return;
+      if (audio.paused || audio.ended || document.hidden) return;
+      const tick = () => {
+        rafId = null;
+        if (disposed) return;
+        evaluateScene();
+        if (!audio.paused && !audio.ended && !document.hidden) {
+          rafId = requestAnimationFrame(tick);
+        }
+      };
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const onPlay = () => {
+      setHasPlayedInSession(true);
+      evaluateScene();
+      startLoop();
+    };
+    const onPause = () => {
+      stopLoop();
+      evaluateScene();
+    };
+    const onSeeked = () => evaluateScene();
+    const onTimeUpdate = () => evaluateScene();
+    const onRateChange = () => evaluateScene();
+    const onEnded = () => {
+      stopLoop();
+      evaluateScene();
+    };
+    const onLoadedMetadata = () => evaluateScene();
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        stopLoop();
+      } else {
+        evaluateScene();
+        startLoop();
+      }
+    };
+
+    evaluateScene();
+    if (!audio.paused && !audio.ended) {
+      startLoop();
+    }
+
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("seeked", onSeeked);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("ratechange", onRateChange);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      disposed = true;
+      stopLoop();
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("seeked", onSeeked);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("ratechange", onRateChange);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [isSyncedGiftStage, isSyncedSongActive, getAudioElement, isPlaying]);
 
   // Fetch Git log
   useEffect(() => {
@@ -564,6 +868,7 @@ export function TerminalContent({ openApp }) {
   // ─── ОТПРАВКА КОМАНДЫ ──────────────────────────────────────────────
 
   const handleSubmit = () => {
+    if (stage !== "terminal") return;
     const cmd = input.trim();
     if (!cmd) return;
 
@@ -640,71 +945,146 @@ export function TerminalContent({ openApp }) {
     );
   };
 
+  const handleExitSurprise = () => {
+    if (syncSessionActive || surpriseLyricArmedRef.current) {
+      surpriseLyricArmedRef.current = false;
+      syncSessionActiveRef.current = false;
+      disarmLyricFx();
+    }
+    setSyncSessionActive(false);
+    setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
+    setStage("terminal");
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  };
+
+  const handleCloseTerminal = () => {
+    if (syncSessionActive || surpriseLyricArmedRef.current) {
+      surpriseLyricArmedRef.current = false;
+      syncSessionActiveRef.current = false;
+      disarmLyricFx();
+    }
+    setSyncSessionActive(false);
+    setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
+    onClose?.();
+  };
+
+  const syncedAudio = isSyncedGiftStage && isSyncedSongActive ? (getAudioElement?.() ?? null) : null;
+  const showGiftBoxPlayAudio = Boolean(
+    isSyncedGiftStage
+      && isSyncedSongActive
+      && (playbackError || (!hasPlayedInSession && (!syncedAudio || syncedAudio.paused))),
+  );
+  const activeStageConfig = isCatStoryOverlay
+    ? SURPRISE_LAUNCH_CONFIG["bonus-cat-story"]
+    : SURPRISE_LAUNCH_CONFIG[stage] || null;
+  const isStageActive = Boolean(activeStageConfig);
+
   return (
-    <div className="terminal-container">
+    <div className={`terminal-container${isStageActive ? " terminal-container--stage" : ""}`}>
       {/* Шапка окна macOS */}
       <div className="terminal-window-header" onPointerDown={(e) => !e.target.closest('.terminal-btn') && onTitlePointerDown(e)}>
         <div className="terminal-traffic-lights">
-          <button className="terminal-btn terminal-btn--close" onClick={onClose} />
-          <button className="terminal-btn terminal-btn--minimize" onClick={onMinimize} />
-          <button className="terminal-btn terminal-btn--zoom" onClick={onZoom} />
+          <button type="button" className="terminal-btn terminal-btn--close" onClick={handleCloseTerminal} aria-label="Close Terminal window" title="Close Terminal window" />
+          <button type="button" className="terminal-btn terminal-btn--minimize" onClick={onMinimize} aria-label="Minimize Terminal window" title="Minimize Terminal window" />
+          <button type="button" className="terminal-btn terminal-btn--zoom" onClick={handleZoom} aria-label="Zoom Terminal window" title="Zoom Terminal window" />
         </div>
+        {activeStageConfig && (
+          <span className="terminal-window-title">{activeStageConfig.title}</span>
+        )}
       </div>
 
-      {/* Тело терминала */}
-      <div className="terminal-window-body" onClick={() => inputRef.current?.focus()}>
-        <div className="terminal-history-area">
-          {history.map((entry, i) => (
-            <div key={i} className="terminal-output-line">
-              {entry.type === "prompt" ? (
-                <span>
-                  <span className="prompt-user">user11201</span>
-                  <span className="prompt-divider">@</span>
-                  <span className="prompt-host">between-us</span>
-                  <span className="prompt-sign">:~$ </span>
-                  <span className="prompt-text">{entry.text}</span>
-                </span>
-              ) : (
-                renderLine(entry.text)
-              )}
-            </div>
-          ))}
-          <div ref={bottomRef} />
-        </div>
+      {stage === "anniversary-gift" ? (
+        <>
+          <div
+            className={`terminal-ascii-slot${isCatStoryOverlay ? " terminal-ascii-slot--hidden" : ""}`}
+            style={isCatStoryOverlay ? { display: "none" } : undefined}
+          >
+            <AnniversaryGiftCanvas
+              onExit={handleExitSurprise}
+              active={!isCatStoryOverlay}
+              showPlayAudio={showGiftBoxPlayAudio}
+              onPlayAudio={resumePlayback}
+            />
+          </div>
+          {isCatStoryOverlay && (
+            <CatStoryCanvas
+              onExit={handleExitSurprise}
+              songId={syncSongId}
+              startTime={unifiedScene.startTime ?? BONUS_BASE_START_TIME}
+            />
+          )}
+        </>
+      ) : stage === "bonus-cat-story" ? (
+        <CatStoryCanvas
+          onExit={handleExitSurprise}
+          runId={payload?.runId}
+          songId={payload?.songId || BONUS_SONG_ID}
+          startTime={Number.isFinite(payload?.startTime) ? payload.startTime : getBonusStartTime()}
+        />
+      ) : (
+        /* Тело терминала */
+        <div className="terminal-window-body" onClick={() => inputRef.current?.focus()}>
+          <div className="terminal-history-area">
+            {history.map((entry, i) => (
+              <div key={i} className="terminal-output-line">
+                {entry.type === "prompt" ? (
+                  <span>
+                    <span className="prompt-user">user11201</span>
+                    <span className="prompt-divider">@</span>
+                    <span className="prompt-host">between-us</span>
+                    <span className="prompt-sign">:~$ </span>
+                    <span className="prompt-text">{entry.text}</span>
+                  </span>
+                ) : (
+                  renderLine(entry.text)
+                )}
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
 
-        {/* Зона ввода */}
-        <div className="terminal-input-wrapper">
-          <span className="prompt-user">user11201</span>
-          <span className="prompt-divider">@</span>
-          <span className="prompt-host">between-us</span>
-          <span className="prompt-sign">:~$ </span>
-          <input
-            ref={inputRef}
-            value={input}
-            maxLength={2000}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSubmit();
-              if (e.key === "ArrowUp") {
-                const ni = Math.min(cmdIdx + 1, cmdHistory.length - 1);
-                setCmdIdx(ni);
-                setInput(cmdHistory[ni] || "");
-              }
-              if (e.key === "ArrowDown") {
-                const ni = Math.max(cmdIdx - 1, -1);
-                setCmdIdx(ni);
-                setInput(ni === -1 ? "" : cmdHistory[ni]);
-              }
-            }}
-            className="terminal-interactive-input"
-            autoFocus
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck="false"
-          />
+          {/* Зона ввода */}
+          <div className="terminal-input-wrapper">
+            <span className="prompt-user">user11201</span>
+            <span className="prompt-divider">@</span>
+            <span className="prompt-host">between-us</span>
+            <span className="prompt-sign">:~$ </span>
+            <input
+              ref={inputRef}
+              value={input}
+              maxLength={2000}
+              readOnly={stage === "launching"}
+              aria-label="Terminal command input"
+              onChange={(e) => {
+                if (stage === "launching") return;
+                setInput(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (stage === "launching") return;
+                if (e.key === "Enter") handleSubmit();
+                if (e.key === "ArrowUp") {
+                  const ni = Math.min(cmdIdx + 1, cmdHistory.length - 1);
+                  setCmdIdx(ni);
+                  setInput(cmdHistory[ni] || "");
+                }
+                if (e.key === "ArrowDown") {
+                  const ni = Math.max(cmdIdx - 1, -1);
+                  setCmdIdx(ni);
+                  setInput(ni === -1 ? "" : cmdHistory[ni]);
+                }
+              }}
+              className="terminal-interactive-input"
+              autoFocus
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

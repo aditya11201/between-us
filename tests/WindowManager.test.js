@@ -447,3 +447,120 @@ test("public openApp reopens a minimized preview, promotes it, and focuses it ab
   assert.ok(reopenedPreview.zIndex > finder.zIndex);
   assert.notEqual(finder.zIndex, Math.max(...state.windows.map((window) => window.zIndex)));
 });
+
+test("public openApp opens Terminal maximized with payload and preserves restore bounds", async () => {
+  const container = await renderWindowManager();
+  Object.defineProperty(browserWindow, "innerWidth", { configurable: true, value: 1440 });
+  Object.defineProperty(browserWindow, "innerHeight", { configurable: true, value: 900 });
+
+  try {
+    const payload = { action: "anniversary-gift", maximize: true, runId: 101 };
+    await act(async () => {
+      currentManager.openApp("terminal", "Terminal", payload);
+    });
+
+    const maximizedState = await waitForWindowManagerState(
+      container,
+      ({ windows }) => windows[0]?.id === "terminal" && windows[0]?.x === 0 && windows[0]?.y === 28,
+      "maximized Terminal window on initial openApp",
+    );
+    assert.deepEqual(maximizedState.windows[0].payload, payload);
+    assert.equal(maximizedState.windows[0].width, 1440);
+    assert.equal(maximizedState.windows[0].height, 900 - 28 - 80);
+
+    await act(async () => {
+      currentManager.maximizeWindow("terminal");
+    });
+
+    const restoredState = await waitForWindowManagerState(
+      container,
+      ({ windows }) => windows[0]?.x !== 0 || windows[0]?.y !== 28,
+      "restored Terminal bounds after maximizeWindow toggle",
+    );
+    assert.deepEqual(
+      {
+        x: restoredState.windows[0].x,
+        y: restoredState.windows[0].y,
+        width: restoredState.windows[0].width,
+        height: restoredState.windows[0].height,
+      },
+      { x: 390, y: 214, width: 660, height: 420 },
+    );
+
+    const nextPayload = { action: "anniversary-gift", maximize: true, runId: 202 };
+    await act(async () => {
+      currentManager.openApp("terminal", "Terminal", nextPayload);
+    });
+
+    const remaximizedState = await waitForWindowManagerState(
+      container,
+      ({ windows }) => windows[0]?.payload?.runId === 202 && windows[0]?.x === 0 && windows[0]?.y === 28,
+      "re-maximized existing Terminal window with updated payload",
+    );
+    assert.equal(remaximizedState.windows[0].width, 1440);
+    assert.equal(remaximizedState.windows[0].height, 900 - 28 - 80);
+  } finally {
+    delete browserWindow.innerWidth;
+    delete browserWindow.innerHeight;
+  }
+});
+
+test("opening Music behind maximized Terminal keeps Terminal focused on top without duplicate windows", async () => {
+  const container = await renderWindowManager();
+  Object.defineProperty(browserWindow, "innerWidth", { configurable: true, value: 1440 });
+  Object.defineProperty(browserWindow, "innerHeight", { configurable: true, value: 900 });
+
+  try {
+    const runBonusOpen = async (runId) => {
+      await act(async () => {
+        currentManager.openApp("music", "Music", {
+          action: "bonus-sync-prepare",
+          songId: "ravyn-lenae-love-me-not",
+          startTime: 56.9,
+          runId,
+        });
+        currentManager.openApp("terminal", "Terminal", {
+          action: "bonus-cat-story",
+          maximize: true,
+          songId: "ravyn-lenae-love-me-not",
+          startTime: 56.9,
+          runId,
+        });
+      });
+
+      return waitForWindowManagerState(
+        container,
+        ({ activeWin, windows }) =>
+          activeWin === "terminal"
+          && windows.some((w) => w.id === "music")
+          && windows.some((w) => w.id === "terminal"),
+        `bonus launch run ${runId}`,
+      );
+    };
+
+    const first = await runBonusOpen(1);
+    const music1 = first.windows.find((w) => w.id === "music");
+    const terminal1 = first.windows.find((w) => w.id === "terminal");
+    assert.equal(first.windows.length, 2);
+    assert.ok(terminal1.zIndex > music1.zIndex);
+    assert.equal(terminal1.x, 0);
+    assert.equal(terminal1.y, 28);
+
+    // Repeat when Terminal is already activeWin: Music's rAF must still be cancelled.
+    const second = await runBonusOpen(2);
+    // Allow any stray requestAnimationFrame callbacks to flush.
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const settled = readWindowManagerState(container);
+    const music2 = settled.windows.find((w) => w.id === "music");
+    const terminal2 = settled.windows.find((w) => w.id === "terminal");
+    assert.equal(settled.windows.length, 2);
+    assert.equal(settled.activeWin, "terminal");
+    assert.ok(terminal2.zIndex > music2.zIndex);
+    assert.equal(music2.payload.runId, 2);
+    assert.equal(terminal2.payload.runId, 2);
+    assert.equal(second.windows.length, 2);
+  } finally {
+    delete browserWindow.innerWidth;
+    delete browserWindow.innerHeight;
+  }
+});

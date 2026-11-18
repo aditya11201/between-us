@@ -20,6 +20,7 @@ import {
   FiShoppingCart,
   FiSidebar,
   FiTag,
+  FiTerminal,
   FiTrash,
   FiTrash2,
   FiUser,
@@ -27,6 +28,8 @@ import {
 } from "react-icons/fi";
 import { useWindowManager } from "@/core/providers";
 import { WindowContext } from "@/windows";
+import firstMetFriendsSincePhotoUrl from "@/assets/images/first-met-friends-since-photo.png";
+import firstMetMemoryPhotoUrl from "@/assets/images/first-met-memory-photo.png";
 import messageForYouPhotoUrl from "@/assets/images/message-for-you-photo.png";
 import { CATEGORIES, MAILBOX_GROUPS, createInitialMessages } from "./mailData";
 import {
@@ -43,6 +46,11 @@ import {
 } from "./mailModel";
 import { getLockedMailState } from "./mailLock.js";
 import { decryptImportantMail, fetchImportantMailEnvelope } from "./mailCrypto.js";
+import {
+  BONUS_DEFAULT_VOLUME,
+  BONUS_SONG_ID,
+} from "@/features/music/bonusSyncModel.js";
+import { prewarmBonusCatStory } from "@/features/music/bonusSyncCoordinator.js";
 
 const MAILBOX_ICONS = {
   inbox: FiInbox,
@@ -75,6 +83,13 @@ const COMPOSE_LABELS = {
   "reply-all": "Reply All",
   forward: "Forward",
 };
+
+const SPOILER_PHOTOS = {
+  "first-met-memory": firstMetMemoryPhotoUrl,
+  "first-met-friends-since": firstMetFriendsSincePhotoUrl,
+};
+
+let nextSurpriseRunId = 0;
 
 function getInitials(sender) {
   return sender
@@ -112,14 +127,15 @@ function renderFormattedInline(text) {
       nodes.push(<br key={`br-${lineIndex}`} />);
     }
 
-    const parts = line.split(/(\*\*.*?\*\*)/g);
+    const parts = line.split(/(\*\*(?:(?!\*\*).)+?\*\*|\*[^*]+?\*)/g);
     parts.forEach((part, partIndex) => {
       const partKey = `${lineIndex}-${partIndex}`;
-      if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+      if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
         const content = part.slice(2, -2);
-        if (content) {
-          nodes.push(<strong key={`strong-${partKey}`}>{renderLinks(content, partKey)}</strong>);
-        }
+        nodes.push(<strong key={`strong-${partKey}`}>{renderLinks(content, partKey)}</strong>);
+      } else if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+        const content = part.slice(1, -1);
+        nodes.push(<em key={`em-${partKey}`}>{renderLinks(content, partKey)}</em>);
       } else if (part) {
         nodes.push(renderLinks(part, partKey));
       }
@@ -129,7 +145,98 @@ function renderFormattedInline(text) {
   return nodes;
 }
 
-export function MailContent({ onClose, onMinimize, onMaximize }) {
+function SpoilerPhoto({ photo, isRevealed, onReveal }) {
+  const src = SPOILER_PHOTOS[photo.key];
+  if (!src) return null;
+
+  return (
+    <div className={`mail__spoiler-photo${isRevealed ? " is-revealed" : ""}`}>
+      <img
+        alt={isRevealed ? photo.alt : ""}
+        aria-hidden={isRevealed ? undefined : "true"}
+        className="mail__spoiler-photo-img"
+        height={photo.height}
+        src={src}
+        width={photo.width}
+      />
+      {!isRevealed && (
+        <div className="mail__reveal-overlay">
+          <button
+            type="button"
+            className="mail__reveal-button"
+            aria-label={photo.revealAriaLabel || "Reveal hidden photo"}
+            onClick={onReveal}
+          >
+            {photo.revealLabel || "Reveal"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SurpriseCard({ surprise, defaultLabel, isRevealed, onReveal, onLaunch }) {
+  return (
+    <section
+      className={`mail__surprise-card mail__spoiler-card${isRevealed ? " is-revealed" : ""}`}
+      aria-label={isRevealed ? surprise.title : "Hidden surprise"}
+    >
+      {isRevealed ? (
+        <div className="mail__spoiler-card-inner">
+          <div className="mail__surprise-icon" aria-hidden="true">
+            <FiTerminal />
+          </div>
+          <div className="mail__surprise-copy">
+            <div className="mail__surprise-title">
+              {surprise.title}
+            </div>
+            <div className="mail__surprise-subtitle">
+              {surprise.subtitle}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="mail__button mail__button--primary mail__surprise-button"
+            onClick={onLaunch}
+          >
+            {surprise.buttonLabel || defaultLabel}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="mail__spoiler-card-content" aria-hidden="true">
+            <div className="mail__surprise-icon">
+              <FiTerminal />
+            </div>
+            <div className="mail__surprise-copy">
+              <div className="mail__surprise-title">
+                Hidden Surprise
+              </div>
+              <div className="mail__surprise-subtitle">
+                Click Reveal to uncover this surprise
+              </div>
+            </div>
+            <span className="mail__button mail__button--primary mail__surprise-button mail__spoiler-placeholder-button">
+              Locked
+            </span>
+          </div>
+          <div className="mail__reveal-overlay">
+            <button
+              type="button"
+              className="mail__reveal-button"
+              aria-label="Reveal surprise action"
+              onClick={onReveal}
+            >
+              {surprise.revealLabel || "Reveal"}
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
   const { onTitlePointerDown } = useContext(WindowContext);
   const { windows, activeWin } = useWindowManager();
   const mailRef = useRef(null);
@@ -157,6 +264,9 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
+  const [revealedSpoilerPhotos, setRevealedSpoilerPhotos] = useState({});
+  const [revealedSurprises, setRevealedSurprises] = useState({});
+  const [revealedPreviews, setRevealedPreviews] = useState({});
   const mailWindow = windows.find((window) => window.id === "mail");
   const isMailActive = activeWin === "mail";
   const isMaximized = mailWindow?.x === 0 && mailWindow?.y === 28;
@@ -207,6 +317,9 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
     setView(lockedState.view);
     setQuery(lockedState.query);
     setUnlockError(lockedState.unlockError);
+    setRevealedSpoilerPhotos(lockedState.revealedSpoilerPhotos);
+    setRevealedSurprises(lockedState.revealedSurprises);
+    setRevealedPreviews(lockedState.revealedPreviews);
   };
 
   const submitImportantUnlock = async (event) => {
@@ -339,6 +452,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
     setView("message");
     setSelectedId(id);
     setMessages((current) => setMessageUnread(current, id, false));
+    setRevealedPreviews((current) => (current[id] ? current : { ...current, [id]: true }));
   };
 
   const updateSelected = (transition) => {
@@ -765,6 +879,7 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
         >
           {visibleMessages.length ? visibleMessages.map((message) => {
             const isSelected = message.id === selectedId;
+            const isPreviewBlurred = Boolean(message.blurPreviewUntilOpened && !revealedPreviews[message.id]);
 
             return (
               <button
@@ -787,7 +902,12 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                     <span className="mail__message-time">{formatMessageListTime(message)}</span>
                   </span>
                   <span className="mail__message-subject">{message.subject}</span>
-                  <span className="mail__message-preview">{message.preview}</span>
+                  <span
+                    className={`mail__message-preview${isPreviewBlurred ? " is-blurred" : ""}`}
+                    aria-hidden={isPreviewBlurred ? "true" : undefined}
+                  >
+                    {message.preview}
+                  </span>
                 </span>
               </button>
             );
@@ -1025,6 +1145,55 @@ export function MailContent({ onClose, onMinimize, onMaximize }) {
                   );
                 })}
               </div>
+              {(Array.isArray(selectedMessage.spoilerPhotos)
+                ? selectedMessage.spoilerPhotos
+                : selectedMessage.spoilerPhoto
+                  ? [selectedMessage.spoilerPhoto]
+                  : []
+              ).map((photo) => {
+                const revealKey = `${selectedMessage.id}:${photo.key}`;
+                return (
+                  <SpoilerPhoto
+                    key={photo.key}
+                    photo={photo}
+                    isRevealed={Boolean(revealedSpoilerPhotos[revealKey])}
+                    onReveal={() => {
+                      setRevealedSpoilerPhotos((current) => ({ ...current, [revealKey]: true }));
+                    }}
+                  />
+                );
+              })}
+              {selectedMessage.terminalSurprise && (
+                <SurpriseCard
+                  surprise={selectedMessage.terminalSurprise}
+                  defaultLabel="Open Surprise"
+                  isRevealed={Boolean(revealedSurprises[selectedMessage.id])}
+                  onReveal={() => {
+                    const messageId = selectedMessage.id;
+                    setRevealedSurprises((current) => ({ ...current, [messageId]: true }));
+                  }}
+                  onLaunch={() => {
+                    const runId = ++nextSurpriseRunId;
+                    const songId = selectedMessage.terminalSurprise.songId || BONUS_SONG_ID;
+                    prewarmBonusCatStory();
+                    openApp?.("music", "Music", {
+                      action: "bonus-play-from-start",
+                      songId,
+                      volume: BONUS_DEFAULT_VOLUME,
+                      autoOpenTerminal: false,
+                      armLyrics: true,
+                      runId,
+                    });
+                    openApp?.("terminal", "Terminal", {
+                      action: selectedMessage.terminalSurprise.action,
+                      maximize: true,
+                      syncWithMusic: true,
+                      songId,
+                      runId,
+                    });
+                  }}
+                />
+              )}
               {selectedMessage.photoAttachment && (
                 <div className="mail__reader-attachment">
                   <span className="mail__reader-attachment-name">

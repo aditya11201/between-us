@@ -179,3 +179,142 @@
     color: white;
   }
 }
+
+.terminal-container--stage {
+  background: #030204;
+}
+
+.light-theme .terminal-container--stage {
+  background: #030204;
+
+  .terminal-window-header {
+    background: rgba(245, 245, 247, 0.94);
+    border-bottom-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+.terminal-ascii-slot {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+
+  &--hidden {
+    display: none;
+  }
+}
+
+.terminal-ascii-stage {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  background: #030204;
+  overflow: hidden;
+
+  > .terminal-ascii-tools {
+    padding: 8px 24px 8px 12px;
+  }
+}
+
+.terminal-ascii-viewport {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #030204;
+  overflow: hidden;
+}
+
+.terminal-ascii-scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #030204;
+  isolation: isolate;
+}
+
+.terminal-ascii-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #030204;
+}
+
+.terminal-ascii-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.terminal-ascii-btn {
+  min-height: 28px;
+  padding: 5px 11px;
+  border: 1px solid #7f6282;
+  border-radius: 5px;
+  background: #17111b;
+  color: #f3d5ef;
+  font: 11px/1.2 "SF Mono", Consolas, Menlo, monospace;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+
+  &:hover,
+  &:focus-visible {
+    border-color: #f5b7e1;
+    background: #231829;
+    color: #fff;
+    outline: 2px solid #f5b7e1;
+    outline-offset: 2px;
+  }
+
+  &--exit {
+    border-color: #8f6b91;
+    color: #ffe6fb;
+  }
+}
+
+.terminal-cat-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  text-align: center;
+  letter-spacing: 0.12em;
+  font: 12px/1.4 "SF Mono", Consolas, Menlo, monospace;
+  color: #e99fc7;
+  background: #030204;
+}
+
+.terminal-cat-btn--primary {
+  border-color: #e97db1;
+  color: #fff4fa;
+  background: #662748;
+
+  &:hover,
+  &:focus-visible {
+    border-color: #f5b7e1;
+    background: #7d3158;
+    color: #fff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-ascii-btn,
+  .terminal-btn {
+    transition: none;
+  }
+}

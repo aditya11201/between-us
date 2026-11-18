@@ -62,6 +62,28 @@ test("keeps Important messages out of other mailboxes", () => {
     false,
   );
 });
+test("places the 1st anniversary message first in the inbox with terminal surprise metadata", () => {
+  const messages = createInitialMessages();
+  const inbox = getVisibleMessages(messages, {
+    mailboxId: "inbox",
+    categoryId: "primary",
+    query: "",
+    unreadOnly: false,
+  });
+
+  assert.equal(inbox[0]?.id, "happy-one-year-anniversary");
+  assert.equal(inbox[0]?.unread, true);
+  assert.equal(inbox[0]?.sentAt, "2026-11-18T22:59:00+07:00");
+  assert.deepEqual(inbox[0]?.terminalSurprise, {
+    title: "1st Anniversary Gift Box",
+    subtitle: "Open interactive ASCII surprise with Love Me Not",
+    buttonLabel: "Open Surprise",
+    action: "anniversary-gift",
+    songId: "ravyn-lenae-love-me-not",
+  });
+  assert.equal(inbox[0]?.bonusSurprise, undefined);
+});
+
 test("unread-only filtering excludes read messages", () => {
   const result = getVisibleMessages(createInitialMessages(), {
     mailboxId: "inbox",
@@ -70,7 +92,7 @@ test("unread-only filtering excludes read messages", () => {
     unreadOnly: true,
   });
 
-  assert.deepEqual(result.map((message) => message.id), ["favorite-stranger-first-times", "apology-to-my-favorite-stranger", "message-for-you", "social", "payment", "account-update"]);
+  assert.deepEqual(result.map((message) => message.id), ["happy-one-year-anniversary", "favorite-stranger-first-times", "apology-to-my-favorite-stranger", "message-for-you", "social", "payment", "account-update"]);
 });
 test("keeps the photo mail separate from the existing Can it be fixed email", () => {
   const messages = createInitialMessages();
@@ -83,7 +105,7 @@ test("keeps the photo mail separate from the existing Can it be fixed email", ()
   assert.ok(photoMessage.photoAttachment);
   assert.equal(photoMessage.mailbox, "inbox");
   assert.equal(photoMessage.sentAt, "2026-11-01T19:00:00+07:00");
-  assert.equal(getMailboxCount(messages, "inbox"), 8);
+  assert.equal(getMailboxCount(messages, "inbox"), 9);
   assert.equal(getMailboxCount(messages, "trash"), 1);
 });
 
@@ -98,7 +120,7 @@ test("read-to-unread transition adds the message to unread-only results", () => 
       query: "",
       unreadOnly: true,
     }).map((message) => message.id),
-    ["favorite-stranger-first-times", "apology-to-my-favorite-stranger", "message-for-you"],
+    ["happy-one-year-anniversary", "favorite-stranger-first-times", "apology-to-my-favorite-stranger", "message-for-you"],
   );
   assert.deepEqual(
     getVisibleMessages(unread, {
@@ -107,7 +129,7 @@ test("read-to-unread transition adds the message to unread-only results", () => 
       query: "",
       unreadOnly: true,
     }).map((message) => message.id),
-    ["favorite-stranger-first-times", "apology-to-my-favorite-stranger", "message-for-you", "security"],
+    ["happy-one-year-anniversary", "favorite-stranger-first-times", "apology-to-my-favorite-stranger", "message-for-you", "security"],
   );
 });
 
@@ -159,7 +181,7 @@ test("mailbox counts reflect post-transition moves", () => {
   const initial = createInitialMessages();
   const moved = moveMessage(moveMessage(initial, "apology-to-my-favorite-stranger", "trash"), "security", "junk");
 
-  assert.equal(getMailboxCount(moved, "inbox"), 6);
+  assert.equal(getMailboxCount(moved, "inbox"), 7);
   assert.equal(getMailboxCount(moved, "trash"), 2);
   assert.equal(getMailboxCount(moved, "junk"), 2);
 });

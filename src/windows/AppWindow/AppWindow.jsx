@@ -1,6 +1,7 @@
 import React, { useState, useRef, useLayoutEffect, useEffect, memo, useMemo, useCallback } from "react";
 import {
   DOCK_HEIGHT,
+  getInitialWindowBounds,
   MENU_BAR_HEIGHT,
   MIN_WINDOW_HEIGHT,
   MIN_WINDOW_WIDTH,
@@ -61,7 +62,7 @@ export const AppWindow = memo(function AppWindow({
     width: win.width ?? win.w ?? 600,
     height: win.height ?? win.h ?? 420,
   }));
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(() => win.x === 0 && win.y === MENU_BAR_HEIGHT);
   const [prevRect, setPrevRect] = useState(null);
 
   const windowRef = useRef(null);
@@ -110,9 +111,18 @@ export const AppWindow = memo(function AppWindow({
   }, []);
   
   useLayoutEffect(() => {
+    const nextMaximized = win.x === 0 && win.y === MENU_BAR_HEIGHT;
     if ((win.x !== posRef.current.x || win.y !== posRef.current.y) && !dragging.current) {
+      if (nextMaximized && !isMaximizedRef.current) {
+        setPrevRect({
+          x: posRef.current.x,
+          y: posRef.current.y,
+          width: sizeRef.current.width,
+          height: sizeRef.current.height,
+        });
+      }
       setPos({ x: win.x, y: win.y });
-      setIsMaximized(win.x === 0 && win.y === MENU_BAR_HEIGHT);
+      setIsMaximized(nextMaximized);
     }
     
     // Обновляем размеры только если они явно указаны
@@ -121,7 +131,7 @@ export const AppWindow = memo(function AppWindow({
       const winHeight = win.height ?? win.h ?? 420;
       if (winWidth !== sizeRef.current.width || winHeight !== sizeRef.current.height) {
         setSize({ width: winWidth, height: winHeight });
-        setIsMaximized(winWidth >= window.innerWidth - 2);
+        setIsMaximized(nextMaximized || winWidth >= window.innerWidth - 2);
       }
     }
   }, [win.x, win.y, win.width, win.w, win.height, win.h, hasCustomSize, resizing]);
@@ -132,11 +142,13 @@ export const AppWindow = memo(function AppWindow({
     
     if (wasMaximized) {
       // Восстанавливаем старый размер
-      const rect = prevRectRef.current;
-      if (rect) {
-        setPos({ x: rect.x, y: rect.y });
-        setSize({ width: rect.width, height: rect.height });
+      let rect = prevRectRef.current;
+      if (!rect) {
+        const fallback = getInitialWindowBounds(win.id, window.innerWidth, window.innerHeight);
+        rect = { x: fallback.x, y: fallback.y, width: fallback.w, height: fallback.h };
       }
+      setPos({ x: rect.x, y: rect.y });
+      setSize({ width: rect.width, height: rect.height });
       setIsMaximized(false);
     } else {
       // Сохраняем текущий размер и разворачиваем
@@ -153,7 +165,7 @@ export const AppWindow = memo(function AppWindow({
       });
       setIsMaximized(true);
     }
-  }, []);
+  }, [win.id]);
 
   const onTitlePointerDown = useCallback((e) => {
     if (e.button !== 0 || isMaximized) return;

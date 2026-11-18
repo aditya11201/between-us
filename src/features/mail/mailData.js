@@ -32,6 +32,95 @@ export const MAILBOX_GROUPS = [
 
 export const INITIAL_MESSAGES = [
   {
+    id: "happy-one-year-anniversary",
+    mailbox: "inbox",
+    category: "primary",
+    sender: "user11201",
+    senderEmail: "user11201@gmail.com",
+    sentAt: "2026-11-18T22:59:00+07:00",
+    subject: "Do you know what day and date it is today?",
+    preview: "Helloooo, pretty girl! How are you doing, cantikkk? How's life treating you lately?",
+    blurPreviewUntilOpened: true,
+    body: `Helloooo, my pwetty girl! ❤️ eh masih ga atau udah engga
+
+How are you doing, pwettyyy? How's life treating you lately? ak harap km selalu sehat, happy, dan semoga banyak good things yang datang ke hidup km yaaa. Don't forget to take good care of yourself, okay?
+
+Anywayyy, do you know what day and date it is today? Atau km inget nggak ada sesuatu yang spesial di tanggal ini? Hmm, let me guess... km gatau malah ya wkwk isokey
+
+Well, guess whattt?!
+
+Nahhh, Today marks exactly **one year since the very first time we met and talked to each other!** Yup, nggak kerasa yaaa ini adalah malam kita ketemu pertama kali dimana tuhan mempertemukan kita, udah satu tahun aja dah wkwk
+
+Nggak kerasa yaaa, tepat setahun yang lalu, di malam yang sama seperti hari ini, Tuhan mempertemukan kita untuk pertama kalinya. A night that seemed so ordinary back then, but somehow became one of the most meaningful memories in my life. Tapi sekarang jadinya asing lagi ga?
+
+Time flies so fast, doesn't it?
+
+Rasanya kayak baru kemarin kita pertama kali kenalan, ngobrol, dan mulai saling mengenal. From two complete strangers to two people who ended up sharing so many little moments, stories, laughter, and memories together.
+
+Walaupun sekarang mungkin kita udah nggak sedekat dulu, atau malah jadi dua orang asing lagi, hehe. But you know what? Those little moments will always mean so much to me.
+
+Sebenernya ak pgn banget bisa celebrate this special day with you in person. Maybe meet up, spend some time together, ngobrol, ketawa, atau sekadar menikmati hari ini berdua.
+
+But I know things pasti km ga akan mau (karena bukan aku orangnya kan? ehem bersyandaaa), dan that's completely okay. No pressure at all, hehe.
+
+So, if you don't mind, let me celebrate this little milestone in my own way, right here, with you. Dengan cara sederhana yang ak bisa.
+
+It might not be something fancy or extraordinary. Mungkin buat km ini kelihatan sederhana, biasa aja, atau bahkan nggak seberapa. But trust me, every little detail comes straight from my heart and mind.
+
+Everything you're about to see started with a little idea in my head.
+
+Dari imajinasi ak, dari perasaan ak, dan dari banyak hal kecil yang pengin ak ungkapin, tapi mungkin nggak selalu bisa ak sampaikan lewat kata-kata.
+
+So, I decided to turn those thoughts and feelings into something real. Something that you can actually see, interact with, and hopefully enjoy.
+
+And this little celebration?
+
+It's simply my way of saying that **the day we first met will always be one of the most beautiful and precious memories I've ever had.**
+
+ak bener-bener bersyukur sama Allah karena pernah mempertemukan ak dengan km. Dari sekian banyak kemungkinan, waktu, dan orang yang bisa ak temui, somehow our paths crossed that night.
+
+And I'm genuinely grateful that they did.
+
+Karena buat ak, pertemuan itu bukan cuma tentang satu malam atau satu tanggal. Tapi tentang seseorang yang tanpa sadar pernah membawa begitu banyak kebahagiaan, cerita, dan warna baru ke dalam hidup ak.
+
+Thank you for being part of my story, pwetty. Even if things aren't quite the same anymore, I'm still grateful for every little moment we shared. ❤️
+
+Nahhhh, ini dibawah apa ya? coba kamu pencet reveal dehh
+
+*Happy one year since the day we first met, my pwetty girl.*
+
+*AK bener-bener bersyukur karena Tuhan pernah mempertemukan kita. No matter where life takes us, that day will always have a special place in my heart. ❤️*`,
+    spoilerPhotos: [
+      {
+        key: "first-met-memory",
+        alt: "First met memory screenshot from 18 November 2025",
+        width: 1262,
+        height: 612,
+        revealLabel: "Reveal",
+        revealAriaLabel: "Reveal hidden photo 1",
+      },
+      {
+        key: "first-met-friends-since",
+        alt: "Roblox profile showing sassy (@yoursweeteners) Friends Since Nov 18, 2025",
+        width: 638,
+        height: 260,
+        revealLabel: "Reveal",
+        revealAriaLabel: "Reveal hidden photo 2",
+      },
+    ],
+    terminalSurprise: {
+      title: "1st Anniversary Gift Box",
+      subtitle: "Open interactive ASCII surprise with Love Me Not",
+      buttonLabel: "Open Surprise",
+      action: "anniversary-gift",
+      songId: "ravyn-lenae-love-me-not",
+    },
+    to: "myfavoritestranger@gmail.com",
+    toName: "My Favorite Stranger",
+    unread: true,
+    flagged: false,
+  },
+  {
     id: "favorite-stranger-first-times",
     mailbox: "inbox",
     category: "primary",

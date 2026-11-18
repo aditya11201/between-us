@@ -50,7 +50,7 @@ export const renderAppContent = (
     case "finder":
       return <Suspense fallback={<WindowLoading />}><FinderContent {...commonProps} /></Suspense>;
     case "terminal":
-      return <Suspense fallback={<WindowLoading />}><TerminalContent {...commonProps} /></Suspense>;
+      return <Suspense fallback={<WindowLoading />}><TerminalContent {...commonProps} payload={payload} /></Suspense>;
     case "notes":
       return <Suspense fallback={<WindowLoading />}><NotesContent {...commonProps} /></Suspense>;
     case "settings":
@@ -58,7 +58,7 @@ export const renderAppContent = (
     case "safari":
       return <Suspense fallback={<WindowLoading />}><SafariContent {...commonProps} /></Suspense>;
     case "music":
-      return <Suspense fallback={<WindowLoading />}><MusicContent {...commonProps} /></Suspense>;
+      return <Suspense fallback={<WindowLoading />}><MusicContent {...commonProps} payload={payload} /></Suspense>;
     case "calendar":
       return <Suspense fallback={<WindowLoading />}><CalendarContent {...commonProps} /></Suspense>;
     case "calculator":
