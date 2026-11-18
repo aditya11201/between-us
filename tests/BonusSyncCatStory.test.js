@@ -329,7 +329,7 @@ test("bonusSyncModel exports constants, offset resolution, multi-window LRC sync
   assert.equal(shiftedInW2.startTime, 133.18);
 });
 
-test("Mail gates the memory photo and Open Surprise card behind Reveal, then launches Music (00:00, 0.4) + maximized Terminal (syncWithMusic)", async () => {
+test("Mail gates both memory photos and Open Surprise card behind Reveal, then launches Music (00:00, 0.4) + maximized Terminal (syncWithMusic)", async () => {
   const openedCalls = [];
   const container = document.createElement("div");
   document.body.append(container);
@@ -361,30 +361,47 @@ test("Mail gates the memory photo and Open Surprise card behind Reveal, then lau
   assert.ok(anniversaryOption);
   await dom.click(anniversaryOption);
 
-  const photoGate = container.querySelector(".mail__spoiler-photo");
+  const photoGates = [...container.querySelectorAll(".mail__spoiler-photo")];
   const cards = [...container.querySelectorAll(".mail__surprise-card")];
-  assert.ok(photoGate);
+  assert.equal(photoGates.length, 2);
   assert.equal(cards.length, 1);
   assert.ok(
-    Boolean(photoGate.compareDocumentPosition(cards[0]) & browserWindow.Node.DOCUMENT_POSITION_FOLLOWING),
+    Boolean(photoGates[0].compareDocumentPosition(photoGates[1]) & browserWindow.Node.DOCUMENT_POSITION_FOLLOWING),
+  );
+  assert.ok(
+    Boolean(photoGates[1].compareDocumentPosition(cards[0]) & browserWindow.Node.DOCUMENT_POSITION_FOLLOWING),
   );
 
-  // Before clicking Reveal: photo is blurred and Open Surprise is hidden behind card Reveal.
-  assert.equal(photoGate.classList.contains("is-revealed"), false);
+  // Before clicking Reveal: both photos are blurred and Open Surprise is hidden behind card Reveal.
+  assert.equal(photoGates[0].classList.contains("is-revealed"), false);
+  assert.equal(photoGates[1].classList.contains("is-revealed"), false);
   assert.equal(cards[0].classList.contains("is-revealed"), false);
   assert.doesNotMatch(cards[0].textContent, /1st Anniversary Gift Box/);
   assert.doesNotMatch(cards[0].textContent, /Open Surprise/);
   assert.doesNotMatch(container.textContent, /Bonus for You/);
 
-  const photoRevealBtn = photoGate.querySelector('button[aria-label="Reveal hidden photo"]');
+  const photo1RevealBtn = photoGates[0].querySelector('button[aria-label="Reveal hidden photo 1"]');
+  const photo2RevealBtn = photoGates[1].querySelector('button[aria-label="Reveal hidden photo 2"]');
   const cardRevealBtn = cards[0].querySelector('button[aria-label="Reveal surprise action"]');
-  assert.ok(photoRevealBtn);
+  assert.ok(photo1RevealBtn);
+  assert.ok(photo2RevealBtn);
   assert.ok(cardRevealBtn);
 
-  // Clicking photo Reveal uncovers the photo without exposing Open Surprise.
-  await dom.click(photoRevealBtn);
-  assert.equal(photoGate.classList.contains("is-revealed"), true);
-  assert.equal(photoGate.querySelector("img")?.getAttribute("alt"), "First met memory screenshot from 18 November 2025");
+  // Clicking photo 1 Reveal uncovers photo 1 without exposing photo 2 or Open Surprise.
+  await dom.click(photo1RevealBtn);
+  assert.equal(photoGates[0].classList.contains("is-revealed"), true);
+  assert.equal(photoGates[0].querySelector("img")?.getAttribute("alt"), "First met memory screenshot from 18 November 2025");
+  assert.equal(photoGates[1].classList.contains("is-revealed"), false);
+  assert.equal(cards[0].classList.contains("is-revealed"), false);
+  assert.doesNotMatch(cards[0].textContent, /Open Surprise/);
+
+  // Clicking photo 2 Reveal uncovers photo 2 without exposing Open Surprise.
+  await dom.click(photo2RevealBtn);
+  assert.equal(photoGates[1].classList.contains("is-revealed"), true);
+  assert.equal(
+    photoGates[1].querySelector("img")?.getAttribute("alt"),
+    "Roblox profile showing sassy (@yoursweeteners) Friends Since Nov 18, 2025",
+  );
   assert.equal(cards[0].classList.contains("is-revealed"), false);
   assert.doesNotMatch(cards[0].textContent, /Open Surprise/);
 

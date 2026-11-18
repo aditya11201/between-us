@@ -953,6 +953,10 @@
   background: var(--mail-field);
 }
 
+.mail__spoiler-photo + .mail__spoiler-photo {
+  margin-top: 12px;
+}
+
 .mail__spoiler-photo + .mail__surprise-card {
   margin-top: 14px;
 }

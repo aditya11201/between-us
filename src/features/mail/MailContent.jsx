@@ -28,6 +28,7 @@ import {
 } from "react-icons/fi";
 import { useWindowManager } from "@/core/providers";
 import { WindowContext } from "@/windows";
+import firstMetFriendsSincePhotoUrl from "@/assets/images/first-met-friends-since-photo.png";
 import firstMetMemoryPhotoUrl from "@/assets/images/first-met-memory-photo.png";
 import messageForYouPhotoUrl from "@/assets/images/message-for-you-photo.png";
 import { CATEGORIES, MAILBOX_GROUPS, createInitialMessages } from "./mailData";
@@ -85,6 +86,7 @@ const COMPOSE_LABELS = {
 
 const SPOILER_PHOTOS = {
   "first-met-memory": firstMetMemoryPhotoUrl,
+  "first-met-friends-since": firstMetFriendsSincePhotoUrl,
 };
 
 let nextSurpriseRunId = 0;
@@ -161,7 +163,7 @@ function SpoilerPhoto({ photo, isRevealed, onReveal }) {
           <button
             type="button"
             className="mail__reveal-button"
-            aria-label="Reveal hidden photo"
+            aria-label={photo.revealAriaLabel || "Reveal hidden photo"}
             onClick={onReveal}
           >
             {photo.revealLabel || "Reveal"}
@@ -1133,16 +1135,24 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
                   );
                 })}
               </div>
-              {selectedMessage.spoilerPhoto && (
-                <SpoilerPhoto
-                  photo={selectedMessage.spoilerPhoto}
-                  isRevealed={Boolean(revealedSpoilerPhotos[selectedMessage.id])}
-                  onReveal={() => {
-                    const messageId = selectedMessage.id;
-                    setRevealedSpoilerPhotos((current) => ({ ...current, [messageId]: true }));
-                  }}
-                />
-              )}
+              {(Array.isArray(selectedMessage.spoilerPhotos)
+                ? selectedMessage.spoilerPhotos
+                : selectedMessage.spoilerPhoto
+                  ? [selectedMessage.spoilerPhoto]
+                  : []
+              ).map((photo) => {
+                const revealKey = `${selectedMessage.id}:${photo.key}`;
+                return (
+                  <SpoilerPhoto
+                    key={photo.key}
+                    photo={photo}
+                    isRevealed={Boolean(revealedSpoilerPhotos[revealKey])}
+                    onReveal={() => {
+                      setRevealedSpoilerPhotos((current) => ({ ...current, [revealKey]: true }));
+                    }}
+                  />
+                );
+              })}
               {selectedMessage.terminalSurprise && (
                 <SurpriseCard
                   surprise={selectedMessage.terminalSurprise}
