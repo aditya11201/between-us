@@ -1074,6 +1074,7 @@ export function MailContent({ onClose, onMinimize, onMaximize, openApp }) {
                       songId,
                       volume: BONUS_DEFAULT_VOLUME,
                       autoOpenTerminal: false,
+                      armLyrics: true,
                       runId,
                     });
                     openApp?.("terminal", "Terminal", {

@@ -93,8 +93,13 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
   const matrixIntervalRef = useRef(null);
   const lastRunIdRef = useRef(null);
   const launchTimersRef = useRef([]);
+  const surpriseLyricArmedRef = useRef(false);
+  const syncSessionActiveRef = useRef(false);
+  const disarmLyricFxRef = useRef(disarmLyricFx);
 
   matrixIntervalRef.current = matrixInterval;
+  syncSessionActiveRef.current = syncSessionActive;
+  disarmLyricFxRef.current = disarmLyricFx;
 
   // Авто-скролл
   useEffect(() => {
@@ -108,6 +113,11 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
       if (matrixIntervalRef.current) {
         clearInterval(matrixIntervalRef.current);
         matrixIntervalRef.current = null;
+      }
+      if (syncSessionActiveRef.current || surpriseLyricArmedRef.current) {
+        surpriseLyricArmedRef.current = false;
+        syncSessionActiveRef.current = false;
+        disarmLyricFxRef.current?.();
       }
     };
   }, []);
@@ -198,6 +208,35 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
 
   const isSyncedGiftStage = stage === "anniversary-gift" && syncSessionActive;
   const isSyncedSongActive = Boolean(activeSong?.id && activeSong.id === syncSongId);
+  const isCatStoryOverlay = isSyncedGiftStage && isSyncedSongActive && unifiedScene.mode === "cat-story";
+
+  useEffect(() => {
+    if (!isSyncedGiftStage) return;
+
+    if (!isSyncedSongActive) {
+      if (surpriseLyricArmedRef.current) {
+        surpriseLyricArmedRef.current = false;
+        disarmLyricFx();
+      }
+      return;
+    }
+
+    if (isCatStoryOverlay) {
+      surpriseLyricArmedRef.current = false;
+      disarmLyricFx();
+      return;
+    }
+
+    surpriseLyricArmedRef.current = true;
+    armLyricFx(syncSongId);
+  }, [
+    isSyncedGiftStage,
+    isSyncedSongActive,
+    isCatStoryOverlay,
+    syncSongId,
+    armLyricFx,
+    disarmLyricFx,
+  ]);
 
   useEffect(() => {
     if (!isSyncedGiftStage || !isSyncedSongActive) {
@@ -907,6 +946,11 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
   };
 
   const handleExitSurprise = () => {
+    if (syncSessionActive || surpriseLyricArmedRef.current) {
+      surpriseLyricArmedRef.current = false;
+      syncSessionActiveRef.current = false;
+      disarmLyricFx();
+    }
     setSyncSessionActive(false);
     setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
     setStage("terminal");
@@ -916,12 +960,16 @@ export function TerminalContent({ openApp, payload, onMaximize }) {
   };
 
   const handleCloseTerminal = () => {
+    if (syncSessionActive || surpriseLyricArmedRef.current) {
+      surpriseLyricArmedRef.current = false;
+      syncSessionActiveRef.current = false;
+      disarmLyricFx();
+    }
     setSyncSessionActive(false);
     setUnifiedScene({ mode: "gift-box", windowIndex: -1, startTime: null });
     onClose?.();
   };
 
-  const isCatStoryOverlay = isSyncedGiftStage && isSyncedSongActive && unifiedScene.mode === "cat-story";
   const syncedAudio = isSyncedGiftStage && isSyncedSongActive ? (getAudioElement?.() ?? null) : null;
   const showGiftBoxPlayAudio = Boolean(
     isSyncedGiftStage

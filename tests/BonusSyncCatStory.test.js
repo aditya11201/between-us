@@ -18,6 +18,7 @@ let createRoot;
 let parseLRC;
 let MUSIC_CATALOG;
 let MusicContent;
+let DesktopLyricOverlay;
 let useMusicPlayer;
 let MailContent;
 let TerminalContent;
@@ -50,6 +51,7 @@ before(async () => {
   ({ parseLRC } = await vite.ssrLoadModule("/src/features/music/lyricsParser.js"));
   ({ MUSIC_CATALOG } = await vite.ssrLoadModule("/src/features/music/musicCatalog.js"));
   ({ MusicContent, useMusicPlayer } = await vite.ssrLoadModule("/src/features/music/MusicContent.jsx"));
+  ({ DesktopLyricOverlay } = await vite.ssrLoadModule("/src/features/music/DesktopLyricOverlay.jsx"));
   ({ MailContent } = await vite.ssrLoadModule("/src/features/mail/MailContent.jsx"));
   ({ TerminalContent } = await vite.ssrLoadModule("/src/features/terminal/Terminal.jsx"));
   ({ CatStoryCanvas, decodeCatStoryFrames } = await vite.ssrLoadModule("/src/features/terminal/CatStoryCanvas.jsx"));
@@ -380,6 +382,7 @@ test("Mail renders only the single Open Surprise card and launches Music (00:00,
     songId: "ravyn-lenae-love-me-not",
     volume: 0.4,
     autoOpenTerminal: false,
+    armLyrics: true,
     runId: openedCalls[0][2].runId,
   });
   assert.equal(typeof openedCalls[0][2].runId, "number");
@@ -1553,4 +1556,326 @@ test("Autoplay-blocked Music shows Play Audio fallback on Gift Box in unified Te
       { description: "Audio plays and Play Audio fallback button hides after click" },
     );
   });
+});
+
+test("MusicContent immediately arms lyricFx on bonus-play-from-start when armLyrics is true and re-arms on re-trigger", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mountedRoots.push({ container, root });
+
+  let bridgeRef = null;
+  function BridgeProbe() {
+    bridgeRef = useMusicPlayer();
+    return null;
+  }
+
+  // Without armLyrics, lyricFx remains disarmed.
+  await act(async () => {
+    root.render(
+      React.createElement(
+        React.StrictMode,
+        null,
+        React.createElement(
+          WindowContext.Provider,
+          { value: createWindowContextValue() },
+          React.createElement(MusicContent, {
+            payload: {
+              action: "bonus-play-from-start",
+              songId: "ravyn-lenae-love-me-not",
+              volume: 0.4,
+              autoOpenTerminal: false,
+              runId: 2001,
+            },
+          }),
+          React.createElement(BridgeProbe),
+        ),
+      ),
+    );
+  });
+  assert.equal(bridgeRef.lyricFxArmed, false);
+  assert.equal(bridgeRef.lyricFxSongId, null);
+
+  // With armLyrics: true, lyricFx arms immediately for Love Me Not.
+  await act(async () => {
+    root.render(
+      React.createElement(
+        React.StrictMode,
+        null,
+        React.createElement(
+          WindowContext.Provider,
+          { value: createWindowContextValue() },
+          React.createElement(MusicContent, {
+            payload: {
+              action: "bonus-play-from-start",
+              songId: "ravyn-lenae-love-me-not",
+              volume: 0.4,
+              autoOpenTerminal: false,
+              armLyrics: true,
+              runId: 2002,
+            },
+          }),
+          React.createElement(BridgeProbe),
+        ),
+      ),
+    );
+  });
+  assert.equal(bridgeRef.lyricFxArmed, true);
+  assert.equal(bridgeRef.lyricFxSongId, "ravyn-lenae-love-me-not");
+
+  // Disarming and re-triggering bonus-play-from-start with armLyrics: true re-arms lyricFx.
+  await act(async () => {
+    bridgeRef.disarmLyricFx();
+  });
+  assert.equal(bridgeRef.lyricFxArmed, false);
+  assert.equal(bridgeRef.lyricFxSongId, null);
+
+  await act(async () => {
+    root.render(
+      React.createElement(
+        React.StrictMode,
+        null,
+        React.createElement(
+          WindowContext.Provider,
+          { value: createWindowContextValue() },
+          React.createElement(MusicContent, {
+            payload: {
+              action: "bonus-play-from-start",
+              songId: "ravyn-lenae-love-me-not",
+              volume: 0.4,
+              autoOpenTerminal: false,
+              armLyrics: true,
+              runId: 2003,
+            },
+          }),
+          React.createElement(BridgeProbe),
+        ),
+      ),
+    );
+  });
+  assert.equal(bridgeRef.lyricFxArmed, true);
+  assert.equal(bridgeRef.lyricFxSongId, "ravyn-lenae-love-me-not");
+});
+
+test("TerminalContent coordinates armLyricFx/disarmLyricFx across Gift Box <-> Cat Story, song change, Escape, Back to Terminal, and unmount", async () => {
+  await withMockUnifiedCanvases(async () => {
+    await decodeCatStoryFrames();
+
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    mountedRoots.push({ container, root });
+
+    let bridgeRef = null;
+    function BridgeProbe() {
+      bridgeRef = useMusicPlayer();
+      return null;
+    }
+
+    const renderScene = ({ showTerminal = true, terminalPayload = null, musicRunId = 2101 } = {}) => (
+      React.createElement(
+        WindowContext.Provider,
+        { value: createWindowContextValue() },
+        React.createElement(MusicContent, {
+          payload: {
+            action: "bonus-play-from-start",
+            songId: "ravyn-lenae-love-me-not",
+            volume: 0.4,
+            autoOpenTerminal: false,
+            runId: musicRunId,
+          },
+        }),
+        React.createElement(DesktopLyricOverlay),
+        showTerminal
+          ? React.createElement(TerminalContent, { payload: terminalPayload })
+          : null,
+        React.createElement(BridgeProbe),
+      )
+    );
+
+    const giftPayload = {
+      action: "anniversary-gift",
+      maximize: true,
+      syncWithMusic: true,
+      immediate: true,
+      songId: "ravyn-lenae-love-me-not",
+      runId: 2101,
+    };
+
+    await act(async () => {
+      root.render(renderScene({ showTerminal: true, terminalPayload: giftPayload }));
+    });
+
+    const audio = bridgeRef.getAudioElement();
+    assert.ok(audio);
+    const controls = instrumentAudioElement(audio, { duration: 213 });
+
+    await act(async () => {
+      controls.emitMetadata();
+    });
+
+    // Gift Box (00:00) -> TerminalContent arms lyricFx for Love Me Not, overlay shows green lyrics.
+    assert.equal(bridgeRef.lyricFxArmed, true);
+    assert.equal(bridgeRef.lyricFxSongId, "ravyn-lenae-love-me-not");
+
+    await act(async () => {
+      controls.advanceTo(25.0);
+    });
+    await waitForCondition(
+      () => Boolean(container.querySelector(".lyric-fx-line")),
+      { description: "DesktopLyricOverlay renders floating lyrics over Gift Box" },
+    );
+
+    // Enter Chorus 1 Cat Story (00:56.90) -> lyricFx disarmed and overlay clears immediately.
+    await act(async () => {
+      controls.advanceTo(56.90);
+    });
+    await waitForCondition(
+      () => Boolean(container.querySelector(".terminal-cat-stage")) && !bridgeRef.lyricFxArmed,
+      { description: "Cat Story disarms lyricFx at 00:56.90" },
+    );
+    assert.equal(bridgeRef.lyricFxSongId, null);
+    assert.equal(container.querySelector(".lyric-fx"), null);
+
+    // Return to Gift Box (01:08.17) -> lyricFx re-arms automatically.
+    await act(async () => {
+      controls.advanceTo(bonusSyncModel.BONUS_LYRIC_WINDOWS[0].endTime);
+    });
+    await waitForCondition(
+      () => !container.querySelector(".terminal-cat-stage") && bridgeRef.lyricFxArmed,
+      { description: "Returning to Gift Box at 01:08.17 re-arms lyricFx" },
+    );
+    assert.equal(bridgeRef.lyricFxSongId, "ravyn-lenae-love-me-not");
+    await waitForCondition(
+      () => Boolean(container.querySelector(".lyric-fx-line")),
+      { description: "DesktopLyricOverlay resumes floating lyrics after returning to Gift Box" },
+    );
+
+    // Switching Music to another song disarms surprise lyricFx.
+    const otherSongBtn = [...container.querySelectorAll(".music-track-main")].find(
+      (btn) => !btn.textContent.includes("Love Me Not"),
+    );
+    assert.ok(otherSongBtn);
+    await dom.click(otherSongBtn);
+    assert.equal(bridgeRef.lyricFxArmed, false);
+    assert.equal(bridgeRef.lyricFxSongId, null);
+
+    // Re-launch surprise and exit via Back to Terminal -> disarms lyricFx while song continues playing.
+    await act(async () => {
+      root.render(renderScene({
+        showTerminal: true,
+        terminalPayload: { ...giftPayload, runId: 2102 },
+        musicRunId: 2102,
+      }));
+    });
+    await act(async () => {
+      controls.emitMetadata();
+      controls.advanceTo(10.0);
+    });
+    assert.equal(bridgeRef.lyricFxArmed, true);
+    assert.equal(audio.paused, false);
+
+    const backBtn = [...container.querySelectorAll(".terminal-ascii-tools button")].find(
+      (b) => b.textContent.trim() === "Back to Terminal",
+    );
+    assert.ok(backBtn);
+    await dom.click(backBtn);
+    assert.equal(bridgeRef.lyricFxArmed, false);
+    assert.equal(bridgeRef.lyricFxSongId, null);
+    assert.equal(audio.paused, false);
+
+    // Re-launch surprise and exit via Escape -> disarms lyricFx while song continues playing.
+    await act(async () => {
+      root.render(renderScene({
+        showTerminal: true,
+        terminalPayload: { ...giftPayload, runId: 2103 },
+        musicRunId: 2103,
+      }));
+    });
+    await act(async () => {
+      controls.emitMetadata();
+      controls.advanceTo(12.0);
+    });
+    assert.equal(bridgeRef.lyricFxArmed, true);
+
+    await act(async () => {
+      browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    assert.equal(bridgeRef.lyricFxArmed, false);
+    assert.equal(bridgeRef.lyricFxSongId, null);
+    assert.equal(audio.paused, false);
+
+    // Re-launch surprise and unmount Terminal -> disarms lyricFx cleanly while song continues playing.
+    await act(async () => {
+      root.render(renderScene({
+        showTerminal: true,
+        terminalPayload: { ...giftPayload, runId: 2104 },
+        musicRunId: 2104,
+      }));
+    });
+    await act(async () => {
+      controls.emitMetadata();
+      controls.advanceTo(14.0);
+    });
+    assert.equal(bridgeRef.lyricFxArmed, true);
+
+    await act(async () => {
+      root.render(renderScene({ showTerminal: false, musicRunId: 2104 }));
+    });
+    assert.equal(bridgeRef.lyricFxArmed, false);
+    assert.equal(bridgeRef.lyricFxSongId, null);
+    assert.equal(audio.paused, false);
+  });
+});
+
+test("Unmounting a non-surprise Terminal CLI session preserves lyricFx armed by play <song>", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mountedRoots.push({ container, root });
+
+  let bridgeRef = null;
+  function BridgeProbe() {
+    bridgeRef = useMusicPlayer();
+    return null;
+  }
+
+  const renderCli = (showTerminal = true) => (
+    React.createElement(
+      WindowContext.Provider,
+      { value: createWindowContextValue() },
+      React.createElement(MusicContent, {}),
+      showTerminal ? React.createElement(TerminalContent, {}) : null,
+      React.createElement(BridgeProbe),
+    )
+  );
+
+  await act(async () => {
+    root.render(renderCli(true));
+  });
+
+  const input = container.querySelector(".terminal-interactive-input");
+  const setInputValue = Object.getOwnPropertyDescriptor(
+    browserWindow.HTMLInputElement.prototype,
+    "value",
+  ).set;
+
+  await act(async () => {
+    setInputValue.call(input, "play love me not");
+    input.dispatchEvent(new browserWindow.Event("input", { bubbles: true }));
+    input.dispatchEvent(new browserWindow.Event("change", { bubbles: true }));
+  });
+  await act(async () => {
+    input.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+
+  assert.equal(bridgeRef.lyricFxArmed, true);
+  assert.equal(bridgeRef.lyricFxSongId, "ravyn-lenae-love-me-not");
+
+  await act(async () => {
+    root.render(renderCli(false));
+  });
+
+  assert.equal(bridgeRef.lyricFxArmed, true);
+  assert.equal(bridgeRef.lyricFxSongId, "ravyn-lenae-love-me-not");
 });

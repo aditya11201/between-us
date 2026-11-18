@@ -250,7 +250,11 @@ export function MusicContent({ openApp, payload } = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSection, setActiveSection] = useState("songs");
   const [playbackError, setPlaybackError] = useState(null);
-  const [lyricFx, setLyricFx] = useState({ armed: false, songId: null });
+  const [lyricFx, setLyricFx] = useState(() => (
+    payload?.action === "bonus-play-from-start" && payload?.armLyrics === true
+      ? { armed: true, songId: payload.songId || BONUS_SONG_ID }
+      : { armed: false, songId: null }
+  ));
   const [sourceLoadRequest, setSourceLoadRequest] = useState(0);
   const [nowPlayingArtworkFailed, setNowPlayingArtworkFailed] = useState(false);
   const [queue, setQueue] = useState(songs);
@@ -794,6 +798,9 @@ export function MusicContent({ openApp, payload } = {}) {
     setVolume(targetVolume);
     setIsMuted(false);
     setCurrentTime(0);
+    if (payload.armLyrics === true) {
+      setLyricFx((prev) => (prev.armed && prev.songId === songId ? prev : { armed: true, songId }));
+    }
 
     const audio = audioRef.current;
     if (audio) {
@@ -853,6 +860,7 @@ export function MusicContent({ openApp, payload } = {}) {
     payload?.runId,
     payload?.volume,
     payload?.autoOpenTerminal,
+    payload?.armLyrics,
     stopAmbientBridge,
     tryPlay,
   ]);
@@ -1131,11 +1139,11 @@ export function MusicContent({ openApp, payload } = {}) {
   }, []);
 
   const armLyricFx = useCallback((songId) => {
-    setLyricFx({ armed: true, songId });
+    setLyricFx((prev) => (prev.armed && prev.songId === songId ? prev : { armed: true, songId }));
   }, []);
 
   const disarmLyricFx = useCallback(() => {
-    setLyricFx({ armed: false, songId: null });
+    setLyricFx((prev) => (!prev.armed && prev.songId === null ? prev : { armed: false, songId: null }));
   }, []);
 
   musicBridgeRef.current = {

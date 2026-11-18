@@ -463,6 +463,7 @@ test("anniversary email renders the unified Open Surprise launcher card and invo
   assert.equal(openedCalls[0][2].songId, "ravyn-lenae-love-me-not");
   assert.equal(openedCalls[0][2].volume, 0.4);
   assert.equal(openedCalls[0][2].autoOpenTerminal, false);
+  assert.equal(openedCalls[0][2].armLyrics, true);
   assert.equal(typeof openedCalls[0][2].runId, "number");
 
   assert.deepEqual(openedCalls[1].slice(0, 2), ["terminal", "Terminal"]);
