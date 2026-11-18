@@ -380,7 +380,7 @@ test("AnniversaryGiftCanvas draws the top-right timer without bottom-left status
   });
 });
 
-test("AnniversaryGiftCanvas stops at LOOP (29.00s) instead of auto-looping and restarts on REPLAY", async () => {
+test("AnniversaryGiftCanvas continues advancing past 29.00s without looping or freezing, keeps pause enabled, and restarts on REPLAY", async () => {
   const originalRaf = globalThis.requestAnimationFrame;
   const originalCancelRaf = globalThis.cancelAnimationFrame;
   let nextRafId = 1;
@@ -406,28 +406,42 @@ test("AnniversaryGiftCanvas stops at LOOP (29.00s) instead of auto-looping and r
         root.render(React.createElement(AnniversaryGiftCanvas, { onExit() {} }));
       });
 
-      const timerCalls = () => mainFillTexts.filter((call) => /t \d{2}\.\d{2}s$/.test(call.text));
+      const timerCalls = () => mainFillTexts.filter((call) => /t \d{2,}\.\d{2}s$/.test(call.text));
+      const parseTimerSeconds = (text) => {
+        const match = /t (\d+\.\d{2})s$/.exec(text || "");
+        return match ? Number(match[1]) : NaN;
+      };
+
       assert.equal(timerCalls().at(-1)?.text, "● t 00.00s");
       assert.equal(rafQueue.size, 1);
 
       let ms = 100;
-      let steps = 0;
-      await act(async () => {
-        while (rafQueue.size > 0 && steps < 600) {
-          const entries = [...rafQueue.entries()];
-          rafQueue.clear();
-          for (const [, cb] of entries) {
-            cb(ms);
+      const stepTicks = async (count) => {
+        await act(async () => {
+          for (let i = 0; i < count; i += 1) {
+            const entries = [...rafQueue.entries()];
+            rafQueue.clear();
+            for (const [, cb] of entries) {
+              cb(ms);
+            }
+            ms += 100;
           }
-          ms += 100;
-          steps += 1;
-        }
-      });
+        });
+      };
 
-      assert.ok(steps < 600, "expected animation loop to stop at LOOP without looping");
-      assert.equal(rafQueue.size, 0, "no further requestAnimationFrame ticks should be scheduled after LOOP");
-      assert.equal(timerCalls().at(-1)?.text, "● t 29.00s");
-      assert.equal(trailClearRects.length, 0, "trail canvas must not be cleared when reaching LOOP");
+      // Advance past 29s (dt is capped at 1/15s per tick, so 500 ticks reaches ~33.27s).
+      await stepTicks(500);
+
+      assert.equal(rafQueue.size, 1, "requestAnimationFrame loop should keep running past 29s");
+      assert.equal(trailClearRects.length, 0, "trail canvas must not be cleared when passing 29s");
+
+      const timePast29 = parseTimerSeconds(timerCalls().at(-1)?.text);
+      assert.ok(timePast29 > 29, `expected time to advance past 29.00s, got ${timePast29}`);
+
+      // Advancing further keeps increasing t instead of freezing or wrapping.
+      await stepTicks(30);
+      const timeFurther = parseTimerSeconds(timerCalls().at(-1)?.text);
+      assert.ok(timeFurther > timePast29, `expected time to keep advancing (${timeFurther} > ${timePast29})`);
 
       const pauseButton = [...container.querySelectorAll("button")].find(
         (btn) => btn.textContent.trim() === "II PAUSE",
@@ -437,17 +451,25 @@ test("AnniversaryGiftCanvas stops at LOOP (29.00s) instead of auto-looping and r
       );
       assert.ok(pauseButton);
       assert.ok(replayButton);
-      assert.equal(pauseButton.disabled, true);
+      assert.equal(pauseButton.disabled, false);
       assert.equal(replayButton.disabled, false);
 
-      // Space key and clicking disabled pause button remain a no-op once ended.
+      // II PAUSE remains interactive past 29s and freezes t while paused.
+      await act(async () => {
+        pauseButton.dispatchEvent(new browserWindow.MouseEvent("click", { bubbles: true }));
+      });
+      assert.equal(pauseButton.textContent.trim(), "▶ PLAY");
+      const pausedText = timerCalls().at(-1)?.text;
+      await stepTicks(5);
+      assert.equal(parseTimerSeconds(timerCalls().at(-1)?.text), parseTimerSeconds(pausedText));
+
+      // Space toggles back to II PAUSE.
       await act(async () => {
         browserWindow.dispatchEvent(new browserWindow.KeyboardEvent("keydown", { key: " ", bubbles: true }));
       });
       assert.equal(pauseButton.textContent.trim(), "II PAUSE");
-      assert.equal(pauseButton.disabled, true);
 
-      // Clicking REPLAY resets to 00.00s, clears trail canvas, re-enables pause, and restarts rAF loop.
+      // Clicking REPLAY resets to 00.00s, clears trail canvas once, and keeps rAF loop running.
       await act(async () => {
         replayButton.dispatchEvent(new browserWindow.MouseEvent("click", { bubbles: true }));
       });
@@ -456,19 +478,10 @@ test("AnniversaryGiftCanvas stops at LOOP (29.00s) instead of auto-looping and r
       assert.equal(trailClearRects.length, 1, "REPLAY should clear the trail canvas once");
       assert.equal(pauseButton.disabled, false);
       assert.equal(pauseButton.textContent.trim(), "II PAUSE");
-      assert.equal(rafQueue.size, 1, "REPLAY should restart the requestAnimationFrame loop");
+      assert.equal(rafQueue.size, 1, "REPLAY should keep the requestAnimationFrame loop running");
 
       // Advancing two ticks after REPLAY progresses time forward from 00.00s.
-      await act(async () => {
-        for (let i = 0; i < 2; i += 1) {
-          const entries = [...rafQueue.entries()];
-          rafQueue.clear();
-          for (const [, cb] of entries) {
-            cb(ms);
-          }
-          ms += 100;
-        }
-      });
+      await stepTicks(2);
 
       assert.match(timerCalls().at(-1)?.text, /t 00\.0[1-9]s$/);
       assert.equal(rafQueue.size, 1);

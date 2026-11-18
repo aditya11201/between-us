@@ -9,7 +9,6 @@ const ROWS = Math.floor(H / CH);
 const COUNT = COLS * ROWS;
 const ASPECT = (COLS * CW) / (ROWS * CH);
 const TAU = Math.PI * 2;
-const LOOP = 29;
 
 const M = {
   GREEN: 0,
@@ -953,9 +952,7 @@ function makeLilyTexture(index) {
 export function AnniversaryGiftCanvas({ onExit }) {
   const canvasRef = useRef(null);
   const [paused, setPaused] = useState(false);
-  const [ended, setEnded] = useState(false);
   const pausedRef = useRef(false);
-  const endedRef = useRef(false);
   const controlsRef = useRef({
     toggle: () => {},
     restart: () => {},
@@ -965,7 +962,6 @@ export function AnniversaryGiftCanvas({ onExit }) {
   onExitRef.current = onExit;
 
   const handleTogglePause = useCallback(() => {
-    if (endedRef.current) return;
     const next = !pausedRef.current;
     pausedRef.current = next;
     setPaused(next);
@@ -1020,7 +1016,6 @@ export function AnniversaryGiftCanvas({ onExit }) {
     let disposed = false;
 
     let renderFrame = () => {};
-    let startLoop = () => {};
 
     const restart = () => {
       if (disposed) return;
@@ -1028,15 +1023,12 @@ export function AnniversaryGiftCanvas({ onExit }) {
       last = 0;
       lastDraw = 0;
       pausedRef.current = false;
-      endedRef.current = false;
       setPaused(false);
-      setEnded(false);
       if (tCtx) {
         tCtx.fillStyle = "#030204";
         tCtx.fillRect(0, 0, W, H);
       }
       renderFrame(0);
-      startLoop();
     };
 
     const save = () => {
@@ -1659,16 +1651,9 @@ export function AnniversaryGiftCanvas({ onExit }) {
     }
 
     renderFrame = frame;
-    startLoop = () => {
-      if (disposed) return;
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-      rafId = requestAnimationFrame(tick);
-    };
 
     function tick(ms) {
-      if (disposed || endedRef.current) {
+      if (disposed) {
         rafId = null;
         return;
       }
@@ -1677,15 +1662,6 @@ export function AnniversaryGiftCanvas({ onExit }) {
       last = ms;
       if (!pausedRef.current) {
         t += dt;
-        if (t >= LOOP) {
-          t = LOOP;
-          endedRef.current = true;
-          setEnded(true);
-          lastDraw = ms;
-          frame(LOOP);
-          rafId = null;
-          return;
-        }
       }
       if (ms - lastDraw > 1000 / 26) {
         lastDraw = ms;
@@ -1695,7 +1671,7 @@ export function AnniversaryGiftCanvas({ onExit }) {
     }
 
     frame(0);
-    startLoop();
+    rafId = requestAnimationFrame(tick);
 
     return () => {
       disposed = true;
@@ -1725,7 +1701,6 @@ export function AnniversaryGiftCanvas({ onExit }) {
           type="button"
           className="terminal-ascii-btn"
           onClick={handleTogglePause}
-          disabled={ended}
           title="Space"
           aria-pressed={paused}
         >
