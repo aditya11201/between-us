@@ -37,7 +37,7 @@ export const INITIAL_MESSAGES = [
     category: "primary",
     sender: "user11201",
     senderEmail: "user11201@gmail.com",
-    sentAt: "2026-11-18T22:00:00+07:00",
+    sentAt: "2026-11-18T22:59:00+07:00",
     subject: "Do you know what day and date it is today?",
     preview: "Helloooo, pretty girl! How are you doing, cantikkk? How's life treating you lately?",
     blurPreviewUntilOpened: true,

@@ -73,7 +73,7 @@ test("places the 1st anniversary message first in the inbox with terminal surpri
 
   assert.equal(inbox[0]?.id, "happy-one-year-anniversary");
   assert.equal(inbox[0]?.unread, true);
-  assert.equal(inbox[0]?.sentAt, "2026-11-18T22:00:00+07:00");
+  assert.equal(inbox[0]?.sentAt, "2026-11-18T22:59:00+07:00");
   assert.deepEqual(inbox[0]?.terminalSurprise, {
     title: "1st Anniversary Gift Box",
     subtitle: "Open interactive ASCII surprise with Love Me Not",
